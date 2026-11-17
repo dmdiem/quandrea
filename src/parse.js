@@ -49,6 +49,8 @@ export function skillLines(text) {
   return lines;
 }
 
+export const noRepeats = (keys) => keys.filter((k, i) => k === OTHER || keys.indexOf(k) === i);
+
 export function lineKey(line) {
   for (const [k, re] of SKILL) if (re.test(line)) return k;
   return OTHER;
@@ -68,7 +70,9 @@ export function parseTooltip(text) {
     : slotWord[0].toUpperCase() + slotWord.slice(1);
   // The class in brackets after it, which OCR sometimes reads as "iMagician)".
   const cls = CLASSES.find((c) => title && title[2].toLowerCase().includes(c.toLowerCase().slice(1, 6))) ?? null;
-  const lines = skillLines(t).map(lineKey).slice(0, 3);
+  // A piece can't roll the same line twice, so a repeat is a misread: keep one. ("Other" can
+  // repeat: Boss DMG and Ignore DEF both count as Other.)
+  const lines = noRepeats(skillLines(t).map(lineKey)).slice(0, 3);
   // Gear that can't roll hologram lines (shoulder, weapon, accessories): say so instead of
   // treating it as a misread.
   const skip = slot ? null : SKIP.find((w) => new RegExp(`\\b${w}`, "i").test(t)) ?? null;

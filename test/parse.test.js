@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { parseTooltip, skillLines, lineKey } from "../src/parse.js";
+import { parseTooltip, skillLines, lineKey, noRepeats } from "../src/parse.js";
 
 // Real OCR output from tooltip screenshots (the same pipeline the site uses), with the lines,
 // slot and class a person reads off each one.
@@ -59,4 +59,11 @@ test("shoulders and weapons are skipped, not misreads", () => {
   }
   assert.equal(read("39-0").skip, null);
   assert.equal(parseTooltip("garbled").skip, null);
+});
+
+test("a piece can't have the same line twice: a repeat is a misread", () => {
+  assert.deepEqual(noRepeats(["leap", "leap", "wh"]), ["leap", "wh"]);
+  assert.deepEqual(noRepeats(["other", "mage", "other"]), ["other", "mage", "other"]); // Boss + IED are both Other
+  const text = "[Hologram] Magician Attack Skill Lv. +1\n[Hologram] Magician Attack Skill Lv. +1\nRegistry Lv. +1\nScroll Enhancement None";
+  assert.deepEqual(parseTooltip(text).lines, ["mage", "reg"]);
 });

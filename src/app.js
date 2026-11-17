@@ -1,8 +1,8 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=6";
-import { verdicts, solve, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=6";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, GRID } from "./vision.js?v=6";
+import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=7";
+import { verdicts, solve, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=7";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, GRID } from "./vision.js?v=7";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -21,6 +21,11 @@ function load() {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY));
     if (raw && Array.isArray(raw.items)) state = { ...state, ...raw };
+    // Older saves had the sockets inside each item's key (slot|class|lines|sockets|stats).
+    for (const it of state.items) {
+      const parts = String(it.key ?? "").split("|");
+      if (parts.length === 5) it.key = [parts[0], parts[1], parts[2], parts[4]].join("|");
+    }
   } catch {}
 }
 function save() {
@@ -161,7 +166,8 @@ async function readTooltip(img, box) {
   const known = state.items.length === before;
   if (!parsed.equipped) last = { id: item.id, crop: cropCanvas(img, area) };
   const what = `${parsed.equipped ? "your equipped " : ""}${item.slot.toLowerCase()}`;
-  setStatus(known ? `Already have this ${what} ✓  Hover the next one.` : `Read ${what} ✓  Hover the next one.`, true);
+  if (!item.sockets.length) setStatus(`Read ${what}, but couldn't see its sockets. Every piece has at least one: hover it again with nothing bright behind the item picture.`, true);
+  else setStatus(known ? `Already have this ${what} ✓  Hover the next one.` : `Read ${what} ✓  Hover the next one.`, true);
   render();
 }
 
@@ -180,7 +186,8 @@ function cropCanvas(img, area) {
 
 // Add an item, or update it if this exact one was read before. Returns the stored item.
 function remember(p) {
-  const key = [p.slot, p.cls, p.lines.join(","), p.sockets.join(","), p.stats].join("|");
+  // Sockets aren't part of the key: a re-hover that finally sees them updates the same item.
+  const key = [p.slot, p.cls, p.lines.join(","), p.stats].join("|");
   if (p.equipped) for (const it of state.items) if (it.slot === p.slot) it.equipped = false;
   // A cell holds one item: whatever was there before has moved or gone.
   if (p.cell) for (const it of state.items) if (it.cell === p.cell && it.key !== key) it.cell = null;
@@ -188,6 +195,7 @@ function remember(p) {
   if (item) {
     item.equipped = p.equipped || item.equipped;
     if (p.cell) item.cell = p.cell;
+    if (p.sockets.length) item.sockets = p.sockets;
   }
   else {
     item = { id: crypto.randomUUID?.() ?? String(Date.now() + Math.random()), key, slot: p.slot, cls: p.cls, lines: p.lines, sockets: p.sockets, equipped: p.equipped, cell: p.cell ?? null };
@@ -205,7 +213,7 @@ const chip = (k, extraCopy = false) => chipHtml(k, extraCopy && k !== OTHER); //
 const icon = (k) => (k === OTHER ? "" : `<img class="skill-icon" src="icons/${k}.png" alt="">`);
 const chipHtml = (k, extra) => `<span class="chip k-${k}${extra ? " extra" : ""}"${extra ? ' title="Extra copy: still +1 to the skill, but a line you\'re missing would do more here"' : ""}>${icon(k)}${NAME[k]}${extra ? '<small>extra</small>' : ""}</span>`;
 // Sockets drawn as the jewel that fits them (cropped from the game's jewel inventory).
-const socks = (list) => `<span class="socks">${(list ?? []).map((c) => `<img class="jewel" src="icons/jewels/${c}.png" alt="${c}" title="${c} socket">`).join("")}</span>`;
+const socks = (list) => (!list?.length ? `<span class="socks unknown" title="Sockets not read yet: hover the item again">?</span>` : `<span class="socks">${list.map((c) => `<img class="jewel" src="icons/jewels/${c}.png" alt="${c}" title="${c} socket">`).join("")}</span>`);
 const badge = (v) => `<span class="badge v-${v.verdict}" title="${v.why}">${VERDICT[v.verdict]}</span>`;
 const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("") : `<span class="muted">no lines</span>`);
 
@@ -263,13 +271,14 @@ function render() {
   const cell = (k, slot) => `<div class="cell ${slot ? "on" : ""}"><span class="cell-slot">${slot ?? "missing"}</span></div>`;
   const anyWasted = SLOTS.some((s) => res.counted[s].includes(false));
   $("lines").innerHTML = `
-    <div class="row spread"><h2>Stage 1 · ${early ? "18 lines" : "18/18 hologram lines"}</h2><span class="label">best set</span></div>
-    <div class="score"><span class="big">${head}</span><span class="muted">of ${TOTAL} ${early ? "lines" : "target lines"}${early ? ` · ${res.score} on the list` : ""}</span>
-      ${seenAny ? `<span class="compare">· you have <b>${nowScore}/${TOTAL}</b> on now</span>` : ""}</div>
+    <div class="row spread"><h2>Stage 1 · ${early ? "18 lines" : "18/18 hologram lines"}</h2><span class="label">best combo from your gear</span></div>
+    <p class="muted small explain">The best outfit you can make from everything scanned (worn or in your bag): one piece per slot, covering as many of the 18 lines as possible. It improves as you scan more.</p>
+    <div class="score"><span class="big">${head}</span><span class="muted">of ${TOTAL} lines with the best combo${early ? ` · ${res.score} on the list` : ""}</span>
+      ${seenAny ? `<span class="compare">· you're wearing <b>${nowScore}/${TOTAL}</b> now</span>` : ""}</div>
     ${seenAny ? "" : `<p class="muted small">Hover any item and the scanner also reads the "Currently Equipped" box beside it. Do one per slot to see what you have on now.</p>`}
     <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
       <div class="cells">${Array.from({ length: 3 }, (_, j) => (j < t.need ? cell(t.k, from[t.k][j]) : `<div class="cell-gap"></div>`)).join("")}</div></div>`).join("")}</div>
-    <div class="set"><span class="label">Your set</span>
+    <div class="set"><span class="label">The best combo, piece by piece</span>
       <div class="pgrid-wrap"><table class="pgrid">
         <thead><tr><th></th>${TARGETS.map((t) => `<th title="${t.name}">${icon(t.k)}<span class="ph">${SHORT[t.k]}</span></th>`).join("")}<th class="ph" title="Lines not on the list">Other</th><th></th></tr></thead>
         <tbody>${SLOTS.map((s) => {
@@ -351,6 +360,14 @@ document.addEventListener("click", (e) => {
   } else if (t.id === "add") {
     const lines = [0, 1, 2].map((i) => $(`add-line-${i}`).value).filter(Boolean);
     const sockets = [0, 1, 2].map((i) => $(`add-sock-${i}`).value).filter(Boolean);
+    if (new Set(lines.filter((k) => k !== OTHER)).size !== lines.filter((k) => k !== OTHER).length) {
+      setStatus("A piece can't have the same line twice. Pick different lines.");
+      return;
+    }
+    if (!sockets.length) {
+      setStatus("Every piece has at least one socket. Pick its socket colours.");
+      return;
+    }
     remember({ slot: $("add-slot").value, cls: classOption(state.classId).classes[0], lines, sockets, equipped: false, stats: `hand-${Date.now()}` });
   } else return;
   save();

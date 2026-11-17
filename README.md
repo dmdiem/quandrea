@@ -54,14 +54,16 @@ Gem colours by class: red = Warrior, green = Bowman, grey = Pirate, purple = Thi
 
 ### Verdicts
 
-- **Keep**: part of your best 18-line set.
-- **Backup**: all three lines are on the list, but the set already has a better piece for that slot.
+- **Keep**: part of the best combo you can make from your gear (see below).
+- **Backup**: all three lines are on the list, but the best combo already has a better piece for that slot.
 - **Socket donor**: the best socket piece for its slot so far (stage 2). It needs a prismatic socket
   or at least 2 usable ones; one usable socket isn't worth an Orb.
 - **Trash**: none of the above, or gear for another class.
 
-The best set is worked out over every combination, so it never wastes a slot on a line another
-piece already covers. Thanks to the community's 3L Set Solver for the idea.
+The **best combo** is the best outfit you can make from everything you've scanned, worn or in your
+bag: one piece per slot, covering as many of the 18 lines as possible (ties go to more lines in
+total, then to what you already wear). It's worked out over every combination, so it never wastes a
+slot on a line another piece already covers. Thanks to the community's 3L Set Solver for the idea.
 
 ## How it reads the screen
 

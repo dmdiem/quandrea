@@ -67,6 +67,7 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .sock.prismatic { border-color: transparent; background: conic-gradient(#e94b4b, #f0c040, #3cc070, #3b7fe0, #9a52d6, #e94b4b); }
 .socks { display: inline-flex; gap: 2px; align-items: center; }
 .jewel { height: 21px; width: auto; }
+.socks.unknown { width: 18px; height: 20px; justify-content: center; border: 1px dashed var(--muted); border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; color: var(--muted); font-size: 11px; font-weight: 700; }
 
 .badge { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 6px; color: #fff; white-space: nowrap; }
 .v-keep { background: var(--keep); } .v-backup { background: var(--backup); } .v-donor { background: var(--donor); } .v-trash { background: var(--trash); }
