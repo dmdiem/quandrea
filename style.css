@@ -71,7 +71,8 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
   color: var(--holo-ink); border: 1px solid color-mix(in srgb, var(--holo) 55%, transparent);
   background: linear-gradient(135deg, color-mix(in srgb, var(--holo) 26%, transparent), color-mix(in srgb, var(--holo-hi) 30%, transparent) 50%, color-mix(in srgb, var(--holo) 14%, transparent)); }
 .chip.k-leap, .chip.k-wh, .chip.k-reg, .chip.k-atk { font-weight: 700; border-color: var(--holo); }
-.chip.k-other { color: var(--muted); background: transparent; border: 1px dashed var(--line); }
+/* Lines that aren't among the 18 (Boss DMG, Ignore DEF, Damage, unknown): plain dashed tags */
+.chip.k-other, .chip.k-boss, .chip.k-ied, .chip.k-dmg { color: var(--muted); background: transparent; border: 1px dashed var(--line); font-weight: 500; }
 .skill-icon { width: 16px; height: 16px; border-radius: 3px; flex: none; }
 .chip .skill-icon { margin-left: -5px; }
 .board-name { display: inline-flex; align-items: center; gap: 6px; }

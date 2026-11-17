@@ -7,18 +7,18 @@ import { parseTooltip, skillLines, lineKey, noRepeats } from "../src/parse.js";
 // slot and class a person reads off each one.
 const B = "Boss/IED/DMG";
 const CASES = {
-  3: ["Hat", "crit pirate other"], 4: ["Hat", "crit pirate other"], 5: ["Hat", "pirate crit"], 6: ["Hat", "other other atk"],
-  7: ["Hat", "archer atk"], 8: ["Hat", "reg other"], 9: ["Hat", "reg atk"],
-  10: ["Top", "archer warrior leap"], 11: ["Top", "atk archer"], 12: ["Top", "atk thief"], 13: ["Top", "other thief other"],
-  14: ["Top", "warrior reg other"], 15: ["Top", "archer leap pirate"], 16: ["Top", "other crit mage"], 17: ["Top", "leap crit"],
-  18: ["Top", "atk reg pirate"], 19: ["Top", "other"], 20: ["Top", "pirate other thief"],
-  21: ["Bottom", "other", "Warrior"], 22: ["Bottom", "pirate crit"], 23: ["Bottom", "mage other"], 24: ["Bottom", "crit"],
-  25: ["Bottom", "mage"], 26: ["Bottom", "wh leap other"], 27: ["Bottom", "reg wh mage"],
-  28: ["Shoes", "archer"], 29: ["Shoes", "wh other"], 30: ["Shoes", "crit atk"], 31: ["Shoes", "leap"],
-  32: ["Gloves", "archer crit"], 33: ["Gloves", "thief atk other"],
-  34: ["Cape", "other"], 35: ["Cape", "atk other"], 36: ["Cape", "reg"], 37: ["Cape", "pirate other other"], 38: ["Cape", "other"],
+  3: ["Hat", "crit pirate boss"], 4: ["Hat", "crit pirate boss"], 5: ["Hat", "pirate crit"], 6: ["Hat", "ied dmg atk"],
+  7: ["Hat", "archer atk"], 8: ["Hat", "reg ied"], 9: ["Hat", "reg atk"],
+  10: ["Top", "archer warrior leap"], 11: ["Top", "atk archer"], 12: ["Top", "atk thief"], 13: ["Top", "dmg thief boss"],
+  14: ["Top", "warrior reg boss"], 15: ["Top", "archer leap pirate"], 16: ["Top", "ied crit mage"], 17: ["Top", "leap crit"],
+  18: ["Top", "atk reg pirate"], 19: ["Top", "dmg"], 20: ["Top", "pirate boss thief"],
+  21: ["Bottom", "ied", "Warrior"], 22: ["Bottom", "pirate crit"], 23: ["Bottom", "mage ied"], 24: ["Bottom", "crit"],
+  25: ["Bottom", "mage"], 26: ["Bottom", "wh leap ied"], 27: ["Bottom", "reg wh mage"],
+  28: ["Shoes", "archer"], 29: ["Shoes", "wh dmg"], 30: ["Shoes", "crit atk"], 31: ["Shoes", "leap"],
+  32: ["Gloves", "archer crit"], 33: ["Gloves", "thief atk ied"],
+  34: ["Cape", "boss"], 35: ["Cape", "atk dmg"], 36: ["Cape", "reg"], 37: ["Cape", "pirate dmg boss"], 38: ["Cape", "ied"],
   "39-0": ["Cape", "leap wh"], "39-1": ["Cape", "mage", "Magician", true],
-  "48-0": ["Cape", "atk other"], "48-1": ["Cape", "mage", "Magician", true],
+  "48-0": ["Cape", "atk dmg"], "48-1": ["Cape", "mage", "Magician", true],
   // the equipped gloves' potential has "Critical Damage +8%", which isn't a skill line
   "49-0": ["Gloves", "crit thief reg"], "49-1": ["Gloves", "wh crit mage", "Magician", true],
 };
@@ -38,9 +38,12 @@ test("wrapped lines are joined; OCR misreads still match", () => {
   const text = "Enemy DEF Ignored +5%\n[Hologram] Attack Power & Magic ATT Enhancement\nSkill Ly. +1\nWhite Hole Lv. +1\n[Hologram] Critical Darnage Enhancement Skill Ly, +1\nScroll Enhancement Mone";
   assert.deepEqual(skillLines(text).map(lineKey), ["atk", "wh", "crit"]);
   assert.equal(lineKey("[Hologram] Bowman Attack Skill Level Lv. +1"), "archer");
-  assert.equal(lineKey("[Hologram] Boss Damage Enhancement Skill Lv. +1"), "other");
-  assert.equal(lineKey("[Hologram] Damage Enhancement Skill Lv. +1"), "other");
-  assert.equal(lineKey("[Hologram] Ignore Defense Enhancement Skill Lv. +1"), "other");
+  assert.equal(lineKey("[Hologram] Boss Damage Enhancement Skill Lv. +1"), "boss");
+  assert.equal(lineKey("[Hologram] Damage Enhancement Skill Lv. +1"), "dmg");
+  assert.equal(lineKey("[Hologram] Ignore Defense Enhancement Skill Lv. +1"), "ied");
+  assert.equal(lineKey("[Hologram] lgnare Defense Enhancement Skill Ly. +1"), "ied");
+  assert.equal(lineKey("[Hologram] Critical Darnage Enhancement Skill Lv. +1"), "crit");
+  assert.equal(lineKey("[Hologram] Something New Skill Lv. +1"), "other");
 });
 
 test("stat lines and the potential don't count as skill lines", () => {

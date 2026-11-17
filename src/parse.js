@@ -17,7 +17,19 @@ export const TARGETS = [
   { k: "thief", name: "Thief", need: 1 },
   { k: "pirate", name: "Pirate", need: 1 },
 ];
-export const OTHER = "other"; // a line that isn't on the list (Boss DMG, Ignore DEF, Damage)
+export const OTHER = "other"; // a line we don't recognise
+// Lines that roll but aren't among the 18: shown by name, never counted.
+export const FILLERS = [
+  { k: "boss", name: "Boss DMG" },
+  { k: "ied", name: "Ignore DEF" },
+  { k: "dmg", name: "Damage" },
+];
+export const isTarget = (k) => TARGETS.some((t) => t.k === k);
+const FILLER_RE = [
+  ["boss", /boss\s*da\w*\s*enh/i],
+  ["ied", /[il1]?gn\w*\s*def\w*\s*enh/i],
+  ["dmg", /\bda\w{3,5}\s*enh/i], // checked after Crit DMG and Boss DMG, which also say "Damage Enhancement"
+];
 
 const SKILL = [
   ["leap", /mens[il1]\w*\s*le[a-z]?p/i],
@@ -58,6 +70,7 @@ export const noRepeats = (keys) => keys.filter((k, i) => k === OTHER || keys.ind
 
 export function lineKey(line) {
   for (const [k, re] of SKILL) if (re.test(line)) return k;
+  for (const [k, re] of FILLER_RE) if (re.test(line)) return k;
   return OTHER;
 }
 

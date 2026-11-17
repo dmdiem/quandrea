@@ -1,13 +1,13 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=20";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=20";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=20";
+import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=22";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=22";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=22";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
 const SHORT = { leap: "Leap", wh: "WH", reg: "Reg", atk: "ATT", crit: "Crit", warrior: "War", mage: "Mage", archer: "Bow", thief: "Thief", pirate: "Pir" };
-const NAME = Object.fromEntries([...TARGETS.map((t) => [t.k, t.name]), [OTHER, "Other"]]);
+const NAME = Object.fromEntries([...TARGETS.map((t) => [t.k, t.name]), ...FILLERS.map((f) => [f.k, f.name]), [OTHER, "Other"]]);
 const SOCKETS = ["prismatic", "blue", "red", "green", "purple", "grey"];
 const VERDICT = { keep: "Keep", trash: "Trash" };
 const REASON = { best: "best combo", spare: "spare 3-line", sockets: "for sockets" };
@@ -133,7 +133,9 @@ async function tick() {
   fctx.drawImage(video, 0, 0);
   const img = fctx.getImageData(0, 0, frame.width, frame.height);
   const scale = state.scale ?? 1;
-  const now = findTooltips(img, scale).map((box) => ({ box, profile: textProfile(img, box) }));
+  // The stillness check looks at the top of each tooltip only (title, picture, stats), so game
+  // animation under a small tooltip doesn't keep resetting it.
+  const now = findTooltips(img, scale).map((box) => ({ box, profile: textProfile(img, { ...box, height: Math.min(box.height, Math.round(300 * scale)) }) }));
   const same = (a, b) => near(a.box, b.box) && profileDiff(a.profile, b.profile) < SAME;
   // A tooltip counts as still when it matches one from the last frame (it fades in, the mouse moves).
   for (const t of now) t.still = (prev.find((p) => same(p, t))?.still ?? 0) + 1;
@@ -249,7 +251,15 @@ function remember(p) {
   if (p.equipped) for (const it of state.items) if (it.slot === p.slot) it.equipped = false;
   // A cell holds one item: whatever was there before has moved or gone.
   if (p.cell) for (const it of state.items) if (it.cell === p.cell && it.key !== key) it.cell = null;
-  let item = state.items.find((it) => it.key === key);
+  // Same item read before (older saves called Boss DMG / Ignore DEF / Damage just "Other"): match
+  // on slot, class, stats and the lines on the list, then refresh its lines.
+  const coreOf = (lines) => lines.filter(isTarget).join(",");
+  let item = state.items.find((it) => it.key === key)
+    ?? state.items.find((it) => it.slot === p.slot && it.cls === p.cls && it.key?.endsWith(`|${p.stats}`) && coreOf(it.lines) === coreOf(p.lines));
+  if (item && item.key !== key) {
+    item.key = key;
+    item.lines = p.lines;
+  }
   if (item) {
     item.equipped = p.equipped || item.equipped;
     if (p.cell) item.cell = p.cell;
@@ -266,7 +276,7 @@ function remember(p) {
 // ---------- drawing ----------
 
 // extra: a copy beyond what the 18 need. Still +1 to that skill (they go to Lv. 8), just not best in slot.
-const chip = (k, extraCopy = false) => chipHtml(k, extraCopy && k !== OTHER); // filler is never an "extra"
+const chip = (k, extraCopy = false) => chipHtml(k, extraCopy && isTarget(k)); // filler is never an "extra"
 // The in-game hologram skill icon for each line (class lines use one skill of their pair).
 // Where an item sits in the inventory ("Row 2 · Col 4"). Clicking it lights the cell up on the map.
 function miniLoc(cell) {
@@ -285,7 +295,7 @@ const SLOT_PATHS = {
   Shoes: '<path d="M7 4h5v8.5l5 2.4A3 3 0 0 1 19 17.6V19H6z"/><path d="M6 16h13"/><path d="M12 7h-5"/>',
 };
 const slotIcon = (slot) => `<svg class="slot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SLOT_PATHS[slot] ?? ""}</svg>`;
-const icon = (k) => (k === OTHER ? "" : `<img class="skill-icon" src="icons/${k}.png" alt="">`);
+const icon = (k) => (!isTarget(k) ? "" : `<img class="skill-icon" src="icons/${k}.png" alt="">`);
 const chipHtml = (k, extra) => `<span class="chip k-${k}${extra ? " extra" : ""}"${extra ? ' title="Extra copy: still +1 to the skill, but a line you\'re missing would do more here"' : ""}>${icon(k)}${NAME[k]}${extra ? '<small>extra</small>' : ""}</span>`;
 // Sockets drawn as the jewel that fits them (cropped from the game's jewel inventory).
 // A socket, drawn as a filled droplet in its colour. In colour-blind mode it also carries a letter.
@@ -308,6 +318,10 @@ function render() {
   for (const st of ["STR", "DEX"]) $(`pirate-${st}`).setAttribute("aria-pressed", String(option.stat === st));
   for (const m of ["endgame", "early"]) $(`mode-${m}`).setAttribute("aria-pressed", String(state.mode === m));
   $("cb-toggle").setAttribute("aria-pressed", String(Boolean(state.cb)));
+  // Start over wipes everything (items, equipped pieces, the map), so it lives with the page-wide settings.
+  $("clear").hidden = !state.items.length && !state.cells.length;
+  $("clear").textContent = confirmClear ? "Click again: clear everything" : "Start over";
+  $("clear").classList.toggle("danger", confirmClear);
   document.documentElement.classList.toggle("cb", Boolean(state.cb));
 
   // The last item hovered, big.
@@ -423,8 +437,7 @@ function render() {
     </div>`;
   };
   $("items").innerHTML = `
-    <div class="row spread"><h2>Keep or trash</h2>
-      ${state.items.length ? `<button id="clear" class="ghost ${confirmClear ? "danger" : ""}">${confirmClear ? "Click again to clear all" : "Clear all"}</button>` : ""}</div>
+    <h2>Keep or trash</h2>
     ${addForm()}
     <div class="gear-tabs" role="tablist">${[["trash", "Trash"], ["keep", "Keep"], ["all", "All"]].map(([k, label]) => `<button role="tab" data-gear-tab="${k}" aria-selected="${tab === k}" class="gt-${k}">${label} <span class="n">${count[k]}</span></button>`).join("")}</div>
     <p class="muted small">${tab === "trash" ? "Safe to throw away. Click Row · Col to find one on the Inventory map." : tab === "keep" ? "Hold on to these: in your best combo, a spare 3-line piece, or the best sockets for their slot." : "Everything in your bag. Equipped pieces are on the left."}</p>
@@ -509,9 +522,9 @@ function addForm() {
   return `<details class="add-manual" id="add-manual"${addOpen ? " open" : ""}>
     <summary><span class="label">Add manually</span><span class="muted small">${draft.cell ? `for the item at Row ${+draft.cell.split(",")[1] + 1} · Col ${+draft.cell.split(",")[0] + 1} <button class="loc" id="add-nocell" title="Don't tie it to a map cell">×</button>` : "for an item the scanner can't read"}</span></summary>
     <div class="add-row"><span class="add-label">Slot</span>${SLOTS.map((s) => tap("pick-slot", s, `${slotIcon(s)}${s}`, draft.slot === s)).join("")}</div>
-    <div class="add-row"><span class="add-label">Lines <span class="muted">${draft.lines.length}/3</span></span>${[...TARGETS.map((t) => t.k), OTHER].map((k) => {
+    <div class="add-row"><span class="add-label">Lines <span class="muted">${draft.lines.length}/3</span></span>${[...TARGETS.map((t) => t.k), ...FILLERS.map((f) => f.k), OTHER].map((k) => {
       const picked = draft.lines.includes(k);
-      // A piece can't have the same line twice; Other (Boss, IED, Damage) can repeat.
+      // A piece can't have the same line twice; only unrecognised "Other" lines can repeat.
       const off = fullLines && !picked;
       return tap("pick-line", k, `${icon(k)}${NAME[k]}${k === OTHER && draft.lines.filter((x) => x === OTHER).length > 1 ? ` ×${draft.lines.filter((x) => x === OTHER).length}` : ""}`, picked, off);
     }).join("")}</div>

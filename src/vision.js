@@ -51,8 +51,16 @@ export function findEdges(img, { minRun = EDGE_MIN_RUN, maxGap = 4 } = {}) {
 }
 
 // The tooltips on screen, left to right: [{ x, y, width, height }]. scale: how big the game is drawn
-// (1 = normal), so a smaller or bigger game window still matches the tooltip's size.
+// (1 = normal). Uses the 1px border where it shows, and the title block where the border has blurred
+// away (a small game window).
 export function findTooltips(img, scale = 1) {
+  const byBorder = findTooltipsByBorder(img, scale);
+  const byTitle = findTooltipsByTitle(img, scale);
+  const overlaps = (a, b) => a.x < b.x + b.width - 20 && b.x < a.x + a.width - 20;
+  return [...byBorder, ...byTitle.filter((t) => !byBorder.some((b) => overlaps(b, t)))].sort((a, b) => a.x - b.x);
+}
+
+function findTooltipsByBorder(img, scale = 1) {
   const edges = findEdges(img, { minRun: Math.round(EDGE_MIN_RUN * scale) });
   const boxes = [];
   let usedTo = -1;
@@ -509,4 +517,91 @@ export function findScale(img) {
     if (findGrid(resizeImage(img, 1 / s))) return s;
   }
   return null;
+}
+
+// ---- Finding tooltips by their title block ----
+// Every item tooltip has three centred lines of orange text near the top ("Heroic: Untradable",
+// "Interactive: Untradable", "Duration: ..."). When the game is shown small, the 1px border can blur
+// away, but this stack of evenly spaced orange lines is still easy to find, and it gives the
+// tooltip's centre exactly.
+const TIP_W = 321; // tooltip width at normal size
+const TIP_H = 640; // at most this tall at normal size
+
+function isOrange(d, i) {
+  const r = d[i], g = d[i + 1], b = d[i + 2];
+  if (r < 120 || r - b < 40 || g - b < 8 || r - g < 12) return false;
+  const { h, s } = hsv(r, g, b);
+  return h >= 16 && h <= 44 && s >= 0.25;
+}
+
+// The item's name sits just above the orange lines: a line of bright white text on a dark background.
+function hasTitleAbove(img, cx, y, scale) {
+  const { width: w, data: d } = img;
+  let bright = 0;
+  let dark = 0;
+  for (let yy = Math.round(y - 24 * scale); yy < Math.round(y - 4 * scale); yy++) {
+    if (yy < 0) continue;
+    for (let x = Math.round(cx - 110 * scale); x < Math.round(cx + 110 * scale); x++) {
+      if (x < 0 || x >= w) continue;
+      const v = lum(d, (yy * w + x) * 4);
+      if (v > 195) bright++;
+      else if (v < 110) dark++;
+    }
+  }
+  return bright >= 60 * scale * scale && dark > bright * 2;
+}
+
+export function findTooltipsByTitle(img, scale = 1) {
+  const { width: w, height: h, data: d } = img;
+  // Orange runs on each row: [x0, x1, count].
+  const segs = [];
+  for (let y = 0; y < h; y++) {
+    let start = -1, last = -1, n = 0;
+    const row = [];
+    for (let x = 0; x <= w; x++) {
+      const on = x < w && isOrange(d, (y * w + x) * 4);
+      if (on) {
+        if (start < 0 || x - last > 14 * scale) {
+          if (start >= 0) row.push([start, last, n]);
+          start = x;
+          n = 0;
+        }
+        last = x;
+        n++;
+      }
+    }
+    if (start >= 0) row.push([start, last, n]);
+    segs.push(row.filter(([a, b, n2]) => n2 >= 5 * scale && b - a >= 45 * scale && b - a <= 280 * scale));
+  }
+  const centre = ([a, b]) => (a + b) / 2;
+  const boxes = [];
+  for (let y = 0; y < h; y++) {
+    for (const s0 of segs[y]) {
+      const c0 = centre(s0);
+      // Two more lines below, evenly spaced (about 16px apart at normal size), on the same centre.
+      for (let gap = Math.floor(12 * scale); gap <= Math.ceil(21 * scale); gap++) {
+        const find = (yy) => {
+          for (let dy = -1; dy <= 1; dy++) {
+            const r = segs[yy + dy];
+            const m = r && r.find((s) => Math.abs(centre(s) - c0) <= 16 * scale);
+            if (m) return m;
+          }
+          return null;
+        };
+        if (y + 2 * gap + 1 >= h || !find(y + gap) || !find(y + 2 * gap)) continue;
+        const width = Math.round(TIP_W * scale);
+        const x = Math.max(0, Math.round(c0 - width / 2));
+        if (boxes.some((bx) => Math.abs(bx.x - x) < width / 2 && Math.abs(bx.title - y) < 40 * scale)) break;
+        if (!hasTitleAbove(img, c0, y, scale) || !isDarkInside(img, x, Math.min(w - 1, x + width - 1), Math.round(y + 3 * gap), Math.min(h - 1, Math.round(y + 3 * gap + 160 * scale)))) break;
+        const top = Math.max(0, Math.round(y - 62 * scale));
+        const box = { x, y: top, width: Math.min(width, w - x), height: Math.min(Math.round(TIP_H * scale), h - top), title: y };
+        // A real item tooltip has the item's picture frame just below the title block, on the left.
+        const icon = findIcon(img, box);
+        if (!icon || icon.y < y || icon.y > y + 90 * scale || icon.x > x + width * 0.35) break;
+        boxes.push(box);
+        break;
+      }
+    }
+  }
+  return boxes.map(({ title, ...b }) => b);
 }
