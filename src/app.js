@@ -1,12 +1,14 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=25";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=25";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=25";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=25";
+import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=26";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=26";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=26";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=26";
 
 const KEY = "quandrea.v1";
-const $ = (id) => document.getElementById(id);
+// Looks in the pop-out window too, while Simpling Dumpling's readout lives there.
+let pipDoc = null;
+const $ = (id) => document.getElementById(id) ?? pipDoc?.getElementById(id);
 const SHORT = { leap: "Leap", wh: "WH", reg: "Reg", atk: "ATT", crit: "Crit", warrior: "War", mage: "Mage", archer: "Bow", thief: "Thief", pirate: "Pir" };
 const NAME = Object.fromEntries([...TARGETS.map((t) => [t.k, t.name]), ...FILLERS.map((f) => [f.k, f.name]), [OTHER, "Other"]]);
 const SOCKETS = ["prismatic", "blue", "red", "green", "purple", "grey"];
@@ -128,11 +130,17 @@ let simpleLast = "";
 // Simpling Dumpling mode only names socket colours, so it doesn't rely on the game-size guess from
 // the inventory: it tries a few sizes for finding the tooltips (keeping the one that last worked)
 // and reads the droplets straight off the screen, at whatever size they're drawn.
-const SIMPLE_SIZES = [1, 0.9, 0.8, 0.7, 0.63, 1.25, 1.5];
+const SIMPLE_SIZES = [1, 0.9, 0.8, 0.7, 0.63, 1.25, 1.5, 1.75, 2];
 let simpleSize = null;
+// A real tooltip's item picture sits at its top left and is about a quarter of its width.
+function iconFits(box, icon) {
+  if (!icon) return false;
+  const ratio = icon.size / box.width;
+  return ratio > 0.17 && ratio < 0.32 && icon.x - box.x < box.width * 0.2;
+}
 function readSimple(img) {
   const at = (s) => {
-    const reads = findTooltips(img, s).slice(0, 2).map((box) => findSockets(img, findIcon(img, box)));
+    const reads = findTooltips(img, s).map((box) => ({ box, icon: findIcon(img, box) })).filter(({ box, icon }) => iconFits(box, icon)).slice(0, 2).map(({ icon }) => findSockets(img, icon));
     return { s, reads, n: reads.filter((r) => r.length).length };
   };
   if (simpleSize) {
@@ -148,10 +156,18 @@ function readSimple(img) {
   if (best.n) simpleSize = best.s;
   return best.reads;
 }
-
-function showSimple(img) {
+// Change the words only when two frames in a row agree, so a tooltip fading in can't flash
+// the wrong colours.
+let simplePending = null;
+function showSimple(img, { now = false } = {}) {
   const { colours } = classOption(state.classId);
   const read = img ? readSimple(img) : [];
+  const sig = JSON.stringify(read);
+  if (!now && sig !== simplePending) {
+    simplePending = sig;
+    return;
+  }
+  simplePending = sig;
   // Always the same two cards with three socket rows each, so nothing jumps as you hover around.
   const card = (label, list) => `<div class="simple-card"><span class="label">${label}</span>
         <div class="simple-words">${[0, 1, 2].map((k) => {
@@ -747,12 +763,12 @@ async function pasteTooltips(img) {
   for (const s of SIMPLE_SIZES)
     for (const b of findTooltips(img, s)) {
       const k = b.width / TIP_W;
-      if (b.width !== Math.round(TIP_W * s) && k > 0.55 && k < 1.6 && b.height > b.width) sizes.push(k);
+      if (b.width !== Math.round(TIP_W * s) && k > 0.55 && k < 2.2 && b.height > b.width) sizes.push(k);
     }
   sizes.sort((x, y) => x - y);
   let found = null;
   for (const s of [sizes[Math.floor(sizes.length / 2)], state.scale ?? 1, ...SIMPLE_SIZES].filter(Boolean)) {
-    const boxes = findTooltips(img, s).filter((b) => findIcon(img, b));
+    const boxes = findTooltips(img, s).filter((b) => iconFits(b, findIcon(img, b)));
     if (boxes.length > (found?.boxes.length ?? 0)) found = { s, boxes };
     if (found) break;
   }
@@ -788,7 +804,7 @@ document.addEventListener("paste", async (e) => {
     ctx.drawImage(bmp, 0, 0);
     const img = ctx.getImageData(0, 0, c.width, c.height);
     if (state.simple) {
-      showSimple(img);
+      showSimple(img, { now: true });
       $("simple-status").textContent = "Read from your screenshot.";
       return;
     }
@@ -812,6 +828,56 @@ document.addEventListener("paste", async (e) => {
   } catch (err) {
     setStatus(`Couldn't read that image: ${err.message}`, true);
   }
+});
+
+// ---------- Simpling Dumpling pop-out ----------
+// Chrome and Edge can open a small always-on-top window (Document Picture-in-Picture). The
+// readout moves into it, so the colours stay visible over the game; closing it moves them back.
+if ("documentPictureInPicture" in window) $("simple-popout").hidden = false;
+$("simple-popout").addEventListener("click", async () => {
+  if (pipDoc) {
+    pipDoc.defaultView.close();
+    return;
+  }
+  let win;
+  try {
+    win = await documentPictureInPicture.requestWindow({ width: 380, height: 420 });
+  } catch (err) {
+    $("simple-status").textContent = `Couldn't pop out: ${err.message}`;
+    return;
+  }
+  // Copy the page's styles into the new window.
+  const css = win.document.createElement("style");
+  css.textContent = [...document.styleSheets].flatMap((sheet) => {
+    try {
+      return [...sheet.cssRules].map((r) => r.cssText);
+    } catch {
+      return [];
+    }
+  }).join("\n");
+  win.document.head.append(css);
+  win.document.title = "Simpling Dumpling";
+  const sync = () => {
+    win.document.documentElement.className = document.documentElement.className;
+    if (document.documentElement.dataset.theme) win.document.documentElement.dataset.theme = document.documentElement.dataset.theme;
+    else delete win.document.documentElement.dataset.theme;
+  };
+  sync();
+  win.document.body.classList.add("popout");
+  const status = $("simple-status");
+  const out = $("simple-out");
+  const home = out.parentNode;
+  win.document.body.append(status, out);
+  pipDoc = win.document;
+  $("simple-popout").textContent = "Put back";
+  const watch = new MutationObserver(sync);
+  watch.observe(document.documentElement, { attributes: true });
+  win.addEventListener("pagehide", () => {
+    watch.disconnect();
+    home.append(status, out);
+    pipDoc = null;
+    $("simple-popout").textContent = "Pop out";
+  });
 });
 
 // ---------- backups ----------

@@ -351,3 +351,10 @@ button.cell:hover { outline: 2px solid var(--accent); }
 .side-col:hover { scrollbar-width: thin; }
 .side-col::-webkit-scrollbar { width: 0; }
 .side-col:hover::-webkit-scrollbar { width: 6px; }
+/* The Simpling Dumpling pop-out window: compact, one column. */
+body.popout { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+body.popout .simple-out { grid-template-columns: 1fr; gap: 8px; }
+body.popout .simple-card { padding: 10px; gap: 6px; }
+body.popout .simple-words { grid-template-rows: repeat(3, 44px); gap: 6px; }
+body.popout .simple-word { height: 44px; font-size: 24px; }
+body.popout .status { margin: 0; font-size: 12px; }

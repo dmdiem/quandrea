@@ -7,9 +7,9 @@
 <meta name="description" content="Reads your MapleStory Quanah gear while you hover it, and tells you what to keep for 18/18 hologram lines and the best sockets.">
 <link rel="icon" href="logo.png">
 <script>try { const t = localStorage.getItem("quandrea.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
-<link rel="stylesheet" href="style.css?v=25">
+<link rel="stylesheet" href="style.css?v=26">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
-<script type="module" src="src/app.js?v=25"></script>
+<script type="module" src="src/app.js?v=26"></script>
 </head>
 <body>
 <div class="wrap">
@@ -47,7 +47,7 @@
 
   <!-- Simple mode: just the socket colours of what you hover, in big words. -->
   <section class="panel simple" id="simple" hidden>
-    <div class="row spread"><div><h2>Simpling Dumpling mode</h2><p class="muted small">Jewel colours for colour-blind players: no charts, just the socket colours as big words.</p></div><button id="simple-share" class="primary">Share MapleStory window</button></div>
+    <div class="row spread"><div><h2>Simpling Dumpling mode</h2><p class="muted small">Jewel colours for colour-blind players: no charts, just the socket colours as big words.</p></div><div class="row"><button id="simple-share" class="primary">Share MapleStory window</button><button id="simple-popout" class="ghost" hidden title="Opens the colours in a small window that stays on top of the game (Chrome and Edge)">Pop out</button></div></div>
     <p class="muted">Hover an item in the game. Its socket colours appear here as words. ✓ marks a colour your class can use (prismatic always can).</p>
     <p class="browser-note" hidden>This works best in <b>Chrome</b> or <b>Edge</b>: Firefox's screen sharing often sends games black or frozen.</p>
     <p id="simple-status" class="status">Not watching yet.</p>

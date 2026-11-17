@@ -26,7 +26,8 @@ saved only in that browser.
 
 **Simpling Dumpling mode** (button at the top) is a simple screen for colour-blind players: share
 the game, hover an item, and its socket colours show up as big words, with ✓ on the ones your class
-can use. There's also a **Colour-blind friendly** switch for the full page.
+can use. In Chrome or Edge, **Pop out** puts the colours in a small window that stays on top of the
+game. There's also a **Colour-blind friendly** switch for the full page.
 
 **Copy backup** puts a code of your scanned items and map on the clipboard; paste it back on the
 page (Ctrl+V, or **Load backup**) to restore it, in another browser or after clearing your data. A
