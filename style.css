@@ -46,14 +46,14 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .layout { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 16px; align-items: start; }
 .main-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; grid-column: 2; grid-row: 1; }
 /* The hologram lines panel is pinned on the left while the rest scrolls on the right. */
-.side-col { position: sticky; top: 12px; min-width: 0; grid-column: 1; grid-row: 1; }
+.side-col { position: sticky; top: 12px; min-width: 0; grid-column: 1; grid-row: 1; display: flex; flex-direction: column; gap: 16px; max-height: calc(100vh - 24px); overflow-y: auto; }
 /* If it is taller than the window, it scrolls inside itself. */
-.side-col .panel { max-height: calc(100vh - 24px); overflow-y: auto; }
+
 @media (max-width: 1000px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
   .main-col, .side-col { grid-column: 1; grid-row: auto; }
   .side-col { position: static; order: -1; }
-  .side-col .panel { max-height: none; }
+  .side-col { max-height: none; overflow: visible; }
 }
 .slots { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -135,7 +135,7 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
 .slot { border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
 .slot-head { display: flex; justify-content: space-between; }
-.inv-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 4px 0; border-top: 1px solid var(--line); }
+.inv-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 4px 0; border-top: 1px solid var(--line); }
 .sub { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-top: 4px; }
 .sub + .inv-item { border-top: 0; }
 .tag { font-size: 11px; color: var(--muted); }
@@ -221,3 +221,22 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .hunt { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--holo); background: color-mix(in srgb, var(--holo) 7%, transparent); }
 .hunt-row { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; font-size: 13px; }
 .hunt-row b { min-width: 52px; }
+
+/* Your gear: the equipped piece in its own tinted box, inventory pieces as plain rows below. */
+.eq-box { background: color-mix(in srgb, var(--keep) 9%, transparent); border-left: 3px solid var(--keep); border-radius: 8px; padding: 6px 10px; }
+.sub.eq { color: var(--keep); margin-top: 0; }
+.bag { border-top: 1px dashed var(--line); padding-top: 6px; margin-top: 4px; }
+.bag .sub { margin-top: 0; }
+
+/* Slot pictures (the Libae's Supercharged items) */
+.slot-icon { height: 18px; width: auto; vertical-align: -4px; margin-right: 5px; }
+.slot-head h3 .slot-icon { height: 22px; vertical-align: -6px; }
+.pgrid tbody th .slot-icon { height: 16px; vertical-align: -3px; }
+.cell .slot-icon { height: 14px; margin-right: 3px; }
+.cell { gap: 0; display: flex; align-items: center; justify-content: center; }
+.tap .slot-icon { height: 16px; margin-right: 2px; }
+.hunt-row .slot-icon { height: 18px; margin-right: 0; }
+.small-seg button { padding: 3px 10px; font-size: 12px; }
+.equip-btn { font-size: 11px; padding: 2px 8px; }
+.inv-item[draggable="true"] { cursor: grab; }
+.slot.drop-hover { outline: 2px dashed var(--keep); }
