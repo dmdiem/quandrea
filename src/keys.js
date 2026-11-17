@@ -1,7 +1,7 @@
 // Fast entry keys for Add manually: one keyboard row per kind, top to bottom in the order you fill
 // a piece in. Number row: equipment. Q row: jewels. Home row: skills. Z row: lines that don't count.
 
-import { OTHER } from "./parse.js?v=33";
+import { OTHER } from "./parse.js?v=34";
 
 export const KEYS = {
   slot: { Hat: "1", Top: "2", Bottom: "3", Cape: "4", Gloves: "5", Shoes: "6" },

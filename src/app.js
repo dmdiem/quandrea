@@ -1,10 +1,10 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=33";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=33";
-import { KEYS, KEY_TO } from "./keys.js?v=33";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=33";
-import { findTooltips, findIcon, findSockets, findGrid, readCells, GRID } from "./vision.js?v=33";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=34";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=34";
+import { KEYS, KEY_TO } from "./keys.js?v=34";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=34";
+import { findTooltips, findIcon, findSockets, findGrid, readCells, GRID } from "./vision.js?v=34";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -214,12 +214,18 @@ const SLOT_PATHS = {
   Shoes: '<path d="M7 4h5v8.5l5 2.4A3 3 0 0 1 19 17.6V19H6z"/><path d="M6 16h13"/><path d="M12 7h-5"/>',
 };
 const slotIcon = (slot) => `<svg class="slot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SLOT_PATHS[slot] ?? ""}</svg>`;
-// A symbol for each class line, so they're easy to tell apart without colour: sword, wand, bow and
-// arrow, shuriken, anchor.
+// A symbol for each line, so they're easy to tell apart without colour: a leap, a white hole, a
+// ledger (Registry), sword and wand (ATT & M.ATT), a target (Crit), and for the classes a sword,
+// wand, bow and arrow, shuriken and anchor.
 const CLASS_PATHS = {
+  leap: '<path d="M3.5 19.5C5 10 13 5.5 19.5 11"/><path d="M19.5 11l-4.8.3M19.5 11l.6-4.7"/><path d="M3 21h4"/>',
+  wh: '<ellipse cx="12" cy="16" rx="9" ry="4"/><ellipse cx="12" cy="16" rx="4" ry="1.6"/><path d="M12 3v6M6.5 5l2.2 4.5M17.5 5l-2.2 4.5"/>',
+  reg: '<path d="M6 3h9l3.5 3.5V21H6z"/><path d="M15 3v3.5h3.5"/><path d="M9 11h6M9 14.5h6M9 18h3.5"/>',
+  atk: '<path d="M4 4l10 10"/><path d="M11.5 16.5l5-5"/><path d="M14 14l5.5 5.5"/><path d="M20 4 6 18"/><path d="M4.5 19.5 6 18"/><path d="M19.5 2.8l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z" stroke-width="1.2"/>',
+  crit: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/>',
   warrior: '<path d="M19.5 4.5 18.8 9 9.6 18.2 5.8 14.4 15 5.2z"/><path d="M4.2 12.8l7 7"/><path d="M7.4 16.6 3.8 20.2"/>',
   mage: '<path d="M4 20 14 10"/><path d="M17 2.8l1.1 2.9 2.9 1.1-2.9 1.1L17 10.8l-1.1-2.9L13 6.8l2.9-1.1z"/>',
-  archer: '<path d="M5 3.5c8.5.4 15.1 7 15.5 15.5"/><path d="M5 3.5l15.5 15.5" stroke-width="1"/><path d="M3.5 20.5 16 8"/><path d="M11.8 7.6H16.4V12.2"/><path d="M3.5 17.5v3h3"/>',
+  archer: '<path d="M5 3.5c9 0 15.5 6.5 15.5 15.5"/><path d="M5 3.5 7.5 16.5 20.5 19" stroke-width="1.2"/><path d="M7.5 16.5 20.5 3.5"/><path d="M15.5 3.5h5v5"/><path d="M4 20l3.5-3.5M4 17.5h2.5M6.5 20v-2.5" stroke-width="1.5"/>',
   thief: '<path d="M12 2.5l2 7.5 7.5 2-7.5 2-2 7.5-2-7.5-7.5-2 7.5-2z"/><circle cx="12" cy="12" r="1.3"/>',
   pirate: '<circle cx="12" cy="4.6" r="2"/><path d="M12 6.6V21"/><path d="M8.2 10h7.6"/><path d="M4.8 14.2c0 3.9 3.2 6.8 7.2 6.8s7.2-2.9 7.2-6.8"/><path d="M3 16l1.8-1.8L6.6 16"/><path d="M17.4 16l1.8-1.8L21 16"/>',
 };
