@@ -1,8 +1,8 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=22";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=22";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=22";
+import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=23";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=23";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=23";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -74,6 +74,7 @@ async function startShare() {
   await video.play();
   stream.getVideoTracks()[0].addEventListener("ended", stopShare);
   $("share").hidden = true;
+  $("simple-share").hidden = true;
   $("stop").hidden = false;
   $("save-frame").hidden = false;
   setStatus("Loading the text reader (first time only)…", true);
@@ -94,6 +95,7 @@ function stopShare() {
   stream?.getTracks().forEach((t) => t.stop());
   stream = null;
   $("share").hidden = false;
+  $("simple-share").hidden = false;
   $("stop").hidden = true;
   $("save-frame").hidden = true;
   setStatus("Stopped. Your items are saved in this browser.");
@@ -107,6 +109,30 @@ function cropImage(img, a) {
     out.set(img.data.subarray(from, from + a.width * 4), y * a.width * 4);
   }
   return { width: a.width, height: a.height, data: out };
+}
+
+// Simple mode's readout: for each tooltip (left = the item you hover, right = what you have equipped),
+// its socket colours as big words.
+const SIMPLE_WORD = { red: "Red", green: "Green", blue: "Blue", purple: "Purple", grey: "Grey", prismatic: "Prismatic" };
+let simpleLast = "";
+function showSimple(img, boxes, sc) {
+  const { colours } = classOption(state.classId);
+  const read = boxes.slice(0, 2).map((box) => {
+    const part = sc === 1 ? { img, box } : (() => {
+      const sub = resizeImage(cropImage(img, box), 1 / sc);
+      return { img: sub, box: { x: 0, y: 0, width: sub.width, height: sub.height } };
+    })();
+    return findSockets(part.img, findIcon(part.img, part.box));
+  });
+  const html = !read.length
+    ? `<p class="muted big-hint">Hover an item…</p>`
+    : read.map((list, i) => `<div class="simple-card"><span class="label">${read.length === 2 ? (i === 0 ? "Hovered item" : "Equipped") : "Item"}</span>
+        <div class="simple-words">${list.length ? list.map((c) => `<span class="simple-word"><span class="sock ${c}"></span>${SIMPLE_WORD[c] ?? c}${c === "prismatic" || colours.includes(c) ? ' <b title="Your class can use this colour">✓</b>' : ""}</span>`).join("") : `<span class="muted">couldn't see its sockets: hold still a moment</span>`}</div></div>`).join("");
+  if (html !== simpleLast) {
+    simpleLast = html;
+    $("simple-out").innerHTML = html;
+  }
+  $("simple-status").textContent = stream ? "Watching." : "Not watching.";
 }
 
 // The scale the game is drawn at in the shared window (1 = normal), found from the inventory grid.
@@ -142,6 +168,7 @@ async function tick() {
   prev = now;
   // Forget read tooltips once they close, so hovering that item again reads it again.
   done = done.filter((d) => now.some((t) => same(d, t)));
+  if (!now.length && state.simple) showSimple(img, [], scale);
   if (!now.length) {
     // Nothing covering the inventory: find the grid (and the screen's scale, once) and refresh the map.
     const nimg = normalFrame(img);
@@ -169,6 +196,11 @@ async function tick() {
     } else if (findGrid(nimg, 4)) {
       setStatus("Your inventory is in the small view (4 columns). Expand it with the + at its top right so all 16 columns show.", true);
     }
+    return;
+  }
+  // Simple mode: no text reading, just name the socket colours of the tooltips on screen.
+  if (state.simple) {
+    showSimple(img, now.map((t) => t.box), scale);
     return;
   }
   // Equipped tooltips we've already read are skipped on sight.
@@ -302,7 +334,7 @@ const chipHtml = (k, extra) => `<span class="chip k-${k}${extra ? " extra" : ""}
 const SOCK_WORD = { red: "Red", green: "Green", blue: "Blue", purple: "Purple", grey: "Grey", prismatic: "Prismatic" };
 // Colour-blind mode: the colour's name as a word, so nothing depends on seeing the colour.
 const jewel = (c) => (state.cb
-  ? `<span class="sock-word" title="${c} socket">${SOCK_WORD[c] ?? c}</span>`
+  ? `<span class="sock-word" title="${c} socket"><span class="sock ${c}"></span>${SOCK_WORD[c] ?? c}</span>`
   : `<span class="sock ${c}" title="${c} socket"></span>`);
 const socks = (list) => (!list?.length ? `<span class="socks unknown" title="Sockets not read yet: hover the item again">?</span>` : `<span class="socks">${list.map(jewel).join("")}</span>`);
 const badge = (v) => `<span class="badge v-${v.verdict}" title="${v.why}">${VERDICT[v.verdict]}</span>`;
@@ -318,6 +350,11 @@ function render() {
   for (const st of ["STR", "DEX"]) $(`pirate-${st}`).setAttribute("aria-pressed", String(option.stat === st));
   for (const m of ["endgame", "early"]) $(`mode-${m}`).setAttribute("aria-pressed", String(state.mode === m));
   $("cb-toggle").setAttribute("aria-pressed", String(Boolean(state.cb)));
+  // Simple mode hides everything but the jewel colour readout.
+  $("simple").hidden = !state.simple;
+  document.querySelector(".layout").hidden = Boolean(state.simple);
+  $("simple-toggle").setAttribute("aria-pressed", String(Boolean(state.simple)));
+  $("simple-toggle").textContent = state.simple ? "Back to full page" : "Simpling Dumpling mode";
   // Start over wipes everything (items, equipped pieces, the map), so it lives with the page-wide settings.
   $("clear").hidden = !state.items.length && !state.cells.length;
   $("clear").textContent = confirmClear ? "Click again: clear everything" : "Start over";
@@ -567,6 +604,13 @@ document.addEventListener("click", (e) => {
   }
   if (t.id === "stop") return stopShare();
   if (t.dataset.themePick) return setTheme(t.dataset.themePick);
+  if (t.id === "simple-toggle") {
+    state.simple = !state.simple;
+    save();
+    render();
+    return;
+  }
+  if (t.id === "simple-share") return startShare();
   if (t.id === "cb-toggle") {
     state.cb = !state.cb;
     save();

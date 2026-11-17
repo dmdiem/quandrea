@@ -7,9 +7,9 @@
 <meta name="description" content="Reads your MapleStory Quanah gear while you hover it, and tells you what to keep for 18/18 hologram lines and the best sockets.">
 <link rel="icon" href="logo.png">
 <script>try { const t = localStorage.getItem("quandrea.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
-<link rel="stylesheet" href="style.css?v=22">
+<link rel="stylesheet" href="style.css?v=23">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
-<script type="module" src="src/app.js?v=22"></script>
+<script type="module" src="src/app.js?v=23"></script>
 </head>
 <body>
 <div class="wrap">
@@ -33,6 +33,7 @@
         <button id="mode-early" data-mode="early">Any 3 lines</button>
       </div>
       <button id="clear" class="ghost" hidden title="Clears every scanned item, your equipped pieces and the map">Start over</button>
+      <button id="simple-toggle" class="ghost" title="Simpling Dumpling mode: a simple screen for colour-blind players that names the socket colours of whatever you hover">Simpling Dumpling mode</button>
       <button id="cb-toggle" class="ghost" title="Adds letters to sockets and symbols to the map so nothing depends on colour">Colour-blind friendly</button>
       <div class="seg" role="group" aria-label="Theme">
         <button data-theme-pick="auto" title="Follow your computer's setting">Auto</button>
@@ -41,6 +42,14 @@
       </div>
     </div>
   </header>
+
+  <!-- Simple mode: just the socket colours of what you hover, in big words. -->
+  <section class="panel simple" id="simple" hidden>
+    <div class="row spread"><div><h2>Simpling Dumpling mode</h2><p class="muted small">Jewel colours for colour-blind players: no charts, just the socket colours as big words.</p></div><button id="simple-share" class="primary">Share MapleStory window</button></div>
+    <p class="muted">Hover an item in the game. Its socket colours appear here as words. ✓ marks a colour your class can use (prismatic always can).</p>
+    <p id="simple-status" class="status">Not watching yet.</p>
+    <div id="simple-out" class="simple-out"></div>
+  </section>
 
   <div class="layout">
   <div class="main-col">

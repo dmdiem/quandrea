@@ -21,6 +21,10 @@ saved only in that browser.
 4. Hover one item per slot so it also reads the "Currently Equipped" box next to it.
 5. Don't move or sort items while scanning. When you're done, throw out what's marked **Trash**.
 
+**Simpling Dumpling mode** (button at the top) is a simple screen for colour-blind players: share
+the game, hover an item, and its socket colours show up as big words, with ✓ on the ones your class
+can use. There's also a **Colour-blind friendly** switch for the full page.
+
 Pick your class at the top (pirates also pick STR or DEX). It decides which gear is yours and
 which socket colours you can use.
 

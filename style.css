@@ -80,7 +80,7 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .chip.extra { opacity: 0.6; border-style: dashed; }
 .chip small { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
 /* Sockets: filled droplets in their colour; in colour-blind mode they also carry a letter. */
-.sock { position: relative; display: inline-grid; place-items: center; width: 13px; height: 16px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; border-top-left-radius: 1px; transform: rotate(45deg) scale(0.85); background: var(--sc); border: 1px solid color-mix(in srgb, var(--sc) 70%, #000); vertical-align: -3px; }
+.sock { position: relative; display: inline-grid; place-items: center; width: 13px; height: 13px; border-radius: 50%; border-top-left-radius: 1px; transform: rotate(45deg) scale(0.85); background: var(--sc); border: 1px solid color-mix(in srgb, var(--sc) 70%, #000); vertical-align: -3px; }
 .sock.blue { --sc: var(--s-blue); } .sock.red { --sc: var(--s-red); } .sock.green { --sc: var(--s-green); } .sock.purple { --sc: var(--s-purple); } .sock.grey { --sc: var(--s-grey); }
 .sock.prismatic { --sc: #e7d9ff; background: conic-gradient(#e94b4b, #f0c040, #3cc070, #3b7fe0, #9a52d6, #e94b4b); }
 .sock-word { display: inline-flex; align-items: center; gap: 3px; padding: 1px 8px; margin: 1px 2px 1px 0; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; color: var(--fg); background: var(--surface); white-space: nowrap; }
@@ -332,3 +332,15 @@ button.cell:hover { outline: 2px solid var(--accent); }
 .cb .chip.k-warrior, .cb .chip.k-mage, .cb .chip.k-archer, .cb .chip.k-thief, .cb .chip.k-pirate { --tint: var(--holo); }
 .cb .mcell.v-trash { background: repeating-linear-gradient(45deg, var(--trash) 0 3px, color-mix(in srgb, var(--trash) 60%, #000) 3px 6px); }
 #cb-toggle[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+
+/* Simple mode: socket colours as big words */
+.simple-out { display: flex; flex-wrap: wrap; gap: 16px; }
+.simple-card { flex: 1 1 280px; display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 12px; background: var(--sunk); }
+.simple-words { display: flex; flex-wrap: wrap; gap: 10px; }
+.simple-word { display: inline-flex; align-items: center; gap: 12px; font-size: 34px; font-weight: 800; letter-spacing: 0.01em; padding: 4px 14px; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); }
+.simple-word b { color: var(--fg); }
+.big-hint { font-size: 22px; }
+#simple-toggle[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+.simple-word .sock { width: 28px; height: 28px; transform: rotate(45deg) scale(0.9); border-width: 2px; margin: 0 4px 0 2px; }
+.sock-word .sock { transform: rotate(45deg) scale(0.8); margin-right: 1px; }
+.bag-row .socks { align-self: flex-start; }
