@@ -1,8 +1,8 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=14";
-import { verdicts, solve, onePieceAway, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=14";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, GRID } from "./vision.js?v=14";
+import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=15";
+import { verdicts, solve, onePieceAway, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=15";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, GRID } from "./vision.js?v=15";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -115,7 +115,8 @@ async function tick() {
     const g = findGrid(img);
     if (g) {
       grid = g;
-      const cells = readCells(img, g);
+      // A pasted screenshot pins the map: keep tracking where the grid is, but don't overwrite it.
+      const cells = state.mapPinned ? state.cells : readCells(img, g);
       if (cells.join() !== state.cells.join()) {
         state.cells = cells;
         save();
@@ -247,7 +248,7 @@ function render() {
   const pick = selected && byCell[selected];
   $("map").innerHTML = !cells.length
     ? `<p class="muted">Open your inventory's Equip tab, <b>expanded</b> so all 16 columns show (the small view only shows 4), and move the mouse off it: the map appears here. Or take a screenshot of the inventory window (Win+Shift+S) and paste it here with Ctrl+V.</p>`
-    : `<div class="row spread"><span class="muted">${scanned} scanned · ${toScan} with lines still to hover</span>
+    : `<div class="row spread"><span class="muted">${scanned} scanned · ${toScan} with lines still to hover${state.mapPinned ? ` · <span class="pinned" title="Pasted from a screenshot: the live scan won't change it. Reset map to read it live again.">From your screenshot</span>` : ""}</span>
         <span class="legend"><span class="mcell lines"></span>to scan <span class="mcell item"></span>no lines (skip) <span class="mcell v-keep"></span>keep <span class="mcell v-trash"></span>trash</span></div>
       <div class="map">${cells.map((k, i) => {
         const id = `${i % GRID.cols},${Math.floor(i / GRID.cols)}`;
@@ -454,6 +455,7 @@ document.addEventListener("click", (e) => {
   if (t.dataset.themePick) return setTheme(t.dataset.themePick);
   if (t.id === "reset-map") {
     state.cells = [];
+    state.mapPinned = false;
     grid = null;
     selected = null;
     save();
@@ -484,6 +486,7 @@ document.addEventListener("click", (e) => {
     if (confirmClear) {
       state.items = [];
       state.cells = [];
+      state.mapPinned = false;
       grid = null;
       selected = null;
       last = null;
@@ -550,9 +553,10 @@ document.addEventListener("paste", async (e) => {
       return;
     }
     state.cells = readCells(img, g);
+    state.mapPinned = true;
     save();
     render();
-    setStatus("Map filled in from your screenshot ✓", Boolean(stream));
+    setStatus("Map filled in from your screenshot ✓ The live scan won't change it; Reset map to read it live again.", Boolean(stream));
   } catch (err) {
     setStatus(`Couldn't read that image: ${err.message}`, Boolean(stream));
   }

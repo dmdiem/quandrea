@@ -280,3 +280,4 @@ button.cell:hover { outline: 2px solid var(--accent); }
 .bag-row .bag-why { grid-area: why; }
 .bag-row .bag-act { grid-area: act; display: inline-flex; gap: 4px; align-items: center; justify-self: end; }
 .bag-row.sel { background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 8px; }
+.pinned { color: var(--accent); font-weight: 600; }
