@@ -2,33 +2,33 @@
 
 **Let Quandrea tell you if your gear is trash.**
 
-A gear scanner for MapleStory's Quanah world. Share your game window, hover your gear, and it reads
-each item's hologram lines and sockets, then tells you what to **keep** and what to **trash**.
+A gear checker for MapleStory's Quanah world. Paste a screenshot of your inventory to draw its map,
+type in each piece's hologram lines and sockets with the keyboard, and it tells you what to **keep**
+and what to **trash**.
 
-Everything runs in your browser. Nothing you share leaves your computer, and your scanned items are
-saved only in that browser.
+Everything runs in your browser. Your items are saved only in that browser.
 
 ## Using it
 
 1. Open your inventory's Equip tab, **expanded** so all 16 columns show, with nothing hovered. Press
    **PrtScn**, then **Ctrl+V** on the page: the **Inventory map** fills in, with dashed cells for
    items that have hologram lines. **Reset map** clears it.
-2. Hover an item, press **PrtScn**, then **Ctrl+V** on the page. Repeat for each dashed item. The
-   "Currently Equipped" box beside the tooltip is read too.
-3. If a screenshot won't read, click **Add manually** and type the piece, one keyboard row per kind:
-   1–6 Hat / Top / Bottom / Cape / Gloves / Shoes; Q W E R T Y Blue / Green / Purple / Red / Grey /
-   Prismatic; A S D F G Leap / White Hole / Registry / ATT / Crit and H J K L ; Warrior / Mage /
-   Bowman / Thief / Pirate. Enter (or Space, or Tab) adds it and moves on to the next map cell with lines.
-4. Show the game at full size; tiny text reads poorly. Don't sort items mid-scan.
-5. Throw out what's marked **Trash**.
+2. Click **Add manually** and type each dashed item in, one keyboard row per kind: 1–6 Hat / Top /
+   Bottom / Cape / Gloves / Shoes; Q W E R T Y Blue / Green / Purple / Red / Grey / Prismatic;
+   A S D F G Leap / White Hole / Registry / ATT / Crit and H J K L ; Warrior / Mage / Bowman /
+   Thief / Pirate. Enter (or Space, or Tab) adds it and moves on to the next dashed cell.
+3. Click **Equip** on the pieces you're wearing.
+4. Throw out what's marked **Trash**.
 
-Live screen sharing is switched off for now (`LIVE_SHARE` in `src/app.js`).
-
-**Simpling Dumpling mode** (button at the top) is a simple screen for colour-blind players: paste a
-screenshot of a hovered item, and its socket colours show up as big words, with ✓ on the ones your class
+**Simpling Dumpling mode** (button at the top) is a simple screen for colour-blind players: hover an
+item in the game, press PrtScn and paste the screenshot, and its socket colours show up as big words, with ✓ on the ones your class
 can use. There's also a **Colour-blind friendly** switch for the full page.
 
-**Copy backup** puts a code of your scanned items and map on the clipboard; paste it back on the
+To see the colours live, run **OBS** with a Game or Window Capture of MapleStory, click **Start
+Virtual Camera**, then **Use OBS camera** in Simpling Dumpling mode. OBS only copies pictures of the
+screen, as when streaming. To play looking at OBS, add a Window Capture of this page in OBS too.
+
+**Copy backup** puts a code of your items and map on the clipboard; paste it back on the
 page (Ctrl+V, or **Load backup**) to restore it, in another browser or after clearing your data. A
 backup is checked before it's loaded: only known slots, classes, lines, sockets and cells are kept,
 and everything else in it is thrown away.
@@ -79,22 +79,21 @@ Every item in your bag gets one of two verdicts:
 The right side of the page lists them under **Trash · Keep · All**, each with a little grid showing its spot on the
 Inventory map. The left side shows your sets: **Equipped now** and the **Best combo**.
 
-The **best combo** is the best outfit you can make from everything you've scanned, worn or in your
+The **best combo** is the best outfit you can make from everything you've added, worn or in your
 bag: one piece per slot, covering as many of the 18 lines as possible (ties go to more lines in
 total, then to what you already wear). It's worked out over every combination, so it never wastes a
 slot on a line another piece already covers. Thanks to the community's 3L Set Solver for the idea.
 
-## How it reads the screen
+## What it reads from a screenshot
 
-- **Tooltips:** found by their 1px border, so it works wherever your cursor is.
-- **Text:** read with [Tesseract.js](https://github.com/naptha/tesseract.js) after enlarging and
-  keeping only bright pixels (the tooltip is see-through).
-- **Sockets:** read from the colour of each droplet's outline above the item picture.
+Only two things, both from screenshots you paste:
+
 - **Inventory map:** the Equip tab's grid (16 x 8 cells, 46px apart) is found by the bright gaps
-  between cells; the grey bar marks items with lines; the game's glove cursor says which cell a
-  tooltip belongs to.
+  between cells; the grey bar on top of an item marks one with hologram lines.
+- **Socket colours** (Simpling Dumpling mode): each droplet above the item picture is named by the
+  colour of its outline.
 
-If a line is misread, delete the item (×) and hover it again, or use **Add by hand**.
+Item lines are never read from the screen: you type them in.
 
 ## Development
 
@@ -104,5 +103,5 @@ Plain HTML and JavaScript modules; no build step. GitHub Pages serves it from `m
 npm test
 ```
 
-The tests use real OCR output from tooltip screenshots (`test/fixtures/ocr/`) and generated images.
+The tests use generated images and text from real tooltips (`test/fixtures/ocr/`, from when lines were read off the screen).
 Screenshots themselves aren't in the repo, since they show character names.

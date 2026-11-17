@@ -1,15 +1,13 @@
-// The page: screen capture, the scan loop, and drawing everything.
+// The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=32";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=32";
-import { KEYS, KEY_TO } from "./keys.js?v=32";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=32";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=32";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=33";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=33";
+import { KEYS, KEY_TO } from "./keys.js?v=33";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=33";
+import { findTooltips, findIcon, findSockets, findGrid, readCells, GRID } from "./vision.js?v=33";
 
 const KEY = "quandrea.v1";
-// Looks in the pop-out window too, while Simpling Dumpling's readout lives there.
-let pipDoc = null;
-const $ = (id) => document.getElementById(id) ?? pipDoc?.getElementById(id);
+const $ = (id) => document.getElementById(id);
 const SHORT = { leap: "Leap", wh: "WH", reg: "Reg", atk: "ATT", crit: "Crit", warrior: "War", mage: "Mage", archer: "Bow", thief: "Thief", pirate: "Pir" };
 const NAME = Object.fromEntries([...TARGETS.map((t) => [t.k, t.name]), ...FILLERS.map((f) => [f.k, f.name]), [OTHER, "Other"]]);
 const SOCKETS = ["prismatic", "blue", "red", "green", "purple", "grey"];
@@ -17,13 +15,11 @@ const VERDICT = { keep: "Keep", trash: "Trash" };
 const REASON = { best: "best combo", spare: "spare 3-line", sockets: "for sockets" };
 
 let state = { items: [], classId: "Magician", mode: "endgame", cells: [] };
-let grid = null; // where the inventory grid is on screen (found while no tooltip is open)
 let selected = null; // the inventory cell clicked in the map, "c,r"
 let piecesOpen = false; // the "each piece" section; kept across redraws and remembered
 try {
   piecesOpen = localStorage.getItem("quandrea.piecesOpen") === "1";
 } catch {}
-let last = null; // { item, crop } of the most recent hovered (not equipped) tooltip
 let confirmClear = false;
 
 function load() {
@@ -47,87 +43,11 @@ function save() {
   } catch {}
 }
 
-// ---------- capture and scanning ----------
-// Live screen sharing is switched off for now: screenshots (Ctrl+V) and recorded videos only.
-// Set to true to bring the Share buttons back.
-const LIVE_SHARE = false;
-
-const video = $("video");
-const frame = document.createElement("canvas");
-const fctx = frame.getContext("2d", { willReadFrequently: true });
-let stream = null;
-let timer = null;
-let worker = null;
-let busy = false;
-// Tooltips seen last frame ({ box, profile, still }), and ones already read that are still open.
-let prev = [];
-let done = [];
-const SAME = 0.04; // profiles closer than this are the same tooltip
-const near = (a, b) => Math.abs(a.x - b.x) <= 6 && Math.abs(a.y - b.y) <= 6;
-
-function setStatus(text, on = false) {
+function setStatus(text) {
   $("status").textContent = text;
-  $("status").classList.toggle("on", on);
 }
 
-// The text reader (Tesseract), loaded the first time it's needed. Returns false if it can't load.
-async function ensureWorker() {
-  if (worker) return true;
-  setStatus("Loading the text reader (first time only)…", true);
-  try {
-    worker = await Tesseract.createWorker("eng");
-    return true;
-  } catch (err) {
-    setStatus(`Couldn't load the text reader: ${err.message}`);
-    return false;
-  }
-}
-
-async function startShare() {
-  if (!navigator.mediaDevices?.getDisplayMedia) {
-    setStatus("This browser can't share a screen. Use Chrome, Edge or Firefox on a computer.");
-    return;
-  }
-  try {
-    stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false });
-  } catch {
-    setStatus("Screen sharing was cancelled.");
-    return;
-  }
-  video.srcObject = stream;
-  await video.play();
-  stream.getVideoTracks()[0].addEventListener("ended", stopShare);
-  $("share").hidden = true;
-  $("simple-share").hidden = true;
-  $("stop").hidden = false;
-  $("save-frame").hidden = false;
-  if (!(await ensureWorker())) return;
-  setStatus("Watching. Hover an item in your inventory.", true);
-  timer = setInterval(tick, 400);
-}
-
-function stopShare() {
-  clearInterval(timer);
-  stream?.getTracks().forEach((t) => t.stop());
-  stream = null;
-  $("share").hidden = !LIVE_SHARE;
-  $("simple-share").hidden = !LIVE_SHARE;
-  $("stop").hidden = true;
-  $("save-frame").hidden = true;
-  setStatus("Stopped. Your items are saved in this browser.");
-}
-
-// A rectangle cut out of an image.
-function cropImage(img, a) {
-  const out = new Uint8ClampedArray(a.width * a.height * 4);
-  for (let y = 0; y < a.height; y++) {
-    const from = ((a.y + y) * img.width + a.x) * 4;
-    out.set(img.data.subarray(from, from + a.width * 4), y * a.width * 4);
-  }
-  return { width: a.width, height: a.height, data: out };
-}
-
-// Simple mode's readout: for each tooltip (left = the item you hover, right = what you have equipped),
+// Simple mode's readout: for each tooltip in a pasted screenshot (left = the hovered item, right = equipped),
 // its socket colours as big words.
 const SIMPLE_WORD = { red: "Red", green: "Green", blue: "Blue", purple: "Purple", grey: "Grey", prismatic: "Prismatic" };
 let simpleLast = "";
@@ -184,150 +104,69 @@ function showSimple(img, { now = false } = {}) {
     simpleLast = html;
     $("simple-out").innerHTML = html;
   }
-  $("simple-status").textContent = stream ? "Watching." : LIVE_SHARE ? "Not watching." : "Read from your screenshot.";
+  $("simple-status").textContent = cam ? "Watching OBS." : "Read from your screenshot.";
 }
 
-// The scale the game is drawn at in the shared window (1 = normal), found from the inventory grid.
-let lastCalibration = 0;
-const norm = document.createElement("canvas");
-const nctx = norm.getContext("2d", { willReadFrequently: true });
-// The frame resized back to normal scale, for reading the inventory grid.
-function normalFrame(img) {
-  const s = state.scale ?? 1;
-  if (s === 1) return img;
-  norm.width = Math.round(frame.width / s);
-  norm.height = Math.round(frame.height / s);
-  nctx.imageSmoothingQuality = "high";
-  nctx.drawImage(frame, 0, 0, norm.width, norm.height);
-  return nctx.getImageData(0, 0, norm.width, norm.height);
-}
-// Equipped tooltips already read: recognised on sight and skipped, so the hovered item gets read.
-let equippedSeen = [];
+// ---------- Simpling Dumpling from OBS ----------
+// OBS's Virtual Camera turns what OBS shows (the game) into a webcam. Reading that camera a few
+// times a second names the sockets of whatever you hover, live, without sharing your screen.
+let cam = null; // the camera stream
+let camTimer = null;
+const camFrame = document.createElement("canvas");
+const camCtx = camFrame.getContext("2d", { willReadFrequently: true });
 
-async function tick() {
-  if (busy || !video.videoWidth) return;
-  frame.width = video.videoWidth;
-  frame.height = video.videoHeight;
-  fctx.drawImage(video, 0, 0);
-  const img = fctx.getImageData(0, 0, frame.width, frame.height);
-  if (state.simple) {
-    showSimple(img);
+async function startCam(deviceId) {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    $("simple-status").textContent = "This browser can't use a camera.";
     return;
   }
-  const scale = state.scale ?? 1;
-  // The stillness check looks at the top of each tooltip only (title, picture, stats), so game
-  // animation under a small tooltip doesn't keep resetting it.
-  const now = findTooltips(img, scale).map((box) => ({ box, profile: textProfile(img, { ...box, height: Math.min(box.height, Math.round(300 * scale)) }) }));
-  const same = (a, b) => near(a.box, b.box) && profileDiff(a.profile, b.profile) < SAME;
-  // A tooltip counts as still when it matches one from the last frame (it fades in, the mouse moves).
-  for (const t of now) t.still = (prev.find((p) => same(p, t))?.still ?? 0) + 1;
-  prev = now;
-  // Forget read tooltips once they close, so hovering that item again reads it again.
-  done = done.filter((d) => now.some((t) => same(d, t)));
-  if (!now.length) {
-    // Nothing covering the inventory: find the grid (and the screen's scale, once) and refresh the map.
-    const nimg = normalFrame(img);
-    let g = findGrid(nimg);
-    if (!g && Date.now() - lastCalibration > 5000) {
-      lastCalibration = Date.now();
-      setStatus("Working out your game window's size…", true);
-      const s2 = findScale(img);
-      if (s2) {
-        state.scale = s2;
-        save();
-        g = findGrid(normalFrame(img));
-        setStatus(s2 === 1 ? "Watching. Hover an item in your inventory." : `Found your inventory (game shown at ${Math.round(s2 * 100)}% size). Hover an item.`, true);
-      } else setStatus("Watching. Open your inventory's Equip tab (expanded) so the map can find it.", true);
-    }
-    if (g) {
-      grid = g;
-      // A pasted screenshot pins the map: keep tracking where the grid is, but don't overwrite it.
-      const cells = state.mapPinned ? state.cells : readCells(normalFrame(img), g);
-      if (cells.join() !== state.cells.join()) {
-        state.cells = cells;
-        save();
-        render();
-      }
-    } else if (findGrid(nimg, 4)) {
-      setStatus("Your inventory is in the small view (4 columns). Expand it with the + at its top right so all 16 columns show.", true);
-    }
-    return;
-  }
-  // Equipped tooltips we've already read are skipped on sight.
-  const known = (t) => equippedSeen.some((p) => profileDiff(p, t.profile) < SAME);
-  for (const t of now) if (!done.some((d) => same(d, t)) && known(t)) done.push(t);
-  const fresh = now.filter((t) => !done.some((d) => same(d, t)));
-  if (!fresh.length) {
-    if (now.length === 1 && known(now[0])) setStatus("I can see your equipped piece but not the item you're hovering. Hover it again, or move it away from bright things.", true);
-    return;
-  }
-  // The hovered item's tooltip is the left one when two are open: read it first.
-  const ready = fresh.filter((t) => t.still >= 2).sort((a, b) => a.box.x - b.box.x);
-  if (!ready.length) {
-    setStatus("Found a tooltip. Hold still…", true);
-    return;
-  }
-  busy = true;
+  stopCam();
   try {
-    for (const t of ready) {
-      done.push(t);
-      const parsed = await readTooltip(img, t.box);
-      if (parsed?.equipped) equippedSeen = [...equippedSeen.slice(-11), t.profile];
-    }
-  } finally {
-    busy = false;
+    cam = await navigator.mediaDevices.getUserMedia({ video: { ...(deviceId ? { deviceId: { exact: deviceId } } : {}), width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+  } catch (err) {
+    cam = null;
+    $("simple-status").textContent = err?.name === "NotAllowedError" ? "The camera wasn't allowed. Click Use OBS camera and allow it." : "No camera found. In OBS, click Start Virtual Camera, then try again.";
+    return;
   }
+  // Names only show once a camera is allowed: offer them all, and switch to OBS's if this isn't it.
+  const cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+  const now = cam.getVideoTracks()[0];
+  const obs = cams.find((d) => /obs/i.test(d.label));
+  if (!deviceId && obs && !/obs/i.test(now.label)) return startCam(obs.deviceId);
+  const pick = $("cam-pick");
+  pick.innerHTML = cams.map((d, i) => `<option value="${d.deviceId}"${d.label === now.label ? " selected" : ""}>${d.label ? d.label.replace(/[<>&"]/g, "") : `Camera ${i + 1}`}</option>`).join("");
+  pick.hidden = cams.length < 2;
+  const video = $("cam");
+  video.srcObject = cam;
+  await video.play();
+  now.addEventListener("ended", stopCam);
+  $("cam-start").hidden = true;
+  $("cam-stop").hidden = false;
+  $("simple-status").textContent = /obs/i.test(now.label) ? "Watching OBS." : `Watching ${now.label || "a camera"}: pick OBS Virtual Camera in the list if that's not it.`;
+  camTimer = setInterval(() => {
+    if (!video.videoWidth || !state.simple) return;
+    camFrame.width = video.videoWidth;
+    camFrame.height = video.videoHeight;
+    camCtx.drawImage(video, 0, 0);
+    showSimple(camCtx.getImageData(0, 0, camFrame.width, camFrame.height));
+  }, 300);
 }
 
-async function readTooltip(img, box, { sc = state.scale ?? 1, inGrid = grid, pasted = false } = {}) {
-  setStatus("Reading…", true);
-  const top = Math.max(0, box.y - Math.round(40 * sc)); // the title can sit just above where the border is found
-  const area = { x: box.x, y: top, width: box.width, height: box.y + box.height - top };
-  // Read the tooltip at normal size: when the game is shown smaller or bigger, resize just this part.
-  const tip = sc === 1 ? { img, box, area } : (() => {
-    const sub = resizeImage(cropImage(img, area), 1 / sc);
-    const b = { x: 0, y: Math.round((box.y - top) / sc), width: sub.width, height: sub.height - Math.round((box.y - top) / sc) };
-    return { img: sub, box: b, area: { x: 0, y: 0, width: sub.width, height: sub.height } };
-  })();
-  const icon = findIcon(tip.img, tip.box);
-  const sockets = findSockets(tip.img, icon);
-  // Small or scaled text reads better enlarged smoothly before the black-and-white cut.
-  const prepared = sc === 1 ? prepareForOcr(tip.img, tip.area) : (() => {
-    const big = resizeImage(cropImage(img, area), 3 / sc);
-    return prepareForOcr(big, { x: 0, y: 0, width: big.width, height: big.height }, { scale: 1 });
-  })();
-  const c = document.createElement("canvas");
-  c.width = prepared.width;
-  c.height = prepared.height;
-  c.getContext("2d").putImageData(new ImageData(prepared.data, prepared.width, prepared.height), 0, 0);
-  const { data } = await worker.recognize(c);
-  const parsed = parseTooltip(data.text);
-  if (!parsed.slot && parsed.skip) {
-    setStatus(`That's a ${parsed.skip.toLowerCase()}. It can't roll hologram lines, so there's nothing to scan.`, true);
-    return parsed;
-  }
-  if (!parsed.slot) {
-    setStatus("Couldn't read that tooltip. Hover it again, or move it so nothing bright is behind it.", true);
-    return parsed;
-  }
-  // Which inventory cell it came from: the one under the game's glove cursor.
-  const at = parsed.equipped ? null : findCursor(img, box);
-  const cell = at && inGrid && cellAt(inGrid, at.x / sc, at.y / sc);
-  const before = state.items.length;
-  const item = remember({ ...parsed, sockets, cell: cell ? `${cell.c},${cell.r}` : null });
-  const known = state.items.length === before;
-  if (!parsed.equipped) last = { id: item.id };
-  const what = `${parsed.equipped ? "your equipped " : ""}${item.slot.toLowerCase()}`;
-  if (!item.sockets.length) setStatus(`Read ${what}, but couldn't see its sockets. Every piece has at least one: hover it again with nothing bright behind the item picture.`, true);
-  else setStatus(`${known ? "Already have this" : "Read"} ${what} ✓  ${pasted ? "Paste the next one." : "Hover the next one."}`, true);
-  render();
-  return parsed;
+function stopCam() {
+  clearInterval(camTimer);
+  camTimer = null;
+  cam?.getTracks().forEach((t) => t.stop());
+  cam = null;
+  $("cam").srcObject = null;
+  $("cam-start").hidden = false;
+  $("cam-stop").hidden = true;
 }
 
+$("cam-pick").addEventListener("change", (e) => startCam(e.target.value));
 
 // Add an item, or update it if this exact one was read before. Returns the stored item.
 function remember(p) {
-  // Sockets aren't part of the key: a re-hover that finally sees them updates the same item.
+  // Sockets aren't part of the key.
   const key = [p.slot, p.cls, p.lines.join(","), p.stats].join("|");
   if (p.equipped) for (const it of state.items) if (it.slot === p.slot) it.equipped = false;
   // A cell holds one item: whatever was there before has moved or gone.
@@ -422,29 +261,21 @@ function render() {
   $("clear").classList.toggle("danger", confirmClear);
   document.documentElement.classList.toggle("cb", Boolean(state.cb));
 
-  // The last item hovered, big.
-  const lastItem = last && state.items.find((it) => it.id === last.id);
-  // The last item read, on one line: verdict, slot, lines, sockets.
-  $("last").innerHTML = lastItem
-    ? `<div class="last-line"><span class="badge v-${v[lastItem.id].verdict}" title="${v[lastItem.id].why}">${VERDICT[v[lastItem.id].verdict]}</span>
-        ${slotIcon(lastItem.slot)}<b>${lastItem.slot}</b><span class="lines">${linesOf(lastItem)}</span>${socks(lastItem.sockets)}<span class="muted small why">${v[lastItem.id].why}</span></div>`
-    : "";
-
-  // The inventory map: every cell, ticked once scanned, coloured by verdict.
+  // The inventory map: every cell, coloured by verdict once its piece is typed in.
   const byCell = Object.fromEntries(state.items.filter((it) => it.cell).map((it) => [it.cell, it]));
   const cells = state.cells.length ? state.cells : [];
-  const toScan = cells.filter((k, i) => k === "lines" && !byCell[`${i % GRID.cols},${Math.floor(i / GRID.cols)}`]).length;
-  const scanned = cells.filter((k, i) => k === "lines" && byCell[`${i % GRID.cols},${Math.floor(i / GRID.cols)}`]).length;
+  const toAdd = cells.filter((k, i) => k === "lines" && !byCell[`${i % GRID.cols},${Math.floor(i / GRID.cols)}`]).length;
+  const added = cells.filter((k, i) => k === "lines" && byCell[`${i % GRID.cols},${Math.floor(i / GRID.cols)}`]).length;
   const pick = selected && byCell[selected];
   $("map").innerHTML = !cells.length
-    ? `<p class="muted">Open the Equip tab (expanded, 16 columns), nothing hovered, press PrtScn and Ctrl+V here.</p>`
-    : `<div class="row spread"><span class="muted">${scanned} scanned · ${toScan} with lines still to hover${state.mapPinned ? ` · <span class="pinned" title="Pasted from a screenshot: the live scan won't change it. Reset map to read it live again.">From your screenshot</span>` : ""}</span>
-        <span class="legend"><span class="mcell lines"></span>to scan <span class="mcell item"></span>no lines (skip) <span class="mcell v-keep"></span>keep <span class="mcell v-trash"></span>trash</span></div>
+    ? `<p class="muted">Open the Equip tab (expanded, 16 columns) with nothing hovered, press <b>PrtScn</b>, then <b>Ctrl+V</b> here.</p>`
+    : `<div class="row spread"><span class="muted">${added} added · ${toAdd} with lines still to add</span>
+        <span class="legend"><span class="mcell lines"></span>to add <span class="mcell item"></span>no lines (skip) <span class="mcell v-keep"></span>keep <span class="mcell v-trash"></span>trash</span></div>
       <div class="map-wrap"><div class="map">${cells.map((k, i) => {
         const id = `${i % GRID.cols},${Math.floor(i / GRID.cols)}`;
         const it = byCell[id];
         const cls = it ? `v-${v[it.id].verdict}` : k;
-        return `<button class="mcell ${cls}${selected === id ? " sel" : ""}" data-cell="${id}" title="${it ? VERDICT[v[it.id].verdict] : k === "lines" ? "Has hologram lines: hover it" : k === "item" ? "An item with no hologram lines: nothing to scan" : "Empty"}">${it ? (v[it.id].verdict === "keep" ? "✓" : "✕") : k === "item" ? "–" : ""}</button>`;
+        return `<button class="mcell ${cls}${selected === id ? " sel" : ""}" data-cell="${id}" title="${it ? VERDICT[v[it.id].verdict] : k === "lines" ? "Has hologram lines: click to add it" : k === "item" ? "An item with no hologram lines: skip it" : "Empty"}">${it ? (v[it.id].verdict === "keep" ? "✓" : "✕") : k === "item" ? "–" : ""}</button>`;
       }).join("")}</div>
       ${cellPane(pick, v)}</div>`;
 
@@ -478,17 +309,17 @@ function render() {
   const swaps = SLOTS.filter((s) => res.picks[s] && !res.picks[s].equipped);
   const swapNote = !seenAny ? "Show pieces" : swaps.length ? `Show pieces · ${swaps.length} to swap: ${swaps.join(", ")}` : "Show pieces · all of them are equipped";
   // Tabs over the left column: what you have on now, or the best combo you could make.
-  $("side-tabs").innerHTML = `<button role="tab" data-view="equipped" aria-selected="${showNow}"${seenAny ? "" : ' disabled title="Hover an item first: the scanner reads the Currently Equipped box beside it"'}>Equipped now</button><button role="tab" data-view="best" aria-selected="${!showNow}">Best combo</button>`;
+  $("side-tabs").innerHTML = `<button role="tab" data-view="equipped" aria-selected="${showNow}"${seenAny ? "" : ' disabled title="Mark what you wear with Equip first"'}>Equipped now</button><button role="tab" data-view="best" aria-selected="${!showNow}">Best combo</button>`;
   // The tiny inventory map that lights up an item's cell on the big one.
   const loc = (it) => miniLoc(it?.cell);
   $("lines").innerHTML = `
     <div class="row spread"><h2>${early ? "Hologram lines (any 3 per piece)" : "Hologram lines (18/18)"}</h2></div>
     <p class="muted small explain">${showNow
       ? "What you're wearing now."
-      : "The best set you can make from everything scanned."}</p>
+      : "The best set you can make from everything you've added."}</p>
     <div class="score"><span class="big">${head}</span><span class="muted">of ${TOTAL} lines ${showNow ? "equipped now" : "with the best combo"}${early ? ` · ${shown.score} on the list` : ""}</span>
       ${seenAny ? `<span class="compare">· ${showNow ? `best combo: <b>${early ? res.lines : res.score}/${TOTAL}</b>` : `<b>${nowScore}/${TOTAL}</b> equipped now`}</span>` : ""}</div>
-    ${seenAny ? "" : `<p class="muted small">Hover one item per slot to read what you're wearing.</p>`}
+    ${seenAny ? "" : `<p class="muted small">Click <b>Equip</b> on what you're wearing to compare.</p>`}
     <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
       <div class="cells">${Array.from({ length: 3 }, (_, j) => { const k2 = j - (3 - t.need); return k2 >= 0 ? cell(t.k, from[t.k][k2]) : `<div class="cell-gap"></div>`; }).join("")}</div></div>`).join("")}</div>
     ${huntBox}
@@ -502,8 +333,8 @@ function render() {
           const wearing = state.items.find((x) => x.slot === s && x.equipped);
           const action = showNow
             ? !it ? "" : best && best !== it ? `<span class="act swap" title="A better piece for this slot is in your bag">Better in bag</span>${loc(best)}` : `<span class="act on">Best ✓</span>`
-            : !it ? "" : it.equipped ? `<span class="act on">Equipped ✓</span>` : `<span class="act swap" title="${wearing ? "Equip this instead of what you have on" : "The scanner hasn't seen what you have equipped here"}">${wearing ? "Swap" : "Equip"}</span>${loc(it)}`;
-          if (!it) return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span><span class="none">${showNow ? "not seen yet" : "nothing scanned yet"}</span></div>`;
+            : !it ? "" : it.equipped ? `<span class="act on">Equipped ✓</span>` : `<span class="act swap" title="${wearing ? "Equip this instead of what you have on" : "Nothing is marked equipped for this slot"}">${wearing ? "Swap" : "Equip"}</span>${loc(it)}`;
+          if (!it) return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span><span class="none">${showNow ? "nothing equipped" : "nothing added yet"}</span></div>`;
           // On a swap, the piece you have on now, right under the one to swap in.
           const nowRow = !showNow && wearing && !it.equipped ? `<div class="piece-now"><span class="wearing-now">↳ Equipped:</span> ${linesOf(wearing)}</div>` : "";
           return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span>
@@ -535,15 +366,15 @@ function render() {
     </div>`;
   };
   $("items").innerHTML = `
-    <div class="row spread"><h2>Keep or trash</h2><button id="add-open" class="ghost" title="Type in a piece the scanner can't read">Add manually</button></div>
+    <div class="row spread"><h2>Keep or trash</h2><button id="add-open" class="ghost" title="Type in your pieces">Add manually</button></div>
     <div class="gear-tabs" role="tablist">${[["trash", "Trash"], ["keep", "Keep"], ["all", "All"]].map(([k, label]) => `<button role="tab" data-gear-tab="${k}" aria-selected="${tab === k}" class="gt-${k}">${label} <span class="n">${count[k]}</span></button>`).join("")}</div>
     <p class="muted small">${tab === "trash" ? "Safe to throw away." : tab === "keep" ? "Best combo, spare 3-line pieces and the best sockets." : "Everything in your bag."}</p>
     ${bag.length ? `<div class="slots">${SLOTS.map((sl) => {
       const mineHere = list.filter((it) => it.slot === sl);
       const allHere = bag.filter((it) => it.slot === sl).length;
       return `<div class="slot" data-drop-slot="${sl}"><div class="slot-head"><h3>${slotIcon(sl)}${sl}</h3><span class="tag">${mineHere.length}${tab === "all" ? "" : ` of ${allHere}`}</span></div>
-        ${mineHere.length ? mineHere.map(row).join("") : `<div class="none">${allHere ? "Nothing here" : "Nothing scanned yet"}</div>`}</div>`;
-    }).join("")}</div>` : `<p class="none">Nothing scanned yet: hover items in your inventory.</p>`}`;
+        ${mineHere.length ? mineHere.map(row).join("") : `<div class="none">${allHere ? "Nothing here" : "Nothing added yet"}</div>`}</div>`;
+    }).join("")}</div>` : `<p class="none">Nothing added yet: click <b>Add manually</b>.</p>`}`;
 }
 
 // ---------- equipping in game ----------
@@ -559,7 +390,7 @@ function equipItem(id) {
   }
   it.equipped = true;
   it.cell = null;
-  setStatus(`Marked your ${it.slot.toLowerCase()} as equipped ✓`, Boolean(stream));
+  setStatus(`Marked your ${it.slot.toLowerCase()} as equipped ✓`);
 }
 
 // Drag an inventory piece onto its slot's card to equip it.
@@ -577,7 +408,7 @@ document.addEventListener("drop", (e) => {
   if (!card || !it) return;
   e.preventDefault();
   if (card.dataset.dropSlot && it.slot !== card.dataset.dropSlot) {
-    setStatus(`That's a ${it.slot.toLowerCase()}: drop it on the ${it.slot} card.`, Boolean(stream));
+    setStatus(`That's a ${it.slot.toLowerCase()}: drop it on the ${it.slot} card.`);
     return;
   }
   equipItem(id);
@@ -592,7 +423,7 @@ function cellPane(it, v) {
   const where = `Row ${r + 1} · Col ${c + 1}`;
   if (!it) {
     return `<div class="cell-pane"><span class="label">${where}</span>
-      <p class="muted small">Nothing scanned here yet. Hover it in the game, or add it by hand.</p>
+      <p class="muted small">Nothing added here yet.</p>
       <button id="add-here" data-cell-add="${selected}">Add this item manually</button></div>`;
   }
   const vv = v[it.id];
@@ -729,28 +560,20 @@ document.addEventListener("click", (e) => {
   const t = e.target.closest("button");
   if (!t) return;
   if (t.id !== "clear") confirmClear = false;
-  if (t.id === "share" && LIVE_SHARE) return startShare();
-  if (t.id === "save-frame") {
-    // The exact frame the scanner sees, to send for tuning (it may show character names).
-    frame.toBlob((b) => {
-      if (!b) return;
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(b);
-      a.download = `quandrea-frame-${Date.now()}.png`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    }, "image/png");
+  if (t.dataset.themePick) return setTheme(t.dataset.themePick);
+  if (t.id === "cam-start") return startCam();
+  if (t.id === "cam-stop") {
+    stopCam();
+    $("simple-status").textContent = "Stopped.";
     return;
   }
-  if (t.id === "stop") return stopShare();
-  if (t.dataset.themePick) return setTheme(t.dataset.themePick);
   if (t.id === "simple-toggle") {
     state.simple = !state.simple;
+    if (!state.simple) stopCam();
     save();
     render();
     return;
   }
-  if (t.id === "simple-share" && LIVE_SHARE) return startShare();
   if (t.id === "cb-toggle") {
     state.cb = !state.cb;
     save();
@@ -760,13 +583,10 @@ document.addEventListener("click", (e) => {
   if (t.id === "reset-map") {
     state.cells = [];
     state.mapPinned = false;
-    state.scale = undefined;
-    lastCalibration = 0;
-    grid = null;
     selected = null;
     save();
     render();
-    setStatus(stream ? "Map cleared. Move the mouse off your inventory and it reads it again." : "Map cleared. Paste a screenshot of your inventory (Ctrl+V).", Boolean(stream));
+    setStatus("Map cleared. Paste a screenshot of your inventory (Ctrl+V).");
     return;
   }
   if (t.id === "add-open") {
@@ -803,10 +623,7 @@ document.addEventListener("click", (e) => {
       state.items = [];
       state.cells = [];
       state.mapPinned = false;
-      grid = null;
       selected = null;
-      last = null;
-      done = [];
     }
     confirmClear = !confirmClear;
   } else if (t.dataset.pickSlot) draft.slot = t.dataset.pickSlot;
@@ -830,7 +647,7 @@ document.addEventListener("click", (e) => {
     }
     remember({ slot: draft.slot, cls: classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: false, stats: `hand-${Date.now()}`, cell: draft.cell ?? null });
     addMsg = `Added ${draft.slot === "Shoes" || draft.slot === "Gloves" ? "" : "a "}${draft.slot.toLowerCase()} ✓`;
-    setStatus(addMsg, Boolean(stream));
+    setStatus(addMsg);
     // Straight on to the next one. Started from a map cell: jump to the next cell with lines that
     // has nothing entered yet (left to right, top to bottom), or close when there are none left.
     const from = draft.cell;
@@ -860,39 +677,8 @@ document.addEventListener("toggle", (e) => {
   } catch {}
 }, true);
 
-// Paste a screenshot (Win+Shift+S, then Ctrl+V here): an item's tooltip is read like a hover; the
-// inventory window fills in the map. Works without sharing the screen.
-const TIP_W = 321; // a tooltip's width at normal game size
-async function pasteTooltips(img) {
-  // The game size is unknown in a screenshot. A tooltip found by its border has its real width,
-  // which gives the size (a normal one is 321px wide); a box found by its title is just drawn at
-  // the size we tried, so it says nothing. Try a few sizes and use the border widths.
-  const sizes = [];
-  for (const s of SIMPLE_SIZES)
-    for (const b of findTooltips(img, s)) {
-      const k = b.width / TIP_W;
-      if (b.width !== Math.round(TIP_W * s) && k > 0.55 && k < 2.2 && b.height > b.width) sizes.push(k);
-    }
-  sizes.sort((x, y) => x - y);
-  let found = null;
-  for (const s of [sizes[Math.floor(sizes.length / 2)], state.scale ?? 1, ...SIMPLE_SIZES].filter(Boolean)) {
-    const boxes = findTooltips(img, s).filter((b) => iconFits(b, findIcon(img, b)));
-    if (boxes.length > (found?.boxes.length ?? 0)) found = { s, boxes };
-    if (found) break;
-  }
-  // Just the tooltip snipped, edges and all: the whole picture is the tooltip.
-  if (!found && img.width < img.height && img.width > 150) {
-    const box = { x: 0, y: 0, width: img.width, height: img.height };
-    if (findIcon(img, box)) found = { s: img.width / TIP_W, boxes: [box] };
-  }
-  if (!found) return false;
-  if (!(await ensureWorker())) return true;
-  // If the inventory is in the same screenshot, the cursor says which cell the item is in.
-  const inGrid = findGrid(found.s === 1 ? img : resizeImage(img, 1 / found.s));
-  for (const box of found.boxes.slice(0, 2)) await readTooltip(img, box, { sc: found.s, inGrid, pasted: true });
-  return true;
-}
-
+// Paste a screenshot (PrtScn or Win+Shift+S, then Ctrl+V here): the inventory window fills in the
+// map. In Simpling Dumpling mode, a hovered item's socket colours are named instead.
 document.addEventListener("paste", async (e) => {
   const text = e.clipboardData?.getData("text/plain");
   if (looksLikeBackup(text)) {
@@ -915,76 +701,19 @@ document.addEventListener("paste", async (e) => {
       showSimple(img, { now: true });
       return;
     }
-    if (busy) return;
-    busy = true;
-    try {
-      if (await pasteTooltips(img)) return;
-    } finally {
-      busy = false;
-    }
     const g = findGrid(img);
     if (!g) {
-      setStatus(findGrid(img, 4) ? "That's the small inventory view (4 columns). Expand it with the + at its top right, then take the screenshot again." : "Couldn't find an item tooltip or the inventory in that screenshot. Snip the whole tooltip (or the whole Equip tab, expanded to 16 columns).", true);
+      setStatus(findGrid(img, 4) ? "That's the small inventory view (4 columns). Expand it with the + at its top right, then take the screenshot again." : "Couldn't find the inventory in that screenshot. Open the Equip tab, expanded to 16 columns, with nothing hovered.");
       return;
     }
     state.cells = readCells(img, g);
     state.mapPinned = true;
     save();
     render();
-    setStatus("Map filled in from your screenshot ✓ The live scan won't change it; Reset map to read it live again.", true);
+    setStatus("Map filled in ✓ Click Add manually to type in each dashed item.");
   } catch (err) {
-    setStatus(`Couldn't read that image: ${err.message}`, true);
+    setStatus(`Couldn't read that image: ${err.message}`);
   }
-});
-
-// ---------- Simpling Dumpling pop-out ----------
-// Chrome and Edge can open a small always-on-top window (Document Picture-in-Picture). The
-// readout moves into it, so the colours stay visible over the game; closing it moves them back.
-if (LIVE_SHARE && "documentPictureInPicture" in window) $("simple-popout").hidden = false;
-$("simple-popout").addEventListener("click", async () => {
-  if (pipDoc) {
-    pipDoc.defaultView.close();
-    return;
-  }
-  let win;
-  try {
-    win = await documentPictureInPicture.requestWindow({ width: 380, height: 420 });
-  } catch (err) {
-    $("simple-status").textContent = `Couldn't pop out: ${err.message}`;
-    return;
-  }
-  // Copy the page's styles into the new window.
-  const css = win.document.createElement("style");
-  css.textContent = [...document.styleSheets].flatMap((sheet) => {
-    try {
-      return [...sheet.cssRules].map((r) => r.cssText);
-    } catch {
-      return [];
-    }
-  }).join("\n");
-  win.document.head.append(css);
-  win.document.title = "Simpling Dumpling";
-  const sync = () => {
-    win.document.documentElement.className = document.documentElement.className;
-    if (document.documentElement.dataset.theme) win.document.documentElement.dataset.theme = document.documentElement.dataset.theme;
-    else delete win.document.documentElement.dataset.theme;
-  };
-  sync();
-  win.document.body.classList.add("popout");
-  const status = $("simple-status");
-  const out = $("simple-out");
-  const home = out.parentNode;
-  win.document.body.append(status, out);
-  pipDoc = win.document;
-  $("simple-popout").textContent = "Put back";
-  const watch = new MutationObserver(sync);
-  watch.observe(document.documentElement, { attributes: true });
-  win.addEventListener("pagehide", () => {
-    watch.disconnect();
-    home.append(status, out);
-    pipDoc = null;
-    $("simple-popout").textContent = "Pop out";
-  });
 });
 
 // ---------- backups ----------
@@ -1001,7 +730,7 @@ $("backup-copy").addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText(code);
     flash($("backup-copy"), "Copied ✓");
-    setStatus(`Backup of ${state.items.length} item${state.items.length === 1 ? "" : "s"} copied. Keep it somewhere safe (a note, a Discord DM to yourself); paste it here any time to restore.`, Boolean(stream));
+    setStatus(`Backup of ${state.items.length} item${state.items.length === 1 ? "" : "s"} copied. Keep it somewhere safe (a note, a Discord DM to yourself); paste it here any time to restore.`);
   } catch {
     // No clipboard access: save it as a file instead.
     const a = document.createElement("a");
@@ -1019,7 +748,7 @@ $("backup-load").addEventListener("click", async () => {
     text = await navigator.clipboard.readText();
   } catch {}
   if (looksLikeBackup(text)) loadBackup(text);
-  else setStatus("Copy your backup code, then press Ctrl+V on this page (or click Load backup again).", Boolean(stream));
+  else setStatus("Copy your backup code, then press Ctrl+V on this page (or click Load backup again).");
 });
 
 function loadBackup(text) {
@@ -1027,17 +756,16 @@ function loadBackup(text) {
   try {
     data = importCode(text);
   } catch (err) {
-    setStatus(err.message, Boolean(stream));
+    setStatus(err.message);
     return;
   }
   const n = data.items.length;
-  if (state.items.length && !confirm(`Replace your ${state.items.length} scanned item${state.items.length === 1 ? "" : "s"} with the ${n} in this backup?`)) return;
+  if (state.items.length && !confirm(`Replace your ${state.items.length} item${state.items.length === 1 ? "" : "s"} with the ${n} in this backup?`)) return;
   state = { ...state, ...data };
-  equippedSeen = [];
   save();
   render();
   flash($("backup-load"), "Loaded ✓");
-  setStatus(`Loaded ${n} item${n === 1 ? "" : "s"} from your backup ✓`, Boolean(stream));
+  setStatus(`Loaded ${n} item${n === 1 ? "" : "s"} from your backup ✓`);
 }
 
 // Light, dark, or follow the computer ("auto"). Remembered in this browser.
@@ -1055,15 +783,8 @@ function showTheme() {
 }
 showTheme();
 
-// Firefox's screen capture often sends games black or frozen: point people to Chrome or Edge.
-if (LIVE_SHARE && /firefox/i.test(navigator.userAgent)) for (const el of document.querySelectorAll(".browser-note")) el.hidden = false;
-
 // The version is the ?v=N this script was loaded with (see index.html), so it always matches.
 $("version").textContent = `Quandrea v${new URL(import.meta.url).searchParams.get("v") ?? "dev"}`;
 
-if (!LIVE_SHARE) {
-  $("share").hidden = true;
-  $("simple-share").hidden = true;
-}
 load();
 render();

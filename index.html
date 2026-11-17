@@ -4,22 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quandrea · is your gear trash?</title>
-<meta name="description" content="Reads your MapleStory Quanah gear while you hover it, and tells you what to keep for 18/18 hologram lines and the best sockets.">
-<link rel="icon" href="logo.gif">
+<meta name="description" content="Type in your MapleStory Quanah gear and it tells you what to keep for 18/18 hologram lines and the best sockets.">
+<link rel="icon" href="logo.webp">
 <script>try { const t = localStorage.getItem("quandrea.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
-<link rel="stylesheet" href="style.css?v=32">
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
-<script type="module" src="src/app.js?v=32"></script>
+<link rel="stylesheet" href="style.css?v=33">
+<script type="module" src="src/app.js?v=33"></script>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div class="brand">
-      <img class="logo" src="logo.gif" alt="" onerror="this.remove()">
+      <img class="logo" src="logo.webp" alt="" onerror="this.remove()">
       <div>
       <h1>Quandrea</h1>
       <p class="tagline">Let Quandrea tell you if your gear is trash.</p>
-      <p class="muted">Screenshot your Quanah gear; it tells you what to keep. Nothing leaves your computer.</p>
+      <p class="muted">Type in your Quanah gear; it tells you what to keep. Nothing leaves your computer.</p>
       </div>
     </div>
     <div class="settings">
@@ -45,47 +44,37 @@
     </div>
   </header>
 
-  <!-- Simple mode: just the socket colours of what you hover, in big words. -->
+  <!-- Simple mode: the socket colours of a hovered item in a pasted screenshot, in big words. -->
   <section class="panel simple" id="simple" hidden>
-    <div class="row spread"><div><h2>Simpling Dumpling mode</h2><p class="muted small">Socket colours as big words, for colour-blind players.</p></div><div class="row"><button id="simple-share" class="primary">Share MapleStory window</button><button id="simple-popout" class="ghost" hidden title="Opens the colours in a small window that stays on top of the game (Chrome and Edge)">Pop out</button></div></div>
-    <p class="muted">Hover an item in the game, press <b>PrtScn</b>, then <b>Ctrl+V</b> here. ✓ = your class can use it.</p>
-    <p class="browser-note" hidden>Use <b>Chrome</b> or <b>Edge</b>: Firefox often shares games as a black screen.</p>
+    <div class="row spread"><div><h2>Simpling Dumpling mode</h2><p class="muted small">Socket colours as big words, for colour-blind players.</p></div>
+      <div class="row"><select id="cam-pick" hidden aria-label="Camera"></select><button id="cam-start" class="primary" title="Read the game live from OBS's Virtual Camera">Use OBS camera</button><button id="cam-stop" class="ghost" hidden>Stop</button></div></div>
+    <p class="muted">Hover an item in the game. With <b>OBS</b> running its Virtual Camera, the colours show up live; or press <b>PrtScn</b>, then <b>Ctrl+V</b> here. ✓ = your class can use it.</p>
+    <details class="help">
+      <summary>Setting up OBS</summary>
+      <ol>
+        <li>In OBS, add a <b>Game Capture</b> or <b>Window Capture</b> of MapleStory (the same as for streaming).</li>
+        <li>Click <b>Start Virtual Camera</b> (bottom right in OBS).</li>
+        <li>Here, click <b>Use OBS camera</b> and allow the camera. If another camera shows, pick <b>OBS Virtual Camera</b> in the list.</li>
+      </ol>
+      <p class="muted small">OBS only copies pictures of the screen, as when streaming; nothing touches the game, and nothing leaves your computer.</p>
+    </details>
     <p id="simple-status" class="status"></p>
     <div id="simple-out" class="simple-out"></div>
   </section>
 
   <div class="layout">
   <div class="main-col">
-  <section class="panel" id="live">
-    <div class="row spread">
-      <h2>Scanner</h2>
-      <div class="row">
-        <button id="share" class="primary">Share MapleStory window</button>
-        <button id="save-frame" class="ghost" hidden title="Download exactly what the scanner sees, to send for tuning">Save what the scanner sees</button>
-        <button id="stop" class="ghost" hidden>Stop</button>
-      </div>
-    </div>
-    <p class="browser-note" hidden>Use <b>Chrome</b> or <b>Edge</b>: Firefox often shares games as a black screen.</p>
-    <p id="status" class="status">Paste a screenshot (Ctrl+V).</p>
-    <div id="last"></div>
+  <section class="panel">
+    <div class="row spread"><h2>Inventory map</h2><button id="reset-map" class="ghost" title="Clear the map">Reset map</button></div>
+    <p id="status" class="status"></p>
     <details class="help">
       <summary>How to use it</summary>
       <ol>
         <li>Open the Equip tab, <b>expanded</b> to 16 columns, nothing hovered. Press <b>PrtScn</b>, then <b>Ctrl+V</b> here: the map fills in.</li>
-        <li>Hover an item, press <b>PrtScn</b>, <b>Ctrl+V</b> here. Repeat for each dashed item.</li>
-        <li>Throw out what says <b>Trash</b>.</li>
+        <li>Click <b>Add manually</b> and type each dashed item in. <kbd>Enter</kbd> moves to the next one.</li>
+        <li>Click <b>Equip</b> on what you're wearing. Throw out what says <b>Trash</b>.</li>
       </ol>
-      <p class="label">Tips</p>
-      <ul class="tips">
-        <li>Show the game at full size: tiny text reads badly.</li>
-        <li>Your equipped piece is read from the "Currently Equipped" box beside each tooltip.</li>
-        <li>Don't sort mid-scan. Map wrong? <b>Reset map</b>.</li>
-      </ul>
     </details>
-  </section>
-
-  <section class="panel">
-    <div class="row spread"><h2>Inventory map</h2><button id="reset-map" class="ghost" title="Clear the map and read the inventory again">Reset map</button></div>
     <div id="map"></div>
   </section>
 
@@ -102,6 +91,6 @@
   <footer class="foot muted"><span id="version"></span> · Everything stays in your browser · <a href="https://github.com/dmdiem/quandrea">Source</a></footer>
 </div>
 <dialog id="add-dialog" class="add-dialog" aria-label="Add manually"></dialog>
-<video id="video" muted playsinline hidden></video>
+<video id="cam" muted playsinline hidden></video>
 </body>
 </html>
