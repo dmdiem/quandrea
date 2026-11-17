@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Quandrea</title>
+<title>Quandrea · is your gear trash?</title>
 <meta name="description" content="Reads your MapleStory Quanah gear while you hover it, and tells you what to keep for 18/18 hologram lines and the best sockets.">
 <link rel="icon" href="logo.png">
 <link rel="stylesheet" href="style.css">
@@ -17,11 +17,16 @@
       <img class="logo" src="logo.png" alt="" onerror="this.remove()">
       <div>
       <h1>Quandrea</h1>
+      <p class="tagline">Let Quandrea tell you if your gear is trash.</p>
       <p class="muted">Share your MapleStory window and hover your Quanah gear. It reads each item's hologram lines and sockets, then tells you what to keep. Everything stays on your computer.</p>
       </div>
     </div>
     <div class="settings">
-      <label>Job <select id="class"></select></label>
+      <label>Class <select id="class"></select></label>
+      <div class="seg" id="pirate-stat" role="group" aria-label="Pirate main stat" hidden>
+        <button id="pirate-STR" data-stat="STR">STR</button>
+        <button id="pirate-DEX" data-stat="DEX">DEX</button>
+      </div>
       <div class="seg" role="group" aria-label="Goal">
         <button id="mode-endgame" data-mode="endgame">Right lines</button>
         <button id="mode-early" data-mode="early">Any 3 lines</button>
@@ -50,6 +55,8 @@
       <p class="muted">Stage 1 is the 18 lines: 3 Dimensional Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, and one each of Crit DMG, Warrior, Mage, Bowman, Thief and Pirate, on six pieces (hat, top, bottom, cape, gloves, shoes). Stage 2 is a second set with the right sockets (4 with prismatic + stat + stat, 2 with stat + stat + stat); Orbs move your lines onto it.</p>
     </details>
   </section>
+
+  <section class="panel" id="equipped"></section>
 
   <div class="grid">
     <section class="panel" id="lines"></section>

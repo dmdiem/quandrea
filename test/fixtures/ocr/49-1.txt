@@ -1,0 +1,34 @@
+pa WW
+*
+Libae's Supercharged Gloves (Magician)
+Heroic: Untradahle
+Interactive: Untradahle
+Duration: 3M 072027 00:00 UTS (Can't Extend)
+& Combat Power Increase
+=. Currently Equipped
+p= Arrnor
+Gloves
+Required Joh Magician
+Required Level Lv. 160
+Set Effect™  Libae's Supercharged Equipment Set
+STR +66 {0 +66)
+DEX +30 {0 +30)
+INT +57 (55 +2)
+LUK +87 {55 +3)
+Magic ATT +12
+Defense +342 (325 +17)
+Speed +4 (0+4)
+Jump +4 (0 +4)
+White Hole Ly. +1
+[Hologram] Critical Damage Enhancement Skill Ly. +1
+[Hologram] Magician Attack Skill Ly. +1
+Scroll Enhancement Mone
+(9 Remaining, 0 Restores) Available)
+Jewel Stats
+Check the enhancement details by using the
+InteractHarvest key.
+DO Potential : Legendary
+= Critical Damage +8%
+= Max HP +10%
+= LURK: +10%
+* Bonus Potential : Mone

@@ -1,7 +1,7 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
 import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js";
-import { verdicts, TOTAL, JOBS, BRANCHES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js";
+import { verdicts, solve, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js";
 import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff } from "./vision.js";
 
 const KEY = "quandrea.v1";
@@ -10,7 +10,7 @@ const NAME = Object.fromEntries([...TARGETS.map((t) => [t.k, t.name]), [OTHER, "
 const SOCKETS = ["prismatic", "blue", "red", "green", "purple", "grey"];
 const VERDICT = { keep: "Keep", backup: "Backup", donor: "Socket donor", trash: "Trash" };
 
-let state = { items: [], classId: "Lethe", mode: "endgame" };
+let state = { items: [], classId: "Magician", mode: "endgame" };
 let last = null; // { item, crop } of the most recent hovered (not equipped) tooltip
 let confirmClear = false;
 
@@ -175,7 +175,9 @@ function remember(p) {
 
 // ---------- drawing ----------
 
-const chip = (k, wasted = false) => `<span class="chip k-${k}${wasted ? " wasted" : ""}">${NAME[k]}</span>`;
+// extra: a copy beyond what the 18 need. Still +1 to that skill (they go to Lv. 8), just not best in slot.
+const chip = (k, extraCopy = false) => chipHtml(k, extraCopy && k !== OTHER); // filler is never an "extra"
+const chipHtml = (k, extra) => `<span class="chip k-${k}${extra ? " extra" : ""}"${extra ? ' title="Extra copy: still +1 to the skill, but a line you\'re missing would do more here"' : ""}>${NAME[k]}${extra ? '<small>extra</small>' : ""}</span>`;
 const socks = (list) => `<span class="socks">${(list ?? []).map((c) => `<span class="sock ${c}" title="${c}"></span>`).join("")}</span>`;
 const badge = (v) => `<span class="badge v-${v.verdict}" title="${v.why}">${VERDICT[v.verdict]}</span>`;
 const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("") : `<span class="muted">no lines</span>`);
@@ -184,7 +186,10 @@ function render() {
   const { res, sockets, verdicts: v } = verdicts(state.items, state);
   const option = classOption(state.classId);
 
-  $("class").innerHTML = BRANCHES.map((b) => `<optgroup label="${b}">${JOBS.filter((j) => j.branch === b).map((j) => `<option ${j.id === option.id ? "selected" : ""}>${j.id}</option>`).join("")}</optgroup>`).join("");
+  $("class").innerHTML = CLASSES.map((c) => `<option ${c === option.cls ? "selected" : ""}>${c}</option>`).join("");
+  // Pirates pick STR or DEX (a DEX pirate can also use purple sockets).
+  $("pirate-stat").hidden = option.cls !== "Pirate";
+  for (const st of ["STR", "DEX"]) $(`pirate-${st}`).setAttribute("aria-pressed", String(option.stat === st));
   for (const m of ["endgame", "early"]) $(`mode-${m}`).setAttribute("aria-pressed", String(state.mode === m));
 
   // The last item hovered, big.
@@ -196,6 +201,21 @@ function render() {
         <div class="lines">${linesOf(lastItem)}</div></div></div>`
     : "";
   if (lastItem) $("last-crop").replaceWith(last.crop);
+
+  // What you're wearing now (from the "Currently Equipped" boxes), and how it compares.
+  const worn = Object.fromEntries(SLOTS.map((s) => [s, state.items.find((it) => it.slot === s && it.equipped) ?? null]));
+  const nowRes = solve(Object.values(worn).filter(Boolean), state.mode);
+  const nowScore = state.mode === "early" ? nowRes.lines : nowRes.score;
+  const seenAny = Object.values(worn).some(Boolean);
+  $("equipped").innerHTML = `
+    <div class="row spread"><h2>Currently equipped</h2>
+      ${seenAny ? `<span class="compare"><b>${nowScore}/${TOTAL}</b> now → <b>${state.mode === "early" ? res.lines : res.score}/${TOTAL}</b> with your best set</span>` : ""}</div>
+    ${seenAny ? "" : `<p class="muted">Hover any item and the scanner also reads the "Currently Equipped" box beside it. Do one item per slot to fill this in.</p>`}
+    <table class="gear"><tbody>${SLOTS.map((s) => {
+      const it = worn[s];
+      const cells = it ? [0, 1, 2].map((j) => `<td>${it.lines[j] ? chip(it.lines[j], !nowRes.counted[s][j]) : `<span class="none">no line</span>`}</td>`).join("") : `<td colspan="3"><span class="none">not seen yet</span></td>`;
+      return `<tr><th>${s}</th>${cells}<td class="act-cell">${it ? socks(it.sockets) : ""}</td></tr>`;
+    }).join("")}</tbody></table>`;
 
   // Stage 1: lines. A board of the 18 lines (filled = which piece gives it), then the set itself.
   const early = state.mode === "early";
@@ -217,12 +237,12 @@ function render() {
         const cells = it ? [0, 1, 2].map((j) => `<td>${it.lines[j] ? chip(it.lines[j], !res.counted[s][j]) : `<span class="none">no line</span>`}</td>`).join("") : `<td colspan="3"><span class="none">nothing scanned yet</span></td>`;
         return `<tr><th>${s}</th>${cells}<td class="act-cell">${action}</td></tr>`;
       }).join("")}</tbody></table>
-      ${anyWasted ? `<span class="muted small">Crossed out: another piece already covers that line, so it doesn't count.</span>` : ""}
+      ${anyWasted ? `<span class="muted small"><b>Extra</b>: you already have enough of that line. Not wasted (each skill goes up to Lv. 8), but a line you're missing, like White Hole or Leap, would do more there.</span>` : ""}
     </div>`;
 
   // Stage 2: sockets.
   $("sockets").innerHTML = `
-    <div class="row spread"><h2>Stage 2 · Sockets</h2><span class="label">${option.id} (${option.stat}): ${option.colours.join(", ")}</span></div>
+    <div class="row spread"><h2>Stage 2 · Sockets</h2><span class="label">${option.cls} (${option.stat}): ${option.colours.join(", ")}</span></div>
     <div class="score"><span class="big">${sockets.good}</span><span class="muted">of 18 good sockets · ${sockets.prismatic}/${PRISMATIC_GOAL} prismatic pieces</span></div>
     <p class="muted">Aim for 4 pieces with prismatic + stat + stat and 2 with stat + stat + stat. Orbs move your 18 lines onto these. A prismatic + ${option.colours[0]} piece is a fine stepping stone.</p>
     <div class="set"><span class="label">Socket pieces</span>${SLOTS.map((s) => {
@@ -240,8 +260,13 @@ function render() {
       ${state.items.length ? `<button id="clear" class="ghost ${confirmClear ? "danger" : ""}">${confirmClear ? "Click again to clear all" : "Clear all"}</button>` : ""}</div></div>
     <div class="slots">${SLOTS.map((s) => {
       const list = state.items.filter((it) => it.slot === s);
+      // Something you're wearing isn't "trash": a better piece should replace it.
+      const row = (it) => `<div class="inv-item">${it.equipped && v[it.id].verdict === "trash" ? `<span class="badge v-trash" title="A better piece for this slot is in your inventory">Replace</span>` : badge(v[it.id])}<span class="lines">${linesOf(it)}${!option.classes.includes(it.cls) ? `<span class="tag">${it.cls ?? "?"}</span>` : ""}</span>${socks(it.sockets)}<button class="x" data-del="${it.id}" aria-label="Remove">×</button></div>`;
+      const on = list.filter((it) => it.equipped);
+      const bag = list.filter((it) => !it.equipped);
       return `<div class="slot"><div class="slot-head"><h3>${s}</h3><span class="tag">${list.length}</span></div>
-        ${list.length ? list.map((it) => `<div class="inv-item">${badge(v[it.id])}<span class="lines">${linesOf(it)}${!option.classes.includes(it.cls) ? `<span class="tag">${it.cls ?? "?"}</span>` : ""}${it.equipped ? '<span class="tag">wearing now</span>' : ""}</span>${socks(it.sockets)}<button class="x" data-del="${it.id}" aria-label="Remove">×</button></div>`).join("") : `<div class="none">Nothing scanned yet</div>`}
+        <div class="sub">Equipped</div>${on.length ? on.map(row).join("") : `<div class="none">not seen yet</div>`}
+        <div class="sub">In inventory <span class="tag">${bag.length}</span></div>${bag.length ? bag.map(row).join("") : `<div class="none">nothing scanned yet</div>`}
       </div>`;
     }).join("")}</div>
     <div class="add"><span class="label">Add by hand</span>
@@ -260,6 +285,7 @@ document.addEventListener("click", (e) => {
   if (t.id === "share") return startShare();
   if (t.id === "stop") return stopShare();
   if (t.dataset.mode) state.mode = t.dataset.mode;
+  else if (t.dataset.stat) state.classId = `Pirate (${t.dataset.stat})`;
   else if (t.dataset.del) state.items = state.items.filter((it) => it.id !== t.dataset.del);
   else if (t.id === "clear") {
     if (confirmClear) {
@@ -278,7 +304,7 @@ document.addEventListener("click", (e) => {
 });
 
 $("class").addEventListener("change", (e) => {
-  state.classId = e.target.value;
+  state.classId = e.target.value === "Pirate" ? "Pirate (STR)" : e.target.value;
   save();
   render();
 });

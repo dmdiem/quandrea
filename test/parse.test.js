@@ -18,6 +18,9 @@ const CASES = {
   32: ["Gloves", "archer crit"], 33: ["Gloves", "thief atk other"],
   34: ["Cape", "other"], 35: ["Cape", "atk other"], 36: ["Cape", "reg"], 37: ["Cape", "pirate other other"], 38: ["Cape", "other"],
   "39-0": ["Cape", "leap wh"], "39-1": ["Cape", "mage", "Magician", true],
+  "48-0": ["Cape", "atk other"], "48-1": ["Cape", "mage", "Magician", true],
+  // the equipped gloves' potential has "Critical Damage +8%", which isn't a skill line
+  "49-0": ["Gloves", "crit thief reg"], "49-1": ["Gloves", "wh crit mage", "Magician", true],
 };
 void B;
 

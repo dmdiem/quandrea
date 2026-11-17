@@ -1,5 +1,7 @@
 # Quandrea
 
+**Let Quandrea tell you if your gear is trash.**
+
 A gear scanner for MapleStory's Quanah world. Share your game window, hover your gear, and it reads
 each item's hologram lines and sockets, then tells you what to **keep** and what to **trash**.
 
@@ -14,8 +16,8 @@ saved only in that browser.
 3. Hover one item per slot so it also reads the "Currently Equipped" box next to it.
 4. Don't move or sort items while scanning. When you're done, throw out what's marked **Trash**.
 
-Pick your job at the top (Lethe, Bishop, Corsair…). Your branch and main stat decide which gear
-is yours and which socket colours you can use.
+Pick your class at the top (pirates also pick STR or DEX). It decides which gear is yours and
+which socket colours you can use.
 
 ## What it's aiming for
 
@@ -37,17 +39,16 @@ stat + stat + stat. Orbs move your 18 lines onto them.
 Each socket colour takes one class's gems, which roll that class's stats plus Attack Power (or
 Magic ATT for blue). You can use any colour whose gems roll your stats:
 
-| Jobs | Main / secondary stat | Socket colours you can use |
+| Class | Main / secondary stat | Socket colours you can use |
 |---|---|---|
-| Magicians | INT / LUK | blue only (the only Magic ATT gems) |
-| Warriors | STR / DEX | red, green, grey |
-| Bowmen | DEX / STR | red, green, grey, purple |
-| Thieves | LUK / DEX or STR | purple, grey |
-| Buccaneer, Cannoneer, Thunder Breaker, Shade, Ark | STR / DEX | red, green, grey |
-| Corsair, Mechanic, Angelic Buster | DEX / STR | red, green, grey, purple |
+| Magician | INT / LUK | blue only (the only Magic ATT gems) |
+| Warrior | STR / DEX | red, green, grey |
+| Bowman | DEX / STR | red, green, grey, purple |
+| Thief | LUK / DEX or STR | purple, grey |
+| Pirate (STR) | STR / DEX | red, green, grey |
+| Pirate (DEX) | DEX / STR | red, green, grey, purple |
 
 Gem colours by class: red = Warrior, green = Bowman, grey = Pirate, purple = Thief, blue = Magician.
-Xenon can wear thief and pirate gear and uses red, green, grey and purple.
 
 ### Verdicts
 

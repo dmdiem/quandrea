@@ -54,6 +54,18 @@ test("early mode wants 3 lines anywhere; endgame wants the right lines", () => {
   assert.equal(solve([junk3, better3], "early").lines, 3);
 });
 
+test("same score: more lines in total wins, since extras still level the skill", () => {
+  const set = [item("Hat", "leap wh reg"), item("Top", "mage")];
+  const capeA = item("Cape", "crit");
+  const capeB = item("Cape", "crit mage"); // the 2nd Mage is an extra, but still +1 Mage skill
+  const r = solve([...set, capeA, capeB]);
+  assert.equal(r.picks.Cape, capeB);
+  assert.deepEqual(r.counted.Cape, [true, false]);
+  // ...but an extra never beats a line that's missing
+  const capeC = item("Cape", "crit wh");
+  assert.equal(solve([...set, capeB, capeC]).picks.Cape, capeC);
+});
+
 test("ties go to what you already wear", () => {
   const a = item("Cape", "reg");
   const b = item("Cape", "reg", { equipped: true });
@@ -68,8 +80,9 @@ test("socket colours per class, with prismatic counted as good", () => {
   assert.equal(socketValue(item("Hat", "", { sockets: ["purple", "purple", "purple"] }), "Pirate (STR)").good, 0);
   assert.deepEqual(classOption("Pirate (STR)").classes, ["Pirate"]);
   assert.equal(classOption("Pirate (DEX)").stat, "DEX");
-  assert.equal(classOption("Magician").branch, "Magician"); // older saves stored a branch
-  assert.equal(classOption("nonsense").id, "Lethe");
+  assert.equal(classOption("Pirate").stat, "STR");
+  assert.equal(classOption("Lethe").id, "Magician"); // a job name from an older save
+  assert.equal(classOption("nonsense").id, "Magician");
 });
 
 test("socket set: aims for 4 prismatic pieces, the rest all your colour", () => {
@@ -93,19 +106,13 @@ test("socket set: aims for 4 prismatic pieces, the rest all your colour", () => 
   assert.equal(socketSet([item("Hat", "", { sockets: ["red"] })], "Magician").picks.Top, null);
 });
 
-test("jobs: branch and main stat decide the socket colours", () => {
-  assert.deepEqual(classOption("Lethe").colours, ["blue"]);
-  assert.deepEqual(classOption("Bishop").classes, ["Magician"]);
-  assert.deepEqual(classOption("Corsair").colours, ["red", "green", "grey", "purple"]);
-  assert.deepEqual(classOption("Buccaneer").colours, ["red", "green", "grey"]);
-  assert.deepEqual(classOption("Night Lord").colours, ["purple", "grey"]);
-  assert.deepEqual(classOption("Xenon").classes, ["Thief", "Pirate"]);
-  // Xenon keeps both thief and pirate gear
-  const t = item("Hat", "leap", { cls: "Thief" });
-  const p = item("Top", "wh", { cls: "Pirate" });
-  const { verdicts: v } = verdicts([t, p], { classId: "Xenon" });
-  assert.equal(v[t.id].verdict, "keep");
-  assert.equal(v[p.id].verdict, "keep");
+test("five classes; the main stat decides the socket colours", () => {
+  assert.deepEqual(classOption("Magician").colours, ["blue"]);
+  assert.deepEqual(classOption("Warrior").colours, ["red", "green", "grey"]);
+  assert.deepEqual(classOption("Bowman").colours, ["red", "green", "grey", "purple"]);
+  assert.deepEqual(classOption("Thief").colours, ["purple", "grey"]);
+  assert.deepEqual(classOption("Pirate (STR)").colours, ["red", "green", "grey"]);
+  assert.deepEqual(classOption("Pirate (DEX)").colours, ["red", "green", "grey", "purple"]);
 });
 
 test("verdicts: keep, backup, donor, trash, and other classes' gear", () => {

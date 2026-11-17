@@ -1,0 +1,35 @@
+leo mal ma ee HEE
+| rr def
+Libae's Supercharged Cape (Magician)
+Heroic: Untradahle
+Interactive: Untradahle
+Duration: 3M 072027 00:00 UTS (Can't Extend)
+Combat Power Increase
+[
++142,198
+\ Armor
+° Cape
+Required Joh Magician
+Required Level Lv. 145 {160 - 14)
+Set Effect™  Libae's Supercharged Equipment Set
+STR +75 {a0 +28)
+DEX +75 {a0 +28)
+INT +121 (50 +8 +63)
+LUK +58 {50 +3)
+Max HP +25 (0 +29)
+Attack Power +9
+Magic ATT +4
+Defense +768 {B00 +132 +36)
+[Hologram] Attack Power & Magic ATT Enhancement
+Skill Lv. +1
+[Hologram] Damage Enhancernent Skill Ly. +1
+Scroll Enhancement Mone
+(9 Remaining, 0 Restores) Available)
+Jewel Stats
+Check the enhancement details by using the
+InteractHarvest key.
+M Potential: Unigue
+= MT: +10%
+= hax HP +7T%
+= All Stats +4%
+* Bonus Potential : Mone

@@ -41,8 +41,9 @@ export function solve(items, mode = "endgame") {
     for (const [st, info] of layer) {
       for (const it of opts.length ? opts : [null]) {
         const ns = it ? add(st, it.lines) : st;
-        // early: every line counts; endgame: prefer what you already wear (fewer swaps)
-        const extra = info.extra + (it ? (mode === "early" ? it.lines.length * 100 : 0) + (it.equipped ? 1 : 0) : 0);
+        // early: every line counts most. endgame: the 18 come first, then more lines in total (an
+        // extra Mage line is still +1 to that skill, up to Lv. 8), then what you already wear.
+        const extra = info.extra + (it ? it.lines.length * (mode === "early" ? 100 : 10) + (it.equipped ? 1 : 0) : 0);
         const cur = next.get(ns);
         if (!cur || extra > cur.extra) next.set(ns, { extra, prev: st, item: it, slot: si });
       }
@@ -61,7 +62,7 @@ export function solve(items, mode = "endgame") {
     if (e.item) picks[SLOTS[e.slot]] = e.item;
     st = e.prev;
   }
-  // Which picked lines actually count (a 4th Leap or a 2nd Pirate doesn't).
+  // Which picked lines count toward the 18 (a 4th Leap or a 2nd Pirate is an extra).
   const run = NEED.map(() => 0);
   const counted = {};
   for (const s of SLOTS) {
@@ -89,30 +90,22 @@ const COLOURS = {
   INT: ["blue"],
 };
 
-// Every job, with its branch (the class in brackets on Quanah gear) and main stat.
-const JOB_LIST = [
-  ["Warrior", "STR", "Hero", "Paladin", "Dark Knight", "Dawn Warrior", "Mihile", "Aran", "Blaster", "Demon Slayer", "Demon Avenger", "Kaiser", "Adele", "Hayato", "Zero", "Ren"],
-  ["Magician", "INT", "Arch Mage (F/P)", "Arch Mage (I/L)", "Bishop", "Blaze Wizard", "Evan", "Luminous", "Battle Mage", "Kanna", "Illium", "Lara", "Beast Tamer", "Kinesis", "Lethe"],
-  ["Bowman", "DEX", "Bowmaster", "Marksman", "Pathfinder", "Wind Archer", "Mercedes", "Wild Hunter", "Kain"],
-  ["Thief", "LUK", "Night Lord", "Shadower", "Dual Blade", "Night Walker", "Phantom", "Cadena", "Hoyoung", "Khali"],
-  ["Pirate", "STR", "Buccaneer", "Cannoneer", "Thunder Breaker", "Shade", "Ark"],
-  ["Pirate", "DEX", "Corsair", "Mechanic", "Angelic Buster"],
-];
-export const JOBS = [
-  ...JOB_LIST.flatMap(([branch, stat, ...names]) => names.map((id) => ({ id, branch, classes: [branch], stat, colours: COLOURS[stat] }))),
-  // Xenon wears thief and pirate gear and uses STR, DEX and LUK.
-  { id: "Xenon", branch: "Thief", classes: ["Thief", "Pirate"], stat: "STR/DEX/LUK", colours: ["red", "green", "grey", "purple"] },
-];
-export const BRANCHES = ["Warrior", "Magician", "Bowman", "Thief", "Pirate"];
-export const CLASS_OPTIONS = JOBS;
+// The five classes (the one in brackets on Quanah gear). Pirates also pick their main stat, since a
+// DEX pirate can use purple gems and a STR pirate can't.
+export const CLASSES = ["Magician", "Warrior", "Bowman", "Thief", "Pirate"];
+export const CLASS_OPTIONS = [
+  { id: "Magician", cls: "Magician", stat: "INT" },
+  { id: "Warrior", cls: "Warrior", stat: "STR" },
+  { id: "Bowman", cls: "Bowman", stat: "DEX" },
+  { id: "Thief", cls: "Thief", stat: "LUK" },
+  { id: "Pirate (STR)", cls: "Pirate", stat: "STR" },
+  { id: "Pirate (DEX)", cls: "Pirate", stat: "DEX" },
+].map((o) => ({ ...o, classes: [o.cls], colours: COLOURS[o.stat] }));
 
-// A job by name. Older saves stored a branch ("Magician", "Pirate (DEX)"); those get a job of that branch.
-export function classOption(id) {
-  const job = JOBS.find((j) => j.id === id);
-  if (job) return job;
-  const [branch, stat] = String(id).match(/^(\w+)(?: \((\w+)\))?/)?.slice(1) ?? [];
-  return JOBS.find((j) => j.branch === branch && (!stat || j.stat === stat)) ?? JOBS.find((j) => j.id === "Lethe");
-}
+// A class by id. "Pirate" alone means a STR pirate; anything unknown (like a job name from an
+// older save) falls back to Magician.
+export const classOption = (id) =>
+  CLASS_OPTIONS.find((o) => o.id === id) ?? (id === "Pirate" ? CLASS_OPTIONS[4] : CLASS_OPTIONS[0]);
 
 export function socketValue(item, classId) {
   const { colours } = classOption(classId);
@@ -174,7 +167,7 @@ export function socketSet(items, classId) {
 // backup: every line is on the list (a perfect 3L, or near it) - worth holding while you farm
 // donor:  in the socket set (stage 2), so your lines can be fused onto it
 // trash:  none of the above (also anything for another class)
-export function verdicts(items, { classId = "Lethe", mode = "endgame" } = {}) {
+export function verdicts(items, { classId = "Magician", mode = "endgame" } = {}) {
   const { classes } = classOption(classId);
   const mine = items.filter((it) => classes.includes(it.cls));
   const res = solve(mine, mode);
