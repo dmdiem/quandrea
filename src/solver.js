@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS, OTHER } from "./parse.js?v=7";
+import { SLOTS, TARGETS, OTHER } from "./parse.js?v=8";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const NEED = TARGETS.map((t) => t.need);
@@ -76,7 +76,7 @@ export function solve(items, mode = "endgame") {
 // What's still missing from the 18, as line keys (e.g. ["wh", "wh", "mage"]).
 export const missing = (res) => TARGETS.flatMap((t, i) => Array(t.need - res.counts[i]).fill(t.k));
 
-// ---- Sockets (stage 2) ----
+// ---- Sockets (after the 18 lines) ----
 // Jewels go in sockets. Once the 18 lines are done, you farm a second set with the right sockets and
 // use Orbs to move your lines onto it. The goal: 4 pieces with prismatic + stat + stat and 2 with
 // stat + stat + stat. A prismatic socket can also hold a stat gem (handy for mages), so it counts as good.
@@ -165,7 +165,7 @@ export function socketSet(items, classId) {
 // ---- Keep or trash ----
 // keep:   in the best combo (the best set)
 // backup: every line is on the list (a perfect 3L, or near it) - worth holding while you farm
-// donor:  in the socket set (stage 2), so your lines can be fused onto it
+// donor:  in the socket set, so your lines can be fused onto it
 // trash:  none of the above (also anything for another class)
 export function verdicts(items, { classId = "Magician", mode = "endgame" } = {}) {
   const { classes } = classOption(classId);

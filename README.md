@@ -23,7 +23,7 @@ which socket colours you can use.
 
 ## What it's aiming for
 
-**Stage 1: 18/18 hologram lines.** Six pieces (hat, top, bottom, cape, gloves, shoes; weapons and
+**First: 18/18 hologram lines.** Six pieces (hat, top, bottom, cape, gloves, shoes; weapons and
 shoulders can't roll lines), three lines each:
 
 | Line | How many |
@@ -35,7 +35,7 @@ Boss Damage, Ignore Defense and Damage Enhancement lines don't count, and neithe
 **Any 3 lines** mode is for the very start: fill every slot with 3 lines of anything, preferring
 the right ones.
 
-**Stage 2: sockets.** A second set with good sockets: 4 pieces with prismatic + stat + stat and 2 with
+**Then: jewel sockets.** A second set with good sockets: 4 pieces with prismatic + stat + stat and 2 with
 stat + stat + stat. Orbs move your 18 lines onto them.
 
 Each socket colour takes one class's gems, which roll that class's stats plus Attack Power (or
@@ -56,7 +56,7 @@ Gem colours by class: red = Warrior, green = Bowman, grey = Pirate, purple = Thi
 
 - **Keep**: part of the best combo you can make from your gear (see below).
 - **Backup**: all three lines are on the list, but the best combo already has a better piece for that slot.
-- **Socket donor**: the best socket piece for its slot so far (stage 2). It needs a prismatic socket
+- **Socket donor**: the best socket piece for its slot so far (for the socket set). It needs a prismatic socket
   or at least 2 usable ones; one usable socket isn't worth an Orb.
 - **Trash**: none of the above, or gear for another class.
 
