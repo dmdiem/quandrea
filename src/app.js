@@ -1,8 +1,8 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=8";
-import { verdicts, solve, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=8";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, GRID } from "./vision.js?v=8";
+import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=9";
+import { verdicts, solve, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=9";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, GRID } from "./vision.js?v=9";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -261,12 +261,12 @@ function render() {
   const cell = (k, slot) => `<div class="cell ${slot ? "on" : ""}"><span class="cell-slot">${slot ?? "missing"}</span></div>`;
   // What the collapsed piece list says, so a swap is never hidden.
   const swaps = SLOTS.filter((s) => res.picks[s] && !res.picks[s].equipped);
-  const swapNote = !seenAny ? "Show pieces" : swaps.length ? `Show pieces · ${swaps.length} to swap: ${swaps.join(", ")}` : "Show pieces · you're wearing all of them";
+  const swapNote = !seenAny ? "Show pieces" : swaps.length ? `Show pieces · ${swaps.length} to swap: ${swaps.join(", ")}` : "Show pieces · all of them are equipped";
   $("lines").innerHTML = `
     <div class="row spread"><h2>${early ? "Hologram lines (any 3 per piece)" : "Hologram lines (18/18)"}</h2><span class="label">best combo from your gear</span></div>
     <p class="muted small explain">The best outfit you can make from everything scanned (worn or in your bag): one piece per slot, covering as many of the 18 lines as possible. It improves as you scan more.</p>
     <div class="score"><span class="big">${head}</span><span class="muted">of ${TOTAL} lines with the best combo${early ? ` · ${res.score} on the list` : ""}</span>
-      ${seenAny ? `<span class="compare">· you're wearing <b>${nowScore}/${TOTAL}</b> now</span>` : ""}</div>
+      ${seenAny ? `<span class="compare">· <b>${nowScore}/${TOTAL}</b> equipped now</span>` : ""}</div>
     ${seenAny ? "" : `<p class="muted small">Hover any item and the scanner also reads the "Currently Equipped" box beside it. Do one per slot to see what you have on now.</p>`}
     <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
       <div class="cells">${Array.from({ length: 3 }, (_, j) => (j < t.need ? cell(t.k, from[t.k][j]) : `<div class="cell-gap"></div>`)).join("")}</div></div>`).join("")}</div>
@@ -279,7 +279,7 @@ function render() {
         <tbody>${SLOTS.map((s) => {
           const it = res.picks[s];
           const wearing = state.items.find((x) => x.slot === s && x.equipped);
-          const action = !it ? "" : it.equipped ? `<span class="act on">Wearing ✓</span>` : `<span class="act swap" title="${wearing ? "Equip this instead of what you have on" : "The scanner hasn't seen what you wear here"}">${wearing ? "Swap" : "Equip"}</span>`;
+          const action = !it ? "" : it.equipped ? `<span class="act on">Equipped ✓</span>` : `<span class="act swap" title="${wearing ? "Equip this instead of what you have on" : "The scanner hasn't seen what you wear here"}">${wearing ? "Swap" : "Equip"}</span>`;
           if (!it) return `<tr><th>${s}</th><td colspan="${TARGETS.length + 1}" class="none">nothing scanned yet</td><td></td></tr>`;
           const marks = (piece, counted) => TARGETS.map((t) => {
             const idx = piece.lines.map((k, j) => [k, j]).filter(([k]) => k === t.k);
@@ -288,11 +288,12 @@ function render() {
             return `<td><span class="mark ${counts ? "on" : "extra"}" title="${counts ? t.name : `Extra ${t.name}: still +1 to the skill`}">${counts ? "●" : "+"}</span></td>`;
           }).join("") + `<td class="other">${piece.lines.filter((k) => k === OTHER).length || ""}</td>`;
           // On a swap, what you wear now sits faded underneath, so the change is right there.
-          const nowRow = wearing && !it.equipped ? `<tr class="now-row"><th>now</th>${marks(wearing, nowRes.counted[s])}<td class="act-cell"><span class="tag">wearing</span></td></tr>` : "";
+          // On a swap, the piece you have on now, in words, right under the one to swap in.
+          const nowRow = wearing && !it.equipped ? `<tr class="now-row"><td colspan="${TARGETS.length + 3}"><span class="wearing-now">↳ Equipped:</span> ${linesOf(wearing)}</td></tr>` : "";
           return `<tr><th>${s}</th>${marks(it, res.counted[s])}<td class="act-cell">${action}</td></tr>${nowRow}`;
         }).join("")}</tbody>
-        <tfoot><tr><th>Total</th>${TARGETS.map((t, i) => `<td class="${res.counts[i] >= t.need ? "done" : "short"}">${res.counts[i]}/${t.need}</td>`).join("")}<td></td><td></td></tr>
-          ${seenAny ? `<tr class="now-row"><th>now</th>${TARGETS.map((t, i) => `<td>${nowRes.counts[i]}/${t.need}</td>`).join("")}<td></td><td></td></tr>` : ""}</tfoot>
+        <tfoot><tr><th>Best combo</th>${TARGETS.map((t, i) => `<td class="${res.counts[i] >= t.need ? "done" : "short"}">${res.counts[i]}/${t.need}</td>`).join("")}<td></td><td></td></tr>
+          ${seenAny ? `<tr class="now-row"><th>Equipped</th>${TARGETS.map((t, i) => `<td>${nowRes.counts[i]}/${t.need}</td>`).join("")}<td></td><td></td></tr>` : ""}</tfoot>
       </table></div>
     </details>`;
 

@@ -187,3 +187,6 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .pieces[open] summary::before { content: "▾"; }
 .pieces[open] summary .small { display: none; }
 .pieces p { margin: 6px 0; }
+.pgrid .now-row td[colspan] { text-align: left; padding: 2px 0 6px 18px; }
+.pgrid .now-row td[colspan] .chip { font-size: 11px; }
+.wearing-now { font-size: 12px; color: var(--muted); margin-right: 4px; }
