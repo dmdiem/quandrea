@@ -1,9 +1,9 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=28";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=28";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=28";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=28";
+import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=29";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=29";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=29";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=29";
 
 const KEY = "quandrea.v1";
 // Looks in the pop-out window too, while Simpling Dumpling's readout lives there.
@@ -106,10 +106,6 @@ async function startShare() {
 }
 
 function stopShare() {
-  if (videoRun) {
-    videoRun.cancel = true;
-    return;
-  }
   clearInterval(timer);
   stream?.getTracks().forEach((t) => t.stop());
   stream = null;
@@ -119,60 +115,6 @@ function stopShare() {
   $("save-frame").hidden = true;
   setStatus("Stopped. Your items are saved in this browser.");
 }
-
-// ---------- reading a recorded video ----------
-// A screen recording of you hovering your items (Xbox Game Bar's Win+Alt+R, OBS…) is read like a
-// live share: step through it a few frames a second, and every tooltip held still gets read.
-// The file is opened in this browser only; it's never uploaded.
-const VIDEO_STEP = 0.25; // seconds between frames read
-let videoRun = null;
-async function readVideo(file) {
-  if (stream) stopShare();
-  if (!(await ensureWorker())) return;
-  const url = URL.createObjectURL(file);
-  videoRun = { cancel: false };
-  const before = state.items.length;
-  $("share").hidden = true;
-  $("video-open").hidden = true;
-  $("stop").hidden = false;
-  try {
-    video.srcObject = null;
-    video.src = url;
-    await new Promise((ok, fail) => {
-      video.onloadedmetadata = ok;
-      video.onerror = () => fail(new Error("this browser can't play that video (try an .mp4)"));
-    });
-    prev = [];
-    done = [];
-    const end = video.duration;
-    for (let t = 0; t < end && !videoRun.cancel; t += VIDEO_STEP) {
-      await new Promise((ok) => {
-        video.onseeked = ok;
-        video.currentTime = t;
-      });
-      await tick();
-      if (!busy) setStatus(`Reading your video… ${Math.round((t / end) * 100)}%`, true);
-    }
-    const n = state.items.length - before;
-    setStatus(`${videoRun.cancel ? "Stopped" : "Done"}: ${n} new item${n === 1 ? "" : "s"} from your video${n ? " ✓" : ". Hold each item still for half a second while recording."}`);
-  } catch (err) {
-    setStatus(`Couldn't read that video: ${err.message}`);
-  } finally {
-    videoRun = null;
-    video.removeAttribute("src");
-    video.load();
-    URL.revokeObjectURL(url);
-    $("share").hidden = !LIVE_SHARE;
-    $("video-open").hidden = false;
-    $("stop").hidden = true;
-  }
-}
-$("video-open").addEventListener("click", () => $("video-file").click());
-$("video-file").addEventListener("change", (e) => {
-  const file = e.target.files?.[0];
-  e.target.value = "";
-  if (file) readVideo(file);
-});
 
 // A rectangle cut out of an image.
 function cropImage(img, a) {
@@ -415,7 +357,6 @@ function remember(p) {
 
 // extra: a copy beyond what the 18 need. Still +1 to that skill (they go to Lv. 8), just not best in slot.
 const chip = (k, extraCopy = false) => chipHtml(k, extraCopy && isTarget(k)); // filler is never an "extra"
-// The in-game hologram skill icon for each line (class lines use one skill of their pair).
 // Where an item sits in the inventory ("Row 2 · Col 4"). Clicking it lights the cell up on the map.
 function miniLoc(cell) {
   if (!cell) return "";
@@ -443,7 +384,7 @@ const CLASS_PATHS = {
   pirate: '<circle cx="12" cy="4.6" r="2"/><path d="M12 6.6V21"/><path d="M8.2 10h7.6"/><path d="M4.8 14.2c0 3.9 3.2 6.8 7.2 6.8s7.2-2.9 7.2-6.8"/><path d="M3 16l1.8-1.8L6.6 16"/><path d="M17.4 16l1.8-1.8L21 16"/>',
 };
 const classIcon = (k) => (CLASS_PATHS[k] ? `<svg class="class-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CLASS_PATHS[k]}</svg>` : "");
-const icon = (k) => (!isTarget(k) ? "" : `<img class="skill-icon" src="icons/${k}.png" alt="">${classIcon(k)}`);
+const icon = (k) => classIcon(k);
 const chipHtml = (k, extra) => `<span class="chip k-${k}${extra ? " extra" : ""}"${extra ? ' title="Extra copy: still +1 to the skill, but a line you\'re missing would do more here"' : ""}>${icon(k)}${NAME[k]}${extra ? '<small>extra</small>' : ""}</span>`;
 // Sockets drawn as the jewel that fits them (cropped from the game's jewel inventory).
 // A socket, drawn as a filled droplet in its colour. In colour-blind mode it also carries a letter.
@@ -452,7 +393,9 @@ const SOCK_WORD = { red: "Red", green: "Green", blue: "Blue", purple: "Purple", 
 const jewel = (c) => (state.cb
   ? `<span class="sock-word" title="${c} socket"><span class="sock ${c}"></span>${SOCK_WORD[c] ?? c}</span>`
   : `<span class="sock ${c}" title="${c} socket"></span>`);
-const socks = (list) => (!list?.length ? `<span class="socks unknown" title="Sockets not read yet: hover the item again">?</span>` : `<span class="socks">${list.map(jewel).join("")}</span>`);
+const socks = (list) => (list?.length ? `<span class="socks">${list.map(jewel).join("")}</span>`
+  : state.cb ? `<span class="socks"><span class="sock-word not-read" title="Sockets not read yet: screenshot the item again">Not read</span></span>`
+  : `<span class="socks unknown" title="Sockets not read yet: screenshot the item again">?</span>`);
 const badge = (v) => `<span class="badge v-${v.verdict}" title="${v.why}">${VERDICT[v.verdict]}</span>`;
 const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("") : `<span class="muted">no lines</span>`);
 

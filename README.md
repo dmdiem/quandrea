@@ -15,10 +15,8 @@ saved only in that browser.
    items that have hologram lines. **Reset map** clears it.
 2. Hover an item, press **PrtScn**, then **Ctrl+V** on the page. Repeat for each dashed item. The
    "Currently Equipped" box beside the tooltip is read too.
-3. Faster: record yourself hovering everything (Win+Alt+R in Xbox Game Bar), holding each item still
-   for half a second, then click **Open a video**. It's read frame by frame in your browser, never uploaded.
-4. Show the game at full size; tiny text reads poorly. Don't sort items mid-scan.
-5. Throw out what's marked **Trash**.
+3. Show the game at full size; tiny text reads poorly. Don't sort items mid-scan.
+4. Throw out what's marked **Trash**.
 
 Live screen sharing is switched off for now (`LIVE_SHARE` in `src/app.js`).
 

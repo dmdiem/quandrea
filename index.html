@@ -5,17 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quandrea · is your gear trash?</title>
 <meta name="description" content="Reads your MapleStory Quanah gear while you hover it, and tells you what to keep for 18/18 hologram lines and the best sockets.">
-<link rel="icon" href="logo.png">
+<link rel="icon" href="logo.gif">
 <script>try { const t = localStorage.getItem("quandrea.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
-<link rel="stylesheet" href="style.css?v=28">
+<link rel="stylesheet" href="style.css?v=29">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
-<script type="module" src="src/app.js?v=28"></script>
+<script type="module" src="src/app.js?v=29"></script>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div class="brand">
-      <img class="logo" src="logo.png" alt="" onerror="this.remove()">
+      <img class="logo" src="logo.gif" alt="" onerror="this.remove()">
       <div>
       <h1>Quandrea</h1>
       <p class="tagline">Let Quandrea tell you if your gear is trash.</p>
@@ -61,14 +61,12 @@
       <h2>Scanner</h2>
       <div class="row">
         <button id="share" class="primary">Share MapleStory window</button>
-        <button id="video-open" class="ghost" title="Read a screen recording of you hovering your items (mp4 from Xbox Game Bar, OBS…)">Open a video</button>
-        <input id="video-file" type="file" accept="video/*" hidden>
         <button id="save-frame" class="ghost" hidden title="Download exactly what the scanner sees, to send for tuning">Save what the scanner sees</button>
         <button id="stop" class="ghost" hidden>Stop</button>
       </div>
     </div>
     <p class="browser-note" hidden>Use <b>Chrome</b> or <b>Edge</b>: Firefox often shares games as a black screen.</p>
-    <p id="status" class="status">Paste a screenshot (Ctrl+V) or open a video.</p>
+    <p id="status" class="status">Paste a screenshot (Ctrl+V).</p>
     <div id="last"></div>
     <details class="help">
       <summary>How to use it</summary>
@@ -79,7 +77,6 @@
       </ol>
       <p class="label">Tips</p>
       <ul class="tips">
-        <li>Faster: record yourself hovering everything (<b>Win+Alt+R</b>), hold each item still for half a second, then <b>Open a video</b>.</li>
         <li>Show the game at full size: tiny text reads badly.</li>
         <li>Your equipped piece is read from the "Currently Equipped" box beside each tooltip.</li>
         <li>Don't sort mid-scan. Map wrong? <b>Reset map</b>.</li>

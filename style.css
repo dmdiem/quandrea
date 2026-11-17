@@ -23,7 +23,7 @@ body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 syste
 .wrap { max-width: 1680px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 header { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; align-items: flex-end; }
 .brand { display: flex; gap: 14px; align-items: center; }
-.logo { width: 116px; height: auto; image-rendering: pixelated; flex: none; }
+.logo { width: 96px; height: auto; flex: none; }
 h1 { margin: 0; font-size: 28px; letter-spacing: -0.01em; }
 .tagline { margin: 2px 0 4px; font-size: 17px; font-weight: 600; color: var(--accent); }
 h2 { margin: 0; font-size: 16px; }
@@ -73,10 +73,7 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .chip.k-leap, .chip.k-wh, .chip.k-reg, .chip.k-atk { font-weight: 700; border-color: var(--holo); }
 /* Lines that aren't among the 18 (Boss DMG, Ignore DEF, Damage, unknown): plain dashed tags */
 .chip.k-other, .chip.k-boss, .chip.k-ied, .chip.k-dmg { color: var(--muted); background: transparent; border: 1px dashed var(--line); font-weight: 500; }
-.skill-icon { width: 16px; height: 16px; border-radius: 3px; flex: none; }
-.chip .skill-icon { margin-left: -5px; }
 .board-name { display: inline-flex; align-items: center; gap: 6px; }
-.board-name .skill-icon { width: 20px; height: 20px; }
 .chip.extra { opacity: 0.6; border-style: dashed; }
 .chip small { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
 /* Sockets: filled droplets in their colour; in colour-blind mode they also carry a letter. */
@@ -170,7 +167,6 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .pgrid th, .pgrid td { padding: 4px 3px; text-align: center; }
 .pgrid tbody th, .pgrid tfoot th { text-align: left; padding-right: 8px; white-space: nowrap; }
 .pgrid thead th { vertical-align: bottom; }
-.pgrid thead .skill-icon { display: block; margin: 0 auto 2px; width: 20px; height: 20px; }
 .pgrid .ph { display: block; font-size: 10px; font-weight: 600; color: var(--muted); }
 .pgrid tbody tr { border-top: 1px solid var(--line); }
 .pgrid td:nth-child(6) { border-left: 1px dashed var(--line); } /* the one-each lines start here */
@@ -370,3 +366,4 @@ button .sock-word { border: 0; padding: 0; margin: 0; background: none; }
 .cb .piece .piece-socks .sock-word { justify-content: flex-start; }
 /* Class symbols (sword, wand, bow, shuriken, anchor) next to the class lines' skill icons */
 .class-icon { width: 16px; height: 16px; flex: none; color: var(--holo-ink); }
+.sock-word.not-read { color: var(--muted); font-weight: 600; border-style: dashed; background: transparent; }
