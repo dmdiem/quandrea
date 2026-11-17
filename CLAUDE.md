@@ -9,3 +9,5 @@ tooltips from a shared screen. See `README.md` for how it works.
 - Never commit screenshots: they show character names. OCR text fixtures are fine.
 - Layout: `src/vision.js` (finding tooltips, the item picture and sockets in pixels), `src/parse.js`
   (OCR text to item), `src/solver.js` (best set, socket set, verdicts), `src/app.js` (page, capture loop).
+- Each release, bump the `?v=N` on every file link (index.html and the imports in `src/`) so
+  browsers don't mix cached old files with new ones. `test/version.test.js` checks they match.

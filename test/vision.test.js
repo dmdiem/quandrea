@@ -151,6 +151,16 @@ test("finds the inventory grid and what's in each cell", () => {
   assert.equal(findGrid(screen(1100, 600)), null);
 });
 
+test("an inventory that isn't fully unlocked: the '+ SLOT' button isn't an item", () => {
+  const kinds = Array.from({ length: 128 }, (_, i) => (i % 16 < 8 && i % 5 ? "item" : "empty"));
+  const img = screen(1100, 600);
+  const grid = inventory(img, 24, 96, kinds);
+  const b = cellBox(grid, 8, 0);
+  fill(img, b.x, b.y, 42, 42, [40, 170, 220]); // + SLOT
+  fill(img, b.x + 18, b.y + 8, 6, 14, [255, 255, 255]);
+  assert.deepEqual(readCells(img, findGrid(img)), kinds);
+});
+
 test("cell under a point, with the extra gap after every 4 columns", () => {
   const g = { x: 24, y: 96 };
   assert.deepEqual(cellAt(g, 30, 100), { c: 0, r: 0 });

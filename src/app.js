@@ -1,11 +1,12 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js";
-import { verdicts, solve, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, GRID } from "./vision.js";
+import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=5";
+import { verdicts, solve, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=5";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, GRID } from "./vision.js?v=5";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
+const SHORT = { leap: "Leap", wh: "WH", reg: "Reg", atk: "ATT", crit: "Crit", warrior: "War", mage: "Mage", archer: "Bow", thief: "Thief", pirate: "Pir" };
 const NAME = Object.fromEntries([...TARGETS.map((t) => [t.k, t.name]), [OTHER, "Other"]]);
 const SOCKETS = ["prismatic", "blue", "red", "green", "purple", "grey"];
 const VERDICT = { keep: "Keep", backup: "Backup", donor: "Socket donor", trash: "Trash" };
@@ -256,11 +257,16 @@ function render() {
     <div class="row spread"><h2>Currently equipped</h2>
       ${seenAny ? `<span class="compare"><b>${nowScore}/${TOTAL}</b> now → <b>${state.mode === "early" ? res.lines : res.score}/${TOTAL}</b> with your best set</span>` : ""}</div>
     ${seenAny ? "" : `<p class="muted">Hover any item and the scanner also reads the "Currently Equipped" box beside it. Do one item per slot to fill this in.</p>`}
-    <table class="gear"><tbody>${SLOTS.map((s) => {
+    <div class="eq-wrap"><table class="gear"><tbody>${SLOTS.map((s) => {
       const it = worn[s];
       const cells = it ? [0, 1, 2].map((j) => `<td>${it.lines[j] ? chip(it.lines[j], !nowRes.counted[s][j]) : `<span class="none">no line</span>`}</td>`).join("") : `<td colspan="3"><span class="none">not seen yet</span></td>`;
       return `<tr><th>${s}</th>${cells}<td class="act-cell">${it ? socks(it.sockets) : ""}</td></tr>`;
-    }).join("")}</tbody></table>`;
+    }).join("")}</tbody></table>
+    <div class="tally">${TARGETS.map((t) => {
+      // Every copy you wear, so extras show (3/1 Mage); done once it reaches what the set needs.
+      const n = Object.values(worn).reduce((a, it) => a + (it ? it.lines.filter((k) => k === t.k).length : 0), 0);
+      return `<div class="tally-row ${n >= t.need ? "done" : ""}"><span class="tally-n">${n}/${t.need}</span>${icon(t.k)}<span>${t.name}</span></div>`;
+    }).join("")}</div></div>`;
 
   // Stage 1: lines. A board of the 18 lines (filled = which piece gives it), then the set itself.
   const early = state.mode === "early";
@@ -272,17 +278,28 @@ function render() {
   $("lines").innerHTML = `
     <div class="row spread"><h2>Stage 1 · ${early ? "18 lines" : "18/18 hologram lines"}</h2><span class="label">best set</span></div>
     <div class="score"><span class="big">${head}</span><span class="muted">of ${TOTAL} ${early ? "lines" : "target lines"}${early ? ` · ${res.score} on the list` : ""}</span></div>
-    ${["main", "single"].map((g) => `<div class="board ${g}">${TARGETS.filter((t) => (t.need > 1) === (g === "main")).map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
-      <div class="cells">${Array.from({ length: t.need }, (_, j) => cell(t.k, from[t.k][j])).join("")}</div></div>`).join("")}</div>`).join("")}
+    <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
+      <div class="cells">${Array.from({ length: 3 }, (_, j) => (j < t.need ? cell(t.k, from[t.k][j]) : `<div class="cell-gap"></div>`)).join("")}</div></div>`).join("")}</div>
     <div class="set"><span class="label">Your set</span>
-      <table class="gear"><tbody>${SLOTS.map((s) => {
-        const it = res.picks[s];
-        const wearing = state.items.find((x) => x.slot === s && x.equipped);
-        const action = !it ? "" : it.equipped ? `<span class="act on">Wearing ✓</span>` : `<span class="act swap" title="${wearing ? "Equip this instead of what you have on" : "The scanner hasn't seen what you wear here"}">${wearing ? "Swap" : "Equip"}</span>`;
-        const cells = it ? [0, 1, 2].map((j) => `<td>${it.lines[j] ? chip(it.lines[j], !res.counted[s][j]) : `<span class="none">no line</span>`}</td>`).join("") : `<td colspan="3"><span class="none">nothing scanned yet</span></td>`;
-        return `<tr><th>${s}</th>${cells}<td class="act-cell">${action}</td></tr>`;
-      }).join("")}</tbody></table>
-      ${anyWasted ? `<span class="muted small"><b>Extra</b>: you already have enough of that line. Not wasted (each skill goes up to Lv. 8), but a line you're missing, like White Hole or Leap, would do more there.</span>` : ""}
+      <div class="pgrid-wrap"><table class="pgrid">
+        <thead><tr><th></th>${TARGETS.map((t) => `<th title="${t.name}">${icon(t.k)}<span class="ph">${SHORT[t.k]}</span></th>`).join("")}<th class="ph" title="Lines not on the list">Other</th><th></th></tr></thead>
+        <tbody>${SLOTS.map((s) => {
+          const it = res.picks[s];
+          const wearing = state.items.find((x) => x.slot === s && x.equipped);
+          const action = !it ? "" : it.equipped ? `<span class="act on">Wearing ✓</span>` : `<span class="act swap" title="${wearing ? "Equip this instead of what you have on" : "The scanner hasn't seen what you wear here"}">${wearing ? "Swap" : "Equip"}</span>`;
+          if (!it) return `<tr><th>${s}</th><td colspan="${TARGETS.length + 1}" class="none">nothing scanned yet</td><td></td></tr>`;
+          const marks = TARGETS.map((t) => {
+            const idx = it.lines.map((k, j) => [k, j]).filter(([k]) => k === t.k);
+            if (!idx.length) return `<td></td>`;
+            const counts = idx.some(([, j]) => res.counted[s][j]);
+            return `<td><span class="mark ${counts ? "on" : "extra"}" title="${counts ? t.name : `Extra ${t.name}: still +1 to the skill`}">${counts ? "●" : "+"}</span></td>`;
+          }).join("");
+          const other = it.lines.filter((k) => k === OTHER).length;
+          return `<tr><th>${s}</th>${marks}<td class="other">${other || ""}</td><td class="act-cell">${action}</td></tr>`;
+        }).join("")}</tbody>
+        <tfoot><tr><th>Total</th>${TARGETS.map((t, i) => `<td class="${res.counts[i] >= t.need ? "done" : "short"}">${res.counts[i]}/${t.need}</td>`).join("")}<td></td><td></td></tr></tfoot>
+      </table></div>
+      ${anyWasted ? `<span class="muted small"><b>+</b> = an extra copy: not wasted (each skill goes up to Lv. 8), but a line you're missing, like White Hole or Leap, would do more there.</span>` : ""}
     </div>`;
 
   // Stage 2: sockets.

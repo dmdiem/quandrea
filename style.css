@@ -80,10 +80,9 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .pip { width: 10px; height: 10px; border-radius: 3px; background: var(--sunk); border: 1px solid var(--line); }
 .pip.on { background: linear-gradient(135deg, var(--holo), var(--holo-hi) 140%); border-color: var(--holo); }
 /* The 18-line board: one box per line you need; filled boxes say which piece gives it. */
-.board { display: grid; gap: 6px 16px; }
-.board.main { grid-template-columns: minmax(0, 1fr); }
-.board.single { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.board.main .cell { width: 72px; }
+.board { display: grid; grid-template-columns: minmax(0, 1fr); gap: 5px; }
+.board .cell, .cell-gap { width: 72px; }
+.board-row:nth-child(5) { margin-top: 6px; } /* the one-each lines start here */
 .board-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .board-name { font-size: 13px; }
 .cells { display: inline-flex; gap: 4px; }
@@ -91,7 +90,7 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .cell-slot { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .cell.on { border: 1px solid var(--holo); background: linear-gradient(135deg, color-mix(in srgb, var(--holo) 30%, transparent), color-mix(in srgb, var(--holo-hi) 30%, transparent)); }
 .cell.on .cell-slot { color: var(--holo-ink); font-weight: 700; }
-@media (max-width: 520px) { .board.single { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .board .cell, .cell-gap { width: 58px; } }
 .gear { border-collapse: collapse; width: 100%; }
 .gear th { text-align: left; font-size: 13px; padding: 4px 8px 4px 0; width: 64px; }
 .gear td { padding: 4px 6px 4px 0; }
@@ -101,6 +100,14 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .act.swap { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
 .small { font-size: 12px; }
 #equipped .gear { max-width: 760px; }
+.eq-wrap { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: flex-start; }
+.eq-wrap .gear { flex: 1 1 520px; }
+.tally { display: flex; flex-direction: column; gap: 3px; min-width: 190px; }
+.tally-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.tally-n { font-variant-numeric: tabular-nums; font-weight: 700; width: 30px; text-align: right; }
+.tally-row.done { color: var(--fg); }
+.tally-row.done .tally-n { color: var(--holo-ink); }
+.tally-row .skill-icon { width: 18px; height: 18px; }
 .compare { font-size: 14px; color: var(--muted); }
 .compare b { color: var(--fg); font-size: 16px; }
 .pill-eq { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 6px; color: var(--keep); border: 1px solid color-mix(in srgb, var(--keep) 55%, transparent); white-space: nowrap; }
@@ -139,3 +146,22 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .mcell.sel { outline: 3px solid var(--accent); outline-offset: 1px; }
 .legend { display: inline-flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 12px; color: var(--muted); }
 .legend .mcell { width: 12px; height: 12px; border-width: 1px; display: inline-block; vertical-align: -2px; margin-right: 3px; }
+
+/* Stage 1 "Your set": pieces down the side, the 10 lines across. */
+.pgrid-wrap { overflow-x: auto; }
+.pgrid { border-collapse: collapse; font-size: 13px; }
+.pgrid th, .pgrid td { padding: 4px 3px; text-align: center; }
+.pgrid tbody th, .pgrid tfoot th { text-align: left; padding-right: 8px; white-space: nowrap; }
+.pgrid thead th { vertical-align: bottom; }
+.pgrid thead .skill-icon { display: block; margin: 0 auto 2px; width: 20px; height: 20px; }
+.pgrid .ph { display: block; font-size: 10px; font-weight: 600; color: var(--muted); }
+.pgrid tbody tr { border-top: 1px solid var(--line); }
+.pgrid td:nth-child(6) { border-left: 1px dashed var(--line); } /* the one-each lines start here */
+.mark { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: 12px; line-height: 1; }
+.mark.on { color: var(--holo-ink); background: linear-gradient(135deg, color-mix(in srgb, var(--holo) 45%, transparent), color-mix(in srgb, var(--holo-hi) 40%, transparent)); border: 1px solid var(--holo); }
+.mark.extra { color: var(--muted); border: 1px dashed var(--line); font-weight: 700; }
+.pgrid .other { color: var(--muted); }
+.pgrid tfoot td { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 12px; }
+.pgrid tfoot .done { color: var(--holo-ink); }
+.pgrid tfoot .short { color: var(--muted); }
+.pgrid tfoot tr { border-top: 2px solid var(--line); }

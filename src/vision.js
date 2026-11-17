@@ -383,7 +383,18 @@ export function readCells(img, grid) {
       for (let y = b.y + 12; y < b.y + 36; y += 2) for (let x = b.x + 8; x < b.x + 34; x += 2) vals.push(lum(d, (y * w + x) * 4));
       const mean = vals.reduce((a, v) => a + v, 0) / vals.length;
       const spread = Math.sqrt(vals.reduce((a, v) => a + (v - mean) ** 2, 0) / vals.length);
-      out.push(spread < 6 ? "empty" : bar / n > 0.6 ? "lines" : "item");
+      // The "+ SLOT" button (inventories not fully unlocked) is a solid bright-blue square: not an item.
+      let blue = 0;
+      let m = 0;
+      for (let y = b.y + 6; y < b.y + 36; y += 3) {
+        for (let x = b.x + 6; x < b.x + 36; x += 3) {
+          const i = (y * w + x) * 4;
+          const c3 = hsv(d[i], d[i + 1], d[i + 2]);
+          m++;
+          if (c3.s > 0.45 && c3.v > 0.55 && c3.h >= 175 && c3.h <= 215) blue++;
+        }
+      }
+      out.push(spread < 6 || blue / m > 0.5 ? "empty" : bar / n > 0.6 ? "lines" : "item");
     }
   }
   return out;
