@@ -407,7 +407,7 @@ button .sock-word { border: 0; padding: 0; margin: 0; background: none; }
 .slot-empty { display: inline-flex; align-items: center; justify-content: center; min-width: 96px; height: 28px; padding: 0 10px; border: 1.5px dashed var(--line); border-radius: 999px; color: var(--muted); font-size: 12px; }
 .slot-empty.sock-empty { min-width: 0; height: 28px; }
 .keyboard { max-width: none; }
-.krow { grid-template-columns: repeat(11, minmax(0, 1fr)) !important; }
+.krow { grid-template-columns: repeat(10, minmax(0, 1fr)) !important; }
 .keycap.blank { opacity: 0.35; border-style: dashed; background: transparent; min-height: 58px; visibility: visible; }
 .keycap.blank kbd { color: var(--muted); }
 .add-dialog .add-row { align-items: center; }

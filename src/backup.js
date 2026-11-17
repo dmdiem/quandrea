@@ -5,8 +5,8 @@
 // else (unknown fields, odd strings, HTML, "__proto__" tricks, huge inputs) is dropped. The page
 // never runs or displays text from a backup as-is.
 
-import { SLOTS, TARGETS, FILLERS, OTHER } from "./parse.js?v=31";
-import { CLASSES, CLASS_OPTIONS } from "./solver.js?v=31";
+import { SLOTS, TARGETS, FILLERS, OTHER } from "./parse.js?v=32";
+import { CLASSES, CLASS_OPTIONS } from "./solver.js?v=32";
 
 const PREFIX = "QUANDREA1:";
 export const MAX_CODE = 500_000; // characters; a full bag is far smaller

@@ -1,10 +1,10 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=31";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=31";
-import { KEYS, KEY_TO } from "./keys.js?v=31";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=31";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=31";
+import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=32";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=32";
+import { KEYS, KEY_TO } from "./keys.js?v=32";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=32";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=32";
 
 const KEY = "quandrea.v1";
 // Looks in the pop-out window too, while Simpling Dumpling's readout lives there.
@@ -647,7 +647,7 @@ document.addEventListener("keydown", (e) => {
   if (!form) return;
   const click = (sel) => form.querySelector(sel)?.click();
   if (e.key === "Escape") return; // the pop-up closes itself
-  if (e.key === "Enter") click("#add");
+  if (e.key === "Enter" || e.key === " " || e.key === "Tab") click("#add"); // Space and Tab add too
   else if (e.key === "Backspace") {
     if (draft.sockets.length) draft.sockets.pop();
     else draft.lines.pop();
@@ -667,13 +667,13 @@ document.addEventListener("keydown", (e) => {
   e.preventDefault();
 });
 
-// The form is drawn as a keyboard: each key sits where it is on a real keyboard (top row: sockets
-// then slot; home row: lines; Z row: the rest), and lights up when pressed.
+// The form is drawn as keyboard rows, one per kind (equipment, jewels, skills, the rest), each key
+// where it sits on a real keyboard. Keys light up when pressed.
 const KEYBOARD = [
-  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
-  ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
-  ["A", "S", "D", "F", "G", "H", "J", "K", "L", ";", "'"],
-  ["Z", "X", "C", "V", "B", "N", "M", ",", ".", "/"],
+  ["1", "2", "3", "4", "5", "6"],
+  ["Q", "W", "E", "R", "T", "Y"],
+  ["A", "S", "D", "F", "G", "H", "J", "K", "L", ";"],
+  ["Z", "X", "C", "V"],
 ];
 const KEY_SHORT = { leap: "Leap", wh: "White Hole", reg: "Registry", atk: "ATT", crit: "Crit", warrior: "Warrior", mage: "Mage", archer: "Bowman", thief: "Thief", pirate: "Pirate", boss: "Boss", ied: "IED", dmg: "Damage", [OTHER]: "Other" };
 
@@ -707,7 +707,7 @@ function addForm() {
   const lineSlots = [0, 1, 2].map((i) => (draft.lines[i] ? `<button class="unpick" data-unline="${i}" title="Remove">${chip(draft.lines[i])}</button>` : `<span class="slot-empty">line ${i + 1}</span>`)).join("");
   const sockSlots = [0, 1, 2].map((i) => (draft.sockets[i] ? `<button class="unpick" data-unsock="${i}" title="Remove">${jewel(draft.sockets[i])}<span>${SOCK_WORD[draft.sockets[i]]}</span></button>` : `<span class="slot-empty sock-empty"></span>`)).join("");
   return `<div class="add-manual" id="add-manual">
-    <div class="row spread"><h2>Add manually</h2><span class="muted small add-keys"><kbd>Enter</kbd> adds and goes to the next · <kbd>Backspace</kbd> undoes · <kbd>Esc</kbd> closes</span><button class="ghost" id="add-close" aria-label="Close">×</button></div>
+    <div class="row spread"><h2>Add manually</h2><span class="muted small add-keys"><kbd>Enter</kbd> / <kbd>Space</kbd> / <kbd>Tab</kbd> adds and goes to the next · <kbd>Backspace</kbd> undoes · <kbd>Esc</kbd> closes</span><button class="ghost" id="add-close" aria-label="Close">×</button></div>
     <div class="add-preview">
       <div class="pv-slot">${slotIcon(draft.slot)}<div><b>${draft.slot}</b><span class="muted small">${where}</span></div></div>
       <div class="pv-socks">${sockSlots}</div>

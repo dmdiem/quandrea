@@ -221,3 +221,13 @@ test("a prismatic droplet with only a sliver of gold is still prismatic", () => 
   // A grey droplet: dark outline, pale blue middle.
   assert.equal(socketColor(Array(16).fill("dark"), { dark: 21, blue: 15 }), "grey");
 });
+
+test("a socket touching the item's picture is still read", () => {
+  // The glove's art pokes up next to the red droplet (like Supercharged Gloves).
+  const img = screen();
+  const t = tooltip(img, 100, 100, 320, 560, ["grey", "red"]);
+  const ix = t.x + 15, iy = t.y + 120;
+  fill(img, ix + 34, iy + 10, 11, 4, [20, 20, 24]);
+  const icon = findIcon(img, { x: t.x, y: t.y, width: t.w, height: t.h });
+  assert.deepEqual(findSockets(img, icon), ["grey", "red"]);
+});

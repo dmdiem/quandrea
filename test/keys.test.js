@@ -11,10 +11,9 @@ test("every slot, line and socket has its own key", () => {
   assert.deepEqual(Object.keys(KEYS.sock).sort(), ["blue", "green", "grey", "prismatic", "purple", "red"]);
 });
 
-test("the keys you asked for", () => {
-  assert.deepEqual(["q", "w", "e", "r", "t"].map((k) => KEY_TO[k][1]), ["blue", "green", "purple", "red", "grey"]);
-  assert.deepEqual(["a", "s", "d", "f"].map((k) => KEY_TO[k][1]), ["leap", "wh", "reg", "atk"]);
-  assert.deepEqual(["y", "u", "i", "o", "p"].map((k) => KEY_TO[k][1]), ["Hat", "Top", "Bottom", "Cape", "Shoes"]);
-  assert.deepEqual(KEY_TO.h, ["slot", "Gloves"]);
-  assert.deepEqual(KEY_TO["1"], ["sock", "prismatic"]);
+test("one row per kind: equipment, jewels, skills", () => {
+  assert.deepEqual(["1", "2", "3", "4", "5", "6"].map((k) => KEY_TO[k]), [["slot", "Hat"], ["slot", "Top"], ["slot", "Bottom"], ["slot", "Cape"], ["slot", "Gloves"], ["slot", "Shoes"]]);
+  assert.deepEqual(["q", "w", "e", "r", "t", "y"].map((k) => KEY_TO[k][1]), ["blue", "green", "purple", "red", "grey", "prismatic"]);
+  assert.deepEqual(["a", "s", "d", "f", "g", "h", "j", "k", "l", ";"].map((k) => KEY_TO[k][1]), ["leap", "wh", "reg", "atk", "crit", "warrior", "mage", "archer", "thief", "pirate"]);
+  assert.deepEqual(["z", "x", "c", "v"].map((k) => KEY_TO[k][1]), ["boss", "ied", "dmg", "other"]);
 });

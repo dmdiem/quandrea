@@ -209,9 +209,34 @@ export function findSockets(img, icon) {
   }
   const minW = Math.max(3, Math.round(icon.size * 0.06));
   const maxW = Math.round(icon.size * 0.24);
+  // A droplet touching the item's picture clumps together with its art. The art only pokes into
+  // the bottom of the strip, so its columns have few marked pixels: drop those and split again.
+  for (let i = 0; i < groups.length; i++) {
+    const g = groups[i];
+    if (g.end - g.start + 1 <= maxW) continue;
+    let most = 0;
+    for (let x = g.start; x <= g.end; x++) most = Math.max(most, colHits.get(x) ?? 0);
+    const parts = [];
+    for (let x = g.start; x <= g.end; x++) {
+      if ((colHits.get(x) ?? 0) < most * 0.4) continue;
+      const p = parts.at(-1);
+      if (p && x - p.end <= 2) p.end = x;
+      else parts.push({ start: x, end: x });
+    }
+    if (parts.length && !(parts.length === 1 && parts[0].start === g.start && parts[0].end === g.end)) {
+      groups.splice(i, 1, ...parts);
+      i += parts.length - 1;
+    }
+  }
   const sockets = [];
+  // A droplet reaches up into the top half of the strip; item art only pokes into the bottom.
+  const yMid = y0 + Math.floor((y1 - y0) / 2);
+  const reachesTop = (g) => {
+    for (let y = y0; y <= yMid; y++) for (let x = g.start; x <= g.end; x++) if (at(x, y)) return true;
+    return false;
+  };
   for (const g of groups) {
-    if (g.end - g.start + 1 < minW || g.end - g.start + 1 > maxW) continue;
+    if (g.end - g.start + 1 < minW || g.end - g.start + 1 > maxW || !reachesTop(g)) continue;
     // The outline: the outermost marked pixel on each side of every row.
     const outline = [];
     for (let y = y0; y <= y1; y++) {
