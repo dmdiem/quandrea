@@ -33,13 +33,19 @@ the right ones.
 **Stage 2: sockets.** A second set with good sockets: 4 pieces with prismatic + stat + stat and 2 with
 stat + stat + stat. Orbs move your 18 lines onto them.
 
-| Class | Stat sockets |
-|---|---|
-| Magician | blue |
-| Warrior | red, green, grey |
-| Bowman | red, green, grey, purple |
-| Thief | purple, grey |
-| Pirate | STR: red, green, grey · DEX: red, green, grey, purple |
+Each socket colour takes one class's gems, which roll that class's stats plus Attack Power (or
+Magic ATT for blue). You can use any colour whose gems roll your stats:
+
+| Class | Main / secondary stat | Socket colours you can use |
+|---|---|---|
+| Magician | INT / LUK | blue only (the only Magic ATT gems) |
+| Warrior | STR / DEX | red, green, grey |
+| Bowman | DEX / STR | red, green, grey, purple |
+| Thief | LUK / DEX or STR | purple, grey |
+| Pirate (STR) | STR / DEX | red, green, grey |
+| Pirate (DEX) | DEX / STR | red, green, grey, purple |
+
+Gem colours by class: red = Warrior, green = Bowman, grey = Pirate, purple = Thief, blue = Magician.
 
 ### Verdicts
 
