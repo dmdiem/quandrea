@@ -1,20 +1,20 @@
 :root {
   --bg: #eef1f6; --surface: #ffffff; --sunk: #e4e9f1; --fg: #182033; --muted: #5b6679; --line: #d0d7e3;
   --accent: #6d4ae8; --on-accent: #ffffff; --keep: #1f8a4c; --backup: #2f7fc1; --donor: #a96a12; --trash: #c0392b;
-  --holo: #1aa9c2; --holo-ink: #0a5866; --holo-hi: #d8f7fc;
+  --holo: #1aa9c2; --holo-ink: #0a5866; --holo-hi: #d8f7fc; --act: #b26a00;
   --s-blue: #3b7fe0; --s-red: #d94848; --s-green: #36a85a; --s-purple: #9a52d6; --s-grey: #7d8796;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #11161f; --surface: #1a212d; --sunk: #141a24; --fg: #e8ecf4; --muted: #98a3b6; --line: #2d3748;
-    --accent: #9d84ff; --on-accent: #120d24; --holo: #5fdcef; --holo-ink: #c8f6fc; --holo-hi: #1d4a55; --keep: #4cc38a; --backup: #6cb4f0; --donor: #e0b050; --trash: #f07b6e;
+    --accent: #9d84ff; --on-accent: #120d24; --holo: #5fdcef; --holo-ink: #c8f6fc; --holo-hi: #1d4a55; --act: #f2b33d; --keep: #4cc38a; --backup: #6cb4f0; --donor: #e0b050; --trash: #f07b6e;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
     --bg: #11161f; --surface: #1a212d; --sunk: #141a24; --fg: #e8ecf4; --muted: #98a3b6; --line: #2d3748;
-    --accent: #9d84ff; --on-accent: #120d24; --holo: #5fdcef; --holo-ink: #c8f6fc; --holo-hi: #1d4a55; --keep: #4cc38a; --backup: #6cb4f0; --donor: #e0b050; --trash: #f07b6e;
+    --accent: #9d84ff; --on-accent: #120d24; --holo: #5fdcef; --holo-ink: #c8f6fc; --holo-hi: #1d4a55; --act: #f2b33d; --keep: #4cc38a; --backup: #6cb4f0; --donor: #e0b050; --trash: #f07b6e;
     color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -115,8 +115,10 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .gear td { padding: 4px 6px 4px 0; }
 .act-cell { text-align: right; white-space: nowrap; }
 .act { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line); }
-.act.on { color: var(--keep); border-color: color-mix(in srgb, var(--keep) 50%, transparent); }
-.act.swap { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+/* Status colours stay clear of the class colours (red, blue, green, purple, grey): amber = act on it,
+   neutral = already fine. */
+.act.on { color: var(--fg); border-color: color-mix(in srgb, var(--muted) 60%, transparent); }
+.act.swap { color: var(--act); border-color: color-mix(in srgb, var(--act) 60%, transparent); background: color-mix(in srgb, var(--act) 10%, transparent); }
 .small { font-size: 12px; }
 .compare { font-size: 14px; color: var(--muted); }
 .compare b { color: var(--fg); font-size: 16px; }
