@@ -7,9 +7,9 @@
 <meta name="description" content="Reads your MapleStory Quanah gear while you hover it, and tells you what to keep for 18/18 hologram lines and the best sockets.">
 <link rel="icon" href="logo.png">
 <script>try { const t = localStorage.getItem("quandrea.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=14">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
-<script type="module" src="src/app.js?v=12"></script>
+<script type="module" src="src/app.js?v=14"></script>
 </head>
 <body>
 <div class="wrap">
@@ -73,10 +73,10 @@
   <section class="panel" id="items"></section>
   </div>
 
-  <!-- Hologram lines and Jewel sockets stay pinned on the left while the rest scrolls (see .side-col in style.css). -->
+  <!-- Hologram lines (with sockets) stays pinned on the left while the rest scrolls (see .side-col in style.css). -->
   <aside class="side-col">
+    <div class="side-tabs" id="side-tabs" role="tablist" aria-label="Which set"></div>
     <section class="panel" id="lines"></section>
-    <section class="panel" id="sockets"></section>
   </aside>
   </div>
 

@@ -55,13 +55,17 @@ Magic ATT for blue). You can use any colour whose gems roll your stats:
 
 Gem colours by class: red = Warrior, green = Bowman, grey = Pirate, purple = Thief, blue = Magician.
 
-### Verdicts
+### Keep or trash
 
-- **Keep**: part of the best combo you can make from your gear (see below).
-- **Backup**: all three lines are on the list, but the best combo already has a better piece for that slot.
-- **Socket donor**: the best socket piece for its slot so far (for the socket set). It needs a prismatic socket
-  or at least 2 usable ones; one usable socket isn't worth an Orb.
-- **Trash**: none of the above, or gear for another class.
+Every item in your bag gets one of two verdicts:
+
+- **Keep**, with the reason: it's in your **best combo**, it's a **spare 3-line** piece (all three
+  lines on the list), or it has the best sockets for its slot (**for sockets**: a prismatic, or at
+  least 2 usable ones, to fuse your lines onto).
+- **Trash**: none of those, or gear for another class.
+
+The right side of the page lists them under **Trash · Keep · All**, each with a little grid showing its spot on the
+Inventory map. The left side shows your sets: **Equipped now** and the **Best combo**.
 
 The **best combo** is the best outfit you can make from everything you've scanned, worn or in your
 bag: one piece per slot, covering as many of the 18 lines as possible (ties go to more lines in

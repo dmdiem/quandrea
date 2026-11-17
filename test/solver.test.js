@@ -129,7 +129,7 @@ test("five classes; the main stat decides the socket colours", () => {
   assert.deepEqual(classOption("Pirate (DEX)").colours, ["red", "green", "grey", "purple"]);
 });
 
-test("verdicts: keep, backup, donor, trash, and other classes' gear", () => {
+test("verdicts: keep (best, spare, sockets) or trash, and other classes' gear", () => {
   const set = PERFECT.map((it) => ({ ...it }));
   const spare = item("Top", "leap wh reg"); // also perfect lines, but the set already has a top
   const prism = item("Top", "other", { sockets: ["prismatic", "blue", "blue"] });
@@ -138,9 +138,10 @@ test("verdicts: keep, backup, donor, trash, and other classes' gear", () => {
   const { res, verdicts: v } = verdicts([...set, spare, prism, junk, warrior]);
   assert.equal(res.score, 18);
   assert.equal(v[set[0].id].verdict, "keep");
-  assert.equal(v[spare.id].verdict, "backup");
-  assert.equal(v[prism.id].verdict, "donor");
-  assert.match(v[prism.id].why, /^Best top sockets so far: 3 of 3 usable/);
+  assert.deepEqual([v[spare.id].verdict, v[spare.id].reason], ["keep", "spare"]);
+  assert.deepEqual([v[prism.id].verdict, v[prism.id].reason], ["keep", "sockets"]);
+  assert.match(v[prism.id].why, /^For its sockets: 3 of 3 usable/);
+  assert.equal(v[set[0].id].reason, "best");
   assert.equal(v[junk.id].verdict, "trash");
   assert.deepEqual(v[warrior.id], { verdict: "trash", why: "Warrior gear" });
 });

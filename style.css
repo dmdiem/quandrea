@@ -43,7 +43,7 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .seg button { border: 0; border-radius: 0; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.layout { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.layout { display: grid; grid-template-columns: minmax(0, 640px) minmax(0, 1fr); gap: 16px; align-items: start; }
 .main-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; grid-column: 2; grid-row: 1; }
 /* The hologram lines panel is pinned on the left while the rest scrolls on the right. */
 .side-col { position: sticky; top: 12px; min-width: 0; grid-column: 1; grid-row: 1; display: flex; flex-direction: column; gap: 16px; max-height: calc(100vh - 24px); overflow-y: auto; }
@@ -240,3 +240,43 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .equip-btn { font-size: 11px; padding: 2px 8px; }
 .inv-item[draggable="true"] { cursor: grab; }
 .slot.drop-hover { outline: 2px dashed var(--keep); }
+
+/* Left column tabs: Equipped now | Best combo */
+.side-tabs { display: flex; gap: 4px; position: sticky; top: 0; z-index: 2; background: var(--bg); padding-bottom: 2px; }
+.side-tabs button { flex: 1; padding: 9px 12px; font-weight: 700; border-radius: 10px 10px 0 0; border: 1px solid var(--line); border-bottom: 3px solid transparent; background: var(--sunk); color: var(--muted); }
+.side-tabs button[aria-selected="true"] { background: var(--surface); color: var(--fg); border-bottom-color: var(--accent); }
+.side-tabs button:disabled { opacity: 0.5; cursor: default; }
+.loc { font-size: 11px; padding: 1px 7px; margin-left: 4px; border-radius: 6px; white-space: nowrap; color: var(--muted); }
+.loc:hover { color: var(--fg); border-color: var(--accent); }
+button.cell { padding: 0; font: inherit; cursor: pointer; }
+button.cell:hover { outline: 2px solid var(--accent); }
+
+/* Sockets inside Lines per piece */
+.pgrid .sock-cell { white-space: nowrap; text-align: left; padding-left: 8px; border-left: 1px dashed var(--line); }
+.pgrid .sock-cell .tag { margin-left: 4px; }
+.pgrid .sock-cell .jewel { height: 16px; }
+.pgrid th, .pgrid td { padding: 4px 2px; }
+.pgrid .sock-h { padding-left: 8px; text-align: left; }
+.fuse { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.fuse-list { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.fuse-item { display: inline-flex; align-items: center; gap: 2px; }
+.th-act { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 3px; }
+.th-act .act, .th-act .loc { font-size: 10px; padding: 1px 6px; margin: 0; }
+.pgrid tbody th { vertical-align: top; padding-top: 6px; }
+
+/* Keep or trash list */
+.gear-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.gear-tabs button { font-weight: 700; padding: 6px 14px; border-radius: 999px; }
+.gear-tabs button .n { font-variant-numeric: tabular-nums; opacity: 0.8; margin-left: 4px; }
+.gear-tabs button[aria-selected="true"].gt-trash { background: var(--trash); color: var(--surface); border-color: transparent; }
+.gear-tabs button[aria-selected="true"].gt-keep { background: var(--keep); color: var(--surface); border-color: transparent; }
+.gear-tabs button[aria-selected="true"].gt-all { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+.bag-list { display: flex; flex-direction: column; }
+.bag-row { display: grid; grid-template-columns: auto 92px minmax(0, 1fr) auto; grid-template-areas: "badge slot lines socks" ". why why act"; gap: 2px 10px; align-items: center; padding: 7px 4px; border-top: 1px solid var(--line); cursor: grab; }
+.bag-row .badge { grid-area: badge; }
+.bag-row .bag-slot { grid-area: slot; font-weight: 600; font-size: 13px; white-space: nowrap; }
+.bag-row .lines { grid-area: lines; }
+.bag-row .socks { grid-area: socks; }
+.bag-row .bag-why { grid-area: why; }
+.bag-row .bag-act { grid-area: act; display: inline-flex; gap: 4px; align-items: center; justify-self: end; }
+.bag-row.sel { background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 8px; }

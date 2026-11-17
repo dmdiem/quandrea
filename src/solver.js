@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS, OTHER } from "./parse.js?v=12";
+import { SLOTS, TARGETS, OTHER } from "./parse.js?v=14";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const NEED = TARGETS.map((t) => t.need);
@@ -194,10 +194,11 @@ export function socketSet(items, classId) {
 }
 
 // ---- Keep or trash ----
-// keep:   in the best combo (the best set)
-// backup: every line is on the list (a perfect 3L, or near it) - worth holding while you farm
-// donor:  in the socket set, so your lines can be fused onto it
-// trash:  none of the above (also anything for another class)
+// Two verdicts, each with a reason:
+//   keep  - "best":    in the best combo you can make
+//         - "spare":   all 3 lines are on the list (worth holding while you farm)
+//         - "sockets": the best socket piece for its slot, to fuse your lines onto
+//   trash - anything else, and gear for another class
 export function verdicts(items, { classId = "Magician", mode = "endgame" } = {}) {
   const { classes } = classOption(classId);
   const mine = items.filter((it) => classes.includes(it.cls));
@@ -208,9 +209,9 @@ export function verdicts(items, { classId = "Magician", mode = "endgame" } = {})
   const out = {};
   for (const it of items) {
     if (!classes.includes(it.cls)) out[it.id] = { verdict: "trash", why: `${it.cls ?? "Another class"} gear` };
-    else if (picked.has(it.id)) out[it.id] = { verdict: "keep", why: "Part of the best combo you can make" };
-    else if (it.lines.length === 3 && useful(it) === 3) out[it.id] = { verdict: "backup", why: "All 3 lines are on the list" };
-    else if (donor.has(it.id)) out[it.id] = { verdict: "donor", why: `Best ${it.slot.toLowerCase()} sockets so far: ${socketNote(it, classId)}` };
+    else if (picked.has(it.id)) out[it.id] = { verdict: "keep", reason: "best", why: "In your best combo" };
+    else if (it.lines.length === 3 && useful(it) === 3) out[it.id] = { verdict: "keep", reason: "spare", why: "Spare 3-line piece: all 3 lines are on the list" };
+    else if (donor.has(it.id)) out[it.id] = { verdict: "keep", reason: "sockets", why: `For its sockets: ${socketNote(it, classId)}` };
     else out[it.id] = { verdict: "trash", why: useful(it) ? "The best combo has a better piece for this slot" : "No lines on the list" };
   }
   return { res, sockets, verdicts: out };
