@@ -1,8 +1,9 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=23";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=23";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=23";
+import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=25";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=25";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=25";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=25";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -25,12 +26,16 @@ let confirmClear = false;
 function load() {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY));
-    if (raw && Array.isArray(raw.items)) state = { ...state, ...raw };
-    // Older saves had the sockets inside each item's key (slot|class|lines|sockets|stats).
-    for (const it of state.items) {
-      const parts = String(it.key ?? "").split("|");
-      if (parts.length === 5) it.key = [parts[0], parts[1], parts[2], parts[4]].join("|");
-    }
+    if (!raw || !Array.isArray(raw.items)) return;
+    // Saved data goes through the same checks as an imported backup.
+    const ui = {
+      cb: raw.cb === true,
+      simple: raw.simple === true,
+      view: ["equipped", "best"].includes(raw.view) ? raw.view : undefined,
+      gearTab: ["trash", "keep", "all"].includes(raw.gearTab) ? raw.gearTab : undefined,
+      scale: typeof raw.scale === "number" && raw.scale > 0.3 && raw.scale < 3 ? raw.scale : undefined,
+    };
+    state = { ...state, ...ui, ...sanitize(raw) };
   } catch {}
 }
 function save() {
@@ -59,6 +64,19 @@ function setStatus(text, on = false) {
   $("status").classList.toggle("on", on);
 }
 
+// The text reader (Tesseract), loaded the first time it's needed. Returns false if it can't load.
+async function ensureWorker() {
+  if (worker) return true;
+  setStatus("Loading the text reader (first time only)…", true);
+  try {
+    worker = await Tesseract.createWorker("eng");
+    return true;
+  } catch (err) {
+    setStatus(`Couldn't load the text reader: ${err.message}`);
+    return false;
+  }
+}
+
 async function startShare() {
   if (!navigator.mediaDevices?.getDisplayMedia) {
     setStatus("This browser can't share a screen. Use Chrome, Edge or Firefox on a computer.");
@@ -77,15 +95,7 @@ async function startShare() {
   $("simple-share").hidden = true;
   $("stop").hidden = false;
   $("save-frame").hidden = false;
-  setStatus("Loading the text reader (first time only)…", true);
-  if (!worker) {
-    try {
-      worker = await Tesseract.createWorker("eng");
-    } catch (err) {
-      setStatus(`Couldn't load the text reader: ${err.message}`);
-      return;
-    }
-  }
+  if (!(await ensureWorker())) return;
   setStatus("Watching. Hover an item in your inventory.", true);
   timer = setInterval(tick, 400);
 }
@@ -115,19 +125,41 @@ function cropImage(img, a) {
 // its socket colours as big words.
 const SIMPLE_WORD = { red: "Red", green: "Green", blue: "Blue", purple: "Purple", grey: "Grey", prismatic: "Prismatic" };
 let simpleLast = "";
-function showSimple(img, boxes, sc) {
+// Simpling Dumpling mode only names socket colours, so it doesn't rely on the game-size guess from
+// the inventory: it tries a few sizes for finding the tooltips (keeping the one that last worked)
+// and reads the droplets straight off the screen, at whatever size they're drawn.
+const SIMPLE_SIZES = [1, 0.9, 0.8, 0.7, 0.63, 1.25, 1.5];
+let simpleSize = null;
+function readSimple(img) {
+  const at = (s) => {
+    const reads = findTooltips(img, s).slice(0, 2).map((box) => findSockets(img, findIcon(img, box)));
+    return { s, reads, n: reads.filter((r) => r.length).length };
+  };
+  if (simpleSize) {
+    const r = at(simpleSize);
+    if (r.n && r.n === r.reads.length) return r.reads;
+  }
+  let best = null;
+  for (const s of SIMPLE_SIZES) {
+    const r = at(s);
+    if (!best || r.n > best.n) best = r;
+    if (r.n === 2) break;
+  }
+  if (best.n) simpleSize = best.s;
+  return best.reads;
+}
+
+function showSimple(img) {
   const { colours } = classOption(state.classId);
-  const read = boxes.slice(0, 2).map((box) => {
-    const part = sc === 1 ? { img, box } : (() => {
-      const sub = resizeImage(cropImage(img, box), 1 / sc);
-      return { img: sub, box: { x: 0, y: 0, width: sub.width, height: sub.height } };
-    })();
-    return findSockets(part.img, findIcon(part.img, part.box));
-  });
-  const html = !read.length
-    ? `<p class="muted big-hint">Hover an item…</p>`
-    : read.map((list, i) => `<div class="simple-card"><span class="label">${read.length === 2 ? (i === 0 ? "Hovered item" : "Equipped") : "Item"}</span>
-        <div class="simple-words">${list.length ? list.map((c) => `<span class="simple-word"><span class="sock ${c}"></span>${SIMPLE_WORD[c] ?? c}${c === "prismatic" || colours.includes(c) ? ' <b title="Your class can use this colour">✓</b>' : ""}</span>`).join("") : `<span class="muted">couldn't see its sockets: hold still a moment</span>`}</div></div>`).join("");
+  const read = img ? readSimple(img) : [];
+  // Always the same two cards with three socket rows each, so nothing jumps as you hover around.
+  const card = (label, list) => `<div class="simple-card"><span class="label">${label}</span>
+        <div class="simple-words">${[0, 1, 2].map((k) => {
+          const c = list?.[k];
+          if (!c) return `<span class="simple-word empty">${k === 0 ? (list ? (list.length ? "" : "Hold still…") : "–") : ""}</span>`;
+          return `<span class="simple-word"><span class="sock ${c}"></span>${SIMPLE_WORD[c] ?? c}${c === "prismatic" || colours.includes(c) ? ' <b title="Your class can use this colour">✓</b>' : ""}</span>`;
+        }).join("")}</div></div>`;
+  const html = card("Hovered item", read[0]) + card("Equipped", read[1]);
   if (html !== simpleLast) {
     simpleLast = html;
     $("simple-out").innerHTML = html;
@@ -158,6 +190,10 @@ async function tick() {
   frame.height = video.videoHeight;
   fctx.drawImage(video, 0, 0);
   const img = fctx.getImageData(0, 0, frame.width, frame.height);
+  if (state.simple) {
+    showSimple(img);
+    return;
+  }
   const scale = state.scale ?? 1;
   // The stillness check looks at the top of each tooltip only (title, picture, stats), so game
   // animation under a small tooltip doesn't keep resetting it.
@@ -168,7 +204,6 @@ async function tick() {
   prev = now;
   // Forget read tooltips once they close, so hovering that item again reads it again.
   done = done.filter((d) => now.some((t) => same(d, t)));
-  if (!now.length && state.simple) showSimple(img, [], scale);
   if (!now.length) {
     // Nothing covering the inventory: find the grid (and the screen's scale, once) and refresh the map.
     const nimg = normalFrame(img);
@@ -198,11 +233,6 @@ async function tick() {
     }
     return;
   }
-  // Simple mode: no text reading, just name the socket colours of the tooltips on screen.
-  if (state.simple) {
-    showSimple(img, now.map((t) => t.box), scale);
-    return;
-  }
   // Equipped tooltips we've already read are skipped on sight.
   const known = (t) => equippedSeen.some((p) => profileDiff(p, t.profile) < SAME);
   for (const t of now) if (!done.some((d) => same(d, t)) && known(t)) done.push(t);
@@ -229,9 +259,8 @@ async function tick() {
   }
 }
 
-async function readTooltip(img, box) {
+async function readTooltip(img, box, { sc = state.scale ?? 1, inGrid = grid, pasted = false } = {}) {
   setStatus("Reading…", true);
-  const sc = state.scale ?? 1;
   const top = Math.max(0, box.y - Math.round(40 * sc)); // the title can sit just above where the border is found
   const area = { x: box.x, y: top, width: box.width, height: box.y + box.height - top };
   // Read the tooltip at normal size: when the game is shown smaller or bigger, resize just this part.
@@ -263,14 +292,14 @@ async function readTooltip(img, box) {
   }
   // Which inventory cell it came from: the one under the game's glove cursor.
   const at = parsed.equipped ? null : findCursor(img, box);
-  const cell = at && cellAt(grid, at.x / sc, at.y / sc);
+  const cell = at && inGrid && cellAt(inGrid, at.x / sc, at.y / sc);
   const before = state.items.length;
   const item = remember({ ...parsed, sockets, cell: cell ? `${cell.c},${cell.r}` : null });
   const known = state.items.length === before;
   if (!parsed.equipped) last = { id: item.id };
   const what = `${parsed.equipped ? "your equipped " : ""}${item.slot.toLowerCase()}`;
   if (!item.sockets.length) setStatus(`Read ${what}, but couldn't see its sockets. Every piece has at least one: hover it again with nothing bright behind the item picture.`, true);
-  else setStatus(known ? `Already have this ${what} ✓  Hover the next one.` : `Read ${what} ✓  Hover the next one.`, true);
+  else setStatus(`${known ? "Already have this" : "Read"} ${what} ✓  ${pasted ? "Paste the next one." : "Hover the next one."}`, true);
   render();
   return parsed;
 }
@@ -707,8 +736,46 @@ document.addEventListener("toggle", (e) => {
   } catch {}
 }, true);
 
-// Paste a screenshot of the inventory window (Win+Shift+S, then Ctrl+V here) to fill in the map.
+// Paste a screenshot (Win+Shift+S, then Ctrl+V here): an item's tooltip is read like a hover; the
+// inventory window fills in the map. Works without sharing the screen.
+const TIP_W = 321; // a tooltip's width at normal game size
+async function pasteTooltips(img) {
+  // The game size is unknown in a screenshot. A tooltip found by its border has its real width,
+  // which gives the size (a normal one is 321px wide); a box found by its title is just drawn at
+  // the size we tried, so it says nothing. Try a few sizes and use the border widths.
+  const sizes = [];
+  for (const s of SIMPLE_SIZES)
+    for (const b of findTooltips(img, s)) {
+      const k = b.width / TIP_W;
+      if (b.width !== Math.round(TIP_W * s) && k > 0.55 && k < 1.6 && b.height > b.width) sizes.push(k);
+    }
+  sizes.sort((x, y) => x - y);
+  let found = null;
+  for (const s of [sizes[Math.floor(sizes.length / 2)], state.scale ?? 1, ...SIMPLE_SIZES].filter(Boolean)) {
+    const boxes = findTooltips(img, s).filter((b) => findIcon(img, b));
+    if (boxes.length > (found?.boxes.length ?? 0)) found = { s, boxes };
+    if (found) break;
+  }
+  // Just the tooltip snipped, edges and all: the whole picture is the tooltip.
+  if (!found && img.width < img.height && img.width > 150) {
+    const box = { x: 0, y: 0, width: img.width, height: img.height };
+    if (findIcon(img, box)) found = { s: img.width / TIP_W, boxes: [box] };
+  }
+  if (!found) return false;
+  if (!(await ensureWorker())) return true;
+  // If the inventory is in the same screenshot, the cursor says which cell the item is in.
+  const inGrid = findGrid(found.s === 1 ? img : resizeImage(img, 1 / found.s));
+  for (const box of found.boxes.slice(0, 2)) await readTooltip(img, box, { sc: found.s, inGrid, pasted: true });
+  return true;
+}
+
 document.addEventListener("paste", async (e) => {
+  const text = e.clipboardData?.getData("text/plain");
+  if (looksLikeBackup(text)) {
+    e.preventDefault();
+    loadBackup(text);
+    return;
+  }
   const file = [...(e.clipboardData?.items ?? [])].find((i) => i.type.startsWith("image/"))?.getAsFile();
   if (!file) return;
   e.preventDefault();
@@ -720,20 +787,85 @@ document.addEventListener("paste", async (e) => {
     const ctx = c.getContext("2d", { willReadFrequently: true });
     ctx.drawImage(bmp, 0, 0);
     const img = ctx.getImageData(0, 0, c.width, c.height);
+    if (state.simple) {
+      showSimple(img);
+      $("simple-status").textContent = "Read from your screenshot.";
+      return;
+    }
+    if (busy) return;
+    busy = true;
+    try {
+      if (await pasteTooltips(img)) return;
+    } finally {
+      busy = false;
+    }
     const g = findGrid(img);
     if (!g) {
-      setStatus(findGrid(img, 4) ? "That's the small inventory view (4 columns). Expand it with the + at its top right, then take the screenshot again." : "Couldn't find the inventory in that screenshot. Capture the whole Equip tab, expanded so all 16 columns show.", Boolean(stream));
+      setStatus(findGrid(img, 4) ? "That's the small inventory view (4 columns). Expand it with the + at its top right, then take the screenshot again." : "Couldn't find an item tooltip or the inventory in that screenshot. Snip the whole tooltip (or the whole Equip tab, expanded to 16 columns).", true);
       return;
     }
     state.cells = readCells(img, g);
     state.mapPinned = true;
     save();
     render();
-    setStatus("Map filled in from your screenshot ✓ The live scan won't change it; Reset map to read it live again.", Boolean(stream));
+    setStatus("Map filled in from your screenshot ✓ The live scan won't change it; Reset map to read it live again.", true);
   } catch (err) {
-    setStatus(`Couldn't read that image: ${err.message}`, Boolean(stream));
+    setStatus(`Couldn't read that image: ${err.message}`, true);
   }
 });
+
+// ---------- backups ----------
+// "Copy backup" puts a code on the clipboard; paste it back here (Ctrl+V or "Load backup") to restore.
+// The code is checked and rebuilt from known values only (see backup.js).
+function flash(btn, text) {
+  const was = btn.dataset.label ?? (btn.dataset.label = btn.textContent);
+  btn.textContent = text;
+  setTimeout(() => (btn.textContent = was), 2500);
+}
+
+$("backup-copy").addEventListener("click", async () => {
+  const code = exportCode(state);
+  try {
+    await navigator.clipboard.writeText(code);
+    flash($("backup-copy"), "Copied ✓");
+    setStatus(`Backup of ${state.items.length} item${state.items.length === 1 ? "" : "s"} copied. Keep it somewhere safe (a note, a Discord DM to yourself); paste it here any time to restore.`, Boolean(stream));
+  } catch {
+    // No clipboard access: save it as a file instead.
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([code], { type: "text/plain" }));
+    a.download = `quandrea-backup-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    flash($("backup-copy"), "Saved as a file");
+  }
+});
+
+$("backup-load").addEventListener("click", async () => {
+  let text = null;
+  try {
+    text = await navigator.clipboard.readText();
+  } catch {}
+  if (looksLikeBackup(text)) loadBackup(text);
+  else setStatus("Copy your backup code, then press Ctrl+V on this page (or click Load backup again).", Boolean(stream));
+});
+
+function loadBackup(text) {
+  let data;
+  try {
+    data = importCode(text);
+  } catch (err) {
+    setStatus(err.message, Boolean(stream));
+    return;
+  }
+  const n = data.items.length;
+  if (state.items.length && !confirm(`Replace your ${state.items.length} scanned item${state.items.length === 1 ? "" : "s"} with the ${n} in this backup?`)) return;
+  state = { ...state, ...data };
+  equippedSeen = [];
+  save();
+  render();
+  flash($("backup-load"), "Loaded ✓");
+  setStatus(`Loaded ${n} item${n === 1 ? "" : "s"} from your backup ✓`, Boolean(stream));
+}
 
 // Light, dark, or follow the computer ("auto"). Remembered in this browser.
 function setTheme(pick) {
@@ -749,6 +881,9 @@ function showTheme() {
   for (const b of document.querySelectorAll("[data-theme-pick]")) b.setAttribute("aria-pressed", String(b.dataset.themePick === now));
 }
 showTheme();
+
+// Firefox's screen capture often sends games black or frozen: point people to Chrome or Edge.
+if (/firefox/i.test(navigator.userAgent)) for (const el of document.querySelectorAll(".browser-note")) el.hidden = false;
 
 // The version is the ?v=N this script was loaded with (see index.html), so it always matches.
 $("version").textContent = `Quandrea v${new URL(import.meta.url).searchParams.get("v") ?? "dev"}`;

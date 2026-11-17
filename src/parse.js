@@ -35,11 +35,11 @@ const SKILL = [
   ["leap", /mens[il1]\w*\s*le[a-z]?p/i],
   ["wh", /\bw[a-z1]{2,4}\s*h[a-z0][l1I]e\b/i],
   ["reg", /reg[il1]str/i],
-  ["atk", /magic\s*at+\w?\s*enh|attack\s*power\s*[&8]/i],
+  ["atk", /magic\s*at+\w?\s*enh|attack\s*[a-z]?ower\s*[&8]|[&8]\s*ma\w{1,3}\s*at+\w?\s*enh/i],
   ["crit", /crit\w*\s*da\w*\s*enh/i],
   ["warrior", /warr?[il1]or\s*att/i],
   ["mage", /mag[il1]c[il1]an\s*att/i],
-  ["archer", /bowm[a-z]n\s*att/i],
+  ["archer", /bowm[a-z]n\s*att|\bbow[a-z]{0,3}\s+a[a-z]?\s+[a-z]{2,6}\s*[=s]?kil/i],
   ["thief", /th[il1]ef\s*att/i],
   ["pirate", /p[il1]rate\s*att/i],
 ];

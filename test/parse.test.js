@@ -78,3 +78,12 @@ test("small or blurry text: a named skill counts even when its Lv. +1 is mangled
   assert.equal(lineKey("wine Hole Jv +1"), "wh");
   assert.deepEqual(skillLines("Required Job Magician\nMagic ATT +9\nAttack Power +9"), []);
 });
+
+test("reads hologram lines from small, blurry text", () => {
+  // OCR of a tooltip from a game drawn at about 87% size.
+  const text = `Libae's Supercharged Hat (Magician)
+[Hologram] Bows ar stack =kil Levs| oy +1
+(Hologram) attack Fower & Mago aTT Enhancement
+Skill v.41`;
+  assert.deepEqual(parseTooltip(text).lines.sort(), ["archer", "atk"]);
+});

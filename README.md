@@ -10,7 +10,8 @@ saved only in that browser.
 
 ## Using it
 
-1. Open the site and click **Share MapleStory window**. Pick the game window (or the whole screen).
+1. Open the site **in Chrome or Edge** (Firefox's screen sharing often sends games black or frozen)
+   and click **Share MapleStory window**. Pick the game window (or the whole screen).
 2. Open your inventory's Equip tab, **expanded** so all 16 columns show (the small view only shows 4),
    with nothing hovered: the **Inventory map** copies it, with
    dashed cells for items that have hologram lines (the grey bar on top) and hatched ones to skip.
@@ -19,11 +20,18 @@ saved only in that browser.
 3. Hover each dashed item and wait for the ✓, about a second each. The map ticks the cell under the
    game's cursor and colours it by verdict; click a cell to see its lines and sockets.
 4. Hover one item per slot so it also reads the "Currently Equipped" box next to it.
-5. Don't move or sort items while scanning. When you're done, throw out what's marked **Trash**.
+5. No live scan? Snip an item's tooltip (Win+Shift+S) and press Ctrl+V on the page: it's read like a hover.
+   Show the game at full size (largest resolution that fits, window not shrunk); tiny text reads poorly.
+6. Don't move or sort items while scanning. When you're done, throw out what's marked **Trash**.
 
 **Simpling Dumpling mode** (button at the top) is a simple screen for colour-blind players: share
 the game, hover an item, and its socket colours show up as big words, with ✓ on the ones your class
 can use. There's also a **Colour-blind friendly** switch for the full page.
+
+**Copy backup** puts a code of your scanned items and map on the clipboard; paste it back on the
+page (Ctrl+V, or **Load backup**) to restore it, in another browser or after clearing your data. A
+backup is checked before it's loaded: only known slots, classes, lines, sockets and cells are kept,
+and everything else in it is thrown away.
 
 Pick your class at the top (pirates also pick STR or DEX). It decides which gear is yours and
 which socket colours you can use.

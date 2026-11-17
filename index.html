@@ -7,9 +7,9 @@
 <meta name="description" content="Reads your MapleStory Quanah gear while you hover it, and tells you what to keep for 18/18 hologram lines and the best sockets.">
 <link rel="icon" href="logo.png">
 <script>try { const t = localStorage.getItem("quandrea.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
-<link rel="stylesheet" href="style.css?v=23">
+<link rel="stylesheet" href="style.css?v=25">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
-<script type="module" src="src/app.js?v=23"></script>
+<script type="module" src="src/app.js?v=25"></script>
 </head>
 <body>
 <div class="wrap">
@@ -33,6 +33,8 @@
         <button id="mode-early" data-mode="early">Any 3 lines</button>
       </div>
       <button id="clear" class="ghost" hidden title="Clears every scanned item, your equipped pieces and the map">Start over</button>
+      <button id="backup-copy" class="ghost" title="Copies a backup code of your scanned items and map to the clipboard">Copy backup</button>
+      <button id="backup-load" class="ghost" title="Restore from a backup code: copy it, then click here or press Ctrl+V on the page">Load backup</button>
       <button id="simple-toggle" class="ghost" title="Simpling Dumpling mode: a simple screen for colour-blind players that names the socket colours of whatever you hover">Simpling Dumpling mode</button>
       <button id="cb-toggle" class="ghost" title="Adds letters to sockets and symbols to the map so nothing depends on colour">Colour-blind friendly</button>
       <div class="seg" role="group" aria-label="Theme">
@@ -47,6 +49,7 @@
   <section class="panel simple" id="simple" hidden>
     <div class="row spread"><div><h2>Simpling Dumpling mode</h2><p class="muted small">Jewel colours for colour-blind players: no charts, just the socket colours as big words.</p></div><button id="simple-share" class="primary">Share MapleStory window</button></div>
     <p class="muted">Hover an item in the game. Its socket colours appear here as words. ✓ marks a colour your class can use (prismatic always can).</p>
+    <p class="browser-note" hidden>This works best in <b>Chrome</b> or <b>Edge</b>: Firefox's screen sharing often sends games black or frozen.</p>
     <p id="simple-status" class="status">Not watching yet.</p>
     <div id="simple-out" class="simple-out"></div>
   </section>
@@ -62,6 +65,7 @@
         <button id="stop" class="ghost" hidden>Stop</button>
       </div>
     </div>
+    <p class="browser-note" hidden>The scanner works best in <b>Chrome</b> or <b>Edge</b>: Firefox's screen sharing often sends games black or frozen. Pasting a screenshot of your inventory (Ctrl+V) still works here.</p>
     <p id="status" class="status">Not watching yet.</p>
     <div id="last"></div>
     <details class="help">
@@ -76,7 +80,9 @@
       <p class="label">Tips for a clean scan</p>
       <ul class="tips">
         <li><b>Run MapleStory windowed</b> (or borderless), not exclusive fullscreen. If the share preview stays blank or spinning, that's why: switch to windowed, or share your <b>Entire screen</b> instead.</li>
-        <li><b>Firefox:</b> sharing just the MapleStory window can come through black for games. Share your <b>Entire screen</b> instead; the scanner finds the inventory anywhere on it. If you're unsure what it sees, click <b>Save what the scanner sees</b> while sharing.</li>
+        <li><b>No live scan? Paste instead.</b> Hover an item in the game, snip its tooltip (Win+Shift+S), then press Ctrl+V on this page. It's read just like a hover. Snip the inventory too if you want the map to tick its cell.</li>
+        <li><b>Show the game at full size.</b> Tooltip text is tiny: pick the largest resolution that fits your screen and don't shrink the game window. Below about 90% size the text gets too blurry to read reliably (socket colours still work).</li>
+        <li><b>Use Chrome or Edge.</b> Firefox's screen sharing often sends games black, frozen or half-drawn, so the scanner sees nothing. Pasting a screenshot of your inventory works in any browser.</li>
         <li><b>Share the MapleStory window</b>, not the browser. The browser can sit on top of the game (one monitor is fine), but <b>don't minimise the game</b>: a minimised window stops sending pictures.</li>
         <li>On one monitor, the easiest setup is the game on one half and this page on the other (Windows key + ← / →).</li>
         <li>Keep the inventory <b>expanded</b> (16 columns) and on plain background if you can; very bright scenery behind a tooltip makes it harder to read.</li>

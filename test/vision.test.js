@@ -37,6 +37,8 @@ function tooltip(img, x, y, w, h, sockets = []) {
         const col = c === "prismatic" ? (dx < 0 ? [220, 60, 50] : [230, 200, 60]) : ring[c];
         img.data.set(edge ? [...col, 255] : [80, 70, 110, 255], ((iy + 5 + r) * img.width + cx + 6 + dx) * 4);
       }
+      // class droplets have a dark outline just inside the coloured one, like in the game
+      if (c !== "prismatic" && half > 1) for (const dx of [-half + 1, half - 1]) img.data.set([30, 30, 40, 255], ((iy + 5 + r) * img.width + cx + 6 + dx) * 4);
     }
   });
   return { x, y, w, h };
@@ -207,4 +209,15 @@ test("real screenshots: sockets on every icon", { skip: !SHOTS }, () => {
     const img = { width: b.readUInt32LE(0), height: b.readUInt32LE(4), data: new Uint8ClampedArray(b.buffer, b.byteOffset + 8) };
     assert.equal(findSockets(img, findIcon(img)).join(" "), want, n);
   }
+});
+
+test("a prismatic droplet with only a sliver of gold is still prismatic", () => {
+  // From a small game window: purple outline, blue middle, one pixel of gold, no dark outline.
+  const outline = Array(14).fill("purple").concat(["blue", "blue", "yellow"]);
+  assert.equal(socketColor(outline, { purple: 54, blue: 24, yellow: 1 }), "prismatic");
+  // A real purple droplet: dark outline inside, a few blue-ish pixels.
+  assert.equal(socketColor(outline, { purple: 116, blue: 10, dark: 21 }), "purple");
+  assert.equal(socketColor(Array(16).fill("purple"), { purple: 97, blue: 4, dark: 4 }), "purple");
+  // A grey droplet: dark outline, pale blue middle.
+  assert.equal(socketColor(Array(16).fill("dark"), { dark: 21, blue: 15 }), "grey");
 });

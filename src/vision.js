@@ -226,17 +226,33 @@ export function findSockets(img, icon) {
       }
       if (l) outline.push(l, r);
     }
-    if (outline.length >= 8) sockets.push(socketColor(outline));
+    if (outline.length < 8) continue;
+    // Every pixel of the droplet, for the prismatic check in socketColor.
+    const all = {};
+    for (let y = y0; y <= y1; y++)
+      for (let x = g.start; x <= g.end; x++) {
+        const c = at(x, y);
+        if (c) all[c] = (all[c] ?? 0) + 1;
+      }
+    sockets.push(socketColor(outline, all));
   }
   return sockets;
 }
 
 // A droplet's colour from its outline pixels: its hue, gold (prismatic), or dark (grey).
-export function socketColor(px) {
+// `all` (optional) counts every pixel of the droplet: a prismatic one has no dark outline and mixes
+// colours (purple and blue, red and gold), while every class droplet has a dark outline. At small
+// game sizes the prismatic's gold is only a pixel wide, so this catches it when the gold doesn't.
+export function socketColor(px, all) {
   const counts = {};
   for (const p of px) counts[p] = (counts[p] ?? 0) + 1;
   const hues = ["red", "green", "blue", "purple", "yellow"].filter((k) => counts[k]);
   const coloured = hues.reduce((n, k) => n + counts[k], 0);
+  if (all) {
+    const total = Object.values(all).reduce((a, b) => a + b, 0);
+    const big = ["red", "green", "blue", "purple", "yellow"].filter((k) => (all[k] ?? 0) >= total * 0.15);
+    if ((all.dark ?? 0) <= total * 0.1 && big.length >= 2) return "prismatic";
+  }
   if (coloured < px.length * 0.35) return "grey";
   // No class socket has yellow in it; the prismatic one's top half is red and gold.
   if ((counts.yellow ?? 0) >= coloured * 0.18) return "prismatic";

@@ -334,13 +334,20 @@ button.cell:hover { outline: 2px solid var(--accent); }
 #cb-toggle[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: transparent; }
 
 /* Simple mode: socket colours as big words */
-.simple-out { display: flex; flex-wrap: wrap; gap: 16px; }
-.simple-card { flex: 1 1 280px; display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 12px; background: var(--sunk); }
-.simple-words { display: flex; flex-wrap: wrap; gap: 10px; }
-.simple-word { display: inline-flex; align-items: center; gap: 12px; font-size: 34px; font-weight: 800; letter-spacing: 0.01em; padding: 4px 14px; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); }
+.simple-out { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.simple-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 12px; background: var(--sunk); }
+.simple-words { display: grid; grid-template-rows: repeat(3, 64px); gap: 10px; }
+.simple-word { display: flex; align-items: center; box-sizing: border-box; height: 64px; white-space: nowrap; overflow: hidden; gap: 12px; font-size: 34px; font-weight: 800; letter-spacing: 0.01em; padding: 4px 14px; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); }
+.simple-word.empty { border-style: dashed; background: transparent; color: var(--muted); font-size: 18px; font-weight: 500; }
 .simple-word b { color: var(--fg); }
 .big-hint { font-size: 22px; }
 #simple-toggle[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: transparent; }
 .simple-word .sock { width: 28px; height: 28px; transform: rotate(45deg) scale(0.9); border-width: 2px; margin: 0 4px 0 2px; }
 .sock-word .sock { transform: rotate(45deg) scale(0.8); margin-right: 1px; }
 .bag-row .socks { align-self: flex-start; }
+.browser-note { margin: 0; padding: 8px 12px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--act) 60%, transparent); background: color-mix(in srgb, var(--act) 10%, transparent); font-size: 13px; }
+/* The pinned left panel scrolls without a bar always showing: a thin one appears while you point at it. */
+.side-col { scrollbar-width: none; scrollbar-gutter: auto; }
+.side-col:hover { scrollbar-width: thin; }
+.side-col::-webkit-scrollbar { width: 0; }
+.side-col:hover::-webkit-scrollbar { width: 6px; }
