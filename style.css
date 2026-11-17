@@ -20,7 +20,7 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, "Segoe UI", sans-serif; padding: 20px 16px 48px; }
-.wrap { max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.wrap { max-width: 1680px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 header { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; align-items: flex-end; }
 .brand { display: flex; gap: 14px; align-items: center; }
 .logo { width: 116px; height: auto; image-rendering: pixelated; flex: none; }
@@ -43,7 +43,7 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .seg button { border: 0; border-radius: 0; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.layout { display: grid; grid-template-columns: minmax(0, 640px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.layout { display: grid; grid-template-columns: clamp(380px, 34vw, 560px) minmax(0, 1fr); gap: 16px; align-items: start; }
 .main-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; grid-column: 2; grid-row: 1; }
 /* The hologram lines panel is pinned on the left while the rest scrolls on the right. */
 .side-col { position: sticky; top: 12px; min-width: 0; grid-column: 1; grid-row: 1; display: flex; flex-direction: column; gap: 16px; max-height: calc(100vh - 24px); overflow-y: auto; }
@@ -99,7 +99,8 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .pip.on { background: linear-gradient(135deg, var(--holo), var(--holo-hi) 140%); border-color: var(--holo); }
 /* The 18-line board: one box per line you need; filled boxes say which piece gives it. */
 .board { display: grid; grid-template-columns: minmax(0, 1fr); gap: 5px; }
-.board .cell, .cell-gap { width: 72px; }
+.board .cell, .cell-gap { width: 38px; height: 28px; }
+.board .cell .slot-icon { width: 18px; height: 18px; margin: 0; color: var(--holo-ink); }
 .board-row:nth-child(5) { margin-top: 6px; } /* the one-each lines start here */
 .board-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .board-name { font-size: 13px; }
@@ -232,7 +233,7 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .slot-icon { height: 18px; width: 18px; vertical-align: -4px; margin-right: 5px; color: var(--muted); flex: none; }
 .slot-head h3 .slot-icon { height: 20px; width: 20px; vertical-align: -5px; }
 .pgrid tbody th .slot-icon { height: 16px; width: 16px; vertical-align: -3px; }
-.cell .slot-icon { height: 13px; width: 13px; margin-right: 3px; color: currentColor; }
+
 .cell { gap: 0; display: flex; align-items: center; justify-content: center; }
 .tap .slot-icon { height: 15px; width: 15px; margin-right: 2px; }
 .hunt-row .slot-icon { height: 18px; margin-right: 0; }
@@ -301,3 +302,4 @@ button.cell:hover { outline: 2px solid var(--accent); }
 .slot .bag-row .socks { justify-self: start; }
 .slot .bag-row .bag-slot { display: none; }
 .slot .bag-row .badge { justify-self: start; align-self: start; margin-top: 2px; }
+.hunt .times { font-size: 12px; font-weight: 700; color: var(--muted); margin: 0 6px 0 -2px; }

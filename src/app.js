@@ -1,8 +1,8 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=17";
-import { verdicts, solve, onePieceAway, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=17";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=17";
+import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=18";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=18";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=18";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -277,11 +277,11 @@ function miniLoc(cell) {
 
 // Simple line icons for each slot, drawn in the text colour.
 const SLOT_PATHS = {
-  Hat: '<path d="M7 17.5 12 4l5 13.5"/><path d="M3.5 18.5c3 1.6 14 1.6 17 0"/><path d="M9.2 12h5.6"/>',
+  Hat: '<path d="M2.5 13.5c1.8 3 5.4 4.4 9.5 4.4s7.7-1.4 9.5-4.4"/><path d="M7 15.6c0-4.4.7-8.3 2.2-9.2.9-.5 1.8.5 2.8.5s1.9-1 2.8-.5c1.5.9 2.2 4.8 2.2 9.2"/><path d="M7.2 12.6h9.6"/>',
   Top: '<path d="M9 4 4.5 6.5l1.8 4 2.2-1V20h7V9.5l2.2 1 1.8-4L15 4c-.6 1.6-1.6 2.5-3 2.5S9.6 5.6 9 4z"/>',
   Bottom: '<path d="M7 4h10l1.2 16h-4.4L12 10.5 10.2 20H5.8z"/><path d="M7 7h10"/>',
   Cape: '<path d="M8.5 4h7l1.2 3.2C19 11 20 15.5 20 20H4c0-4.5 1-9 3.3-12.8z"/><path d="M8.5 4c.8 2 2 3 3.5 3s2.7-1 3.5-3"/>',
-  Gloves: '<path d="M8 20v-4.5L5.3 11.8c-.9-1.2.6-2.8 1.9-1.8L8 10.7V6.2a1.4 1.4 0 0 1 2.8 0V5.4a1.4 1.4 0 0 1 2.8 0v.8a1.4 1.4 0 0 1 2.8 0V14c0 3.3-1.2 6-3.4 6z"/><path d="M8 17h8"/>',
+  Gloves: '<path d="M8 21v-4.2L5.1 13.4c-.8-1 .4-2.5 1.6-1.7L8 12.7V6.4a1 1 0 0 1 2 0V11V4.6a1 1 0 0 1 2 0V11V5.2a1 1 0 0 1 2 0V11V7a1 1 0 0 1 2 0v8.4c0 3-1.2 5.6-3.4 5.6z"/><path d="M8 18.4h7.4"/>',
   Shoes: '<path d="M7 4h5v8.5l5 2.4A3 3 0 0 1 19 17.6V19H6z"/><path d="M6 16h13"/><path d="M12 7h-5"/>',
 };
 const slotIcon = (slot) => `<svg class="slot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SLOT_PATHS[slot] ?? ""}</svg>`;
@@ -345,18 +345,17 @@ function render() {
   for (const s of SLOTS) shown.picks[s]?.lines.forEach((k, j) => shown.counted[s][j] && from[k].push(s));
   const cell = (k, slot) => {
     const at = slot && shown.picks[slot]?.cell;
-    const inner = `${slot ? slotIcon(slot) : ""}<span class="cell-slot">${slot ?? "missing"}</span>`;
-    return at ? `<button class="cell k-${k} on" data-cell="${at}" title="In your bag: show it on the Inventory map">${inner}</button>` : `<div class="cell k-${k} ${slot ? "on" : ""}">${inner}</div>`;
+    // Just the slot's icon (its name on hover); an empty dashed box when the line is missing.
+    const inner = slot ? slotIcon(slot) : "";
+    const tip = slot ? `${slot}${at ? " (in your bag: click to show it on the Inventory map)" : ""}` : "Missing";
+    return at ? `<button class="cell k-${k} on" data-cell="${at}" title="${tip}" aria-label="${tip}">${inner}</button>` : `<div class="cell k-${k} ${slot ? "on" : ""}" title="${tip}" aria-label="${tip}">${inner}</div>`;
   };
-  // "One more piece finishes it": what a single drop in each slot would need (right-lines mode only).
-  const mine = state.items.filter((it) => option.classes.includes(it.cls));
-  const hunt = !early && res.score < TOTAL && mine.length ? onePieceAway(mine) : [];
-  // Only shown when a single piece really can finish 18/18.
-  const huntBox = early || res.score >= TOTAL || !hunt.length ? ""
-    : `<div class="hunt"><span class="label">One more piece finishes it</span>${hunt.length
-      ? hunt.slice(0, 6).map((o) => `<div class="hunt-row">${slotIcon(o.slot)}<b>${o.slot}</b> with ${o.need.map((k) => chip(k)).join(" + ")}${o.need.length < 3 ? `<span class="muted small">(+ any ${o.need.length === 2 ? "3rd line" : "2 more lines"})</span>` : ""}</div>`).join("")
-        + (hunt.length > 6 ? `<span class="muted small">and ${hunt.length - 6} more options</span>` : "")
-      : `<span class="muted small">More than one piece away: keep scanning and farming 3-line pieces.</span>`}</div>`;
+  // Still missing: the lines this set doesn't have yet, with how many of each.
+  const gaps = early ? [] : missing(shown);
+  const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
+  const huntBox = !gaps.length ? ""
+    : `<div class="hunt"><span class="label">Still missing · ${gaps.length} line${gaps.length === 1 ? "" : "s"}</span>
+      <div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}</div></div>`;
   // What the collapsed piece list says, so a swap is never hidden.
   const swaps = SLOTS.filter((s) => res.picks[s] && !res.picks[s].equipped);
   const swapNote = !seenAny ? "Show pieces" : swaps.length ? `Show pieces · ${swaps.length} to swap: ${swaps.join(", ")}` : "Show pieces · all of them are equipped";
