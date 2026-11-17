@@ -394,3 +394,23 @@ button .sock-word { border: 0; padding: 0; margin: 0; background: none; }
 .keycap:disabled { opacity: 0.32; cursor: default; }
 .keycap.hit { transform: translateY(2px); border-bottom-width: 1px; box-shadow: 0 0 14px 2px color-mix(in srgb, var(--accent) 65%, transparent); }
 @media (max-width: 640px) { .keycap { min-height: 48px; font-size: 9px; } .keycap span:not(.sock) { display: none; } }
+/* Add manually pop-up: the piece being built, then a full keyboard */
+.add-preview { display: grid; grid-template-columns: 170px auto minmax(0, 1fr); gap: 14px; align-items: center; margin: 12px 0 14px; padding: 12px 14px; border-radius: 12px; background: var(--sunk); }
+.pv-slot { display: flex; gap: 10px; align-items: center; }
+.pv-slot .slot-icon { width: 34px; height: 34px; color: var(--fg); }
+.pv-slot b { display: block; font-size: 18px; }
+.pv-lines, .pv-socks { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.pv-socks { flex-direction: column; align-items: stretch; min-width: 120px; }
+.add-preview .unpick { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; font-weight: 700; }
+.add-preview .pv-socks .unpick { padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+.add-preview .chip { font-size: 13px; padding: 4px 10px; }
+.slot-empty { display: inline-flex; align-items: center; justify-content: center; min-width: 96px; height: 28px; padding: 0 10px; border: 1.5px dashed var(--line); border-radius: 999px; color: var(--muted); font-size: 12px; }
+.slot-empty.sock-empty { min-width: 0; height: 28px; }
+.keyboard { max-width: none; }
+.krow { grid-template-columns: repeat(11, minmax(0, 1fr)) !important; }
+.keycap.blank { opacity: 0.35; border-style: dashed; background: transparent; min-height: 58px; visibility: visible; }
+.keycap.blank kbd { color: var(--muted); }
+.add-dialog .add-row { align-items: center; }
+.add-dialog .add-keys { margin: 0 12px 0 auto; }
+.add-dialog .add-msg { margin-right: auto; }
+@media (max-width: 700px) { .add-preview { grid-template-columns: 1fr; } .pv-socks { flex-direction: row; } }

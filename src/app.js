@@ -1,10 +1,10 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=30";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=30";
-import { KEYS, KEY_TO } from "./keys.js?v=30";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=30";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=30";
+import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=31";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=31";
+import { KEYS, KEY_TO } from "./keys.js?v=31";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=31";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=31";
 
 const KEY = "quandrea.v1";
 // Looks in the pop-out window too, while Simpling Dumpling's readout lives there.
@@ -670,10 +670,10 @@ document.addEventListener("keydown", (e) => {
 // The form is drawn as a keyboard: each key sits where it is on a real keyboard (top row: sockets
 // then slot; home row: lines; Z row: the rest), and lights up when pressed.
 const KEYBOARD = [
-  ["1"],
+  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
   ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
   ["A", "S", "D", "F", "G", "H", "J", "K", "L", ";", "'"],
-  ["Z", "X", "C", "V"],
+  ["Z", "X", "C", "V", "B", "N", "M", ",", ".", "/"],
 ];
 const KEY_SHORT = { leap: "Leap", wh: "White Hole", reg: "Registry", atk: "ATT", crit: "Crit", warrior: "Warrior", mage: "Mage", archer: "Bowman", thief: "Thief", pirate: "Pirate", boss: "Boss", ied: "IED", dmg: "Damage", [OTHER]: "Other" };
 
@@ -682,7 +682,8 @@ function addForm() {
   const fullSocks = draft.sockets.length >= 3;
   const count = (list, v) => list.filter((x) => x === v).length;
   const keycap = (key) => {
-    if (!key) return `<span class="keycap gap"></span>`;
+    // Keys that do nothing are drawn faintly, so the rows still look like your keyboard.
+    if (!KEY_TO[key.toLowerCase()]) return `<span class="keycap blank"><kbd>${key}</kbd></span>`;
     const [kind, v] = KEY_TO[key.toLowerCase()];
     let on, off, label, cls = `keycap kind-${kind}`;
     if (kind === "slot") {
@@ -701,15 +702,19 @@ function addForm() {
     }
     return `<button class="${cls}${on ? " on" : ""}" data-pick-${kind}="${v}" data-key="${key}"${off ? " disabled" : ""} title="${key}"><kbd>${key}</kbd>${label}</button>`;
   };
-  const where = draft.cell ? ` · for Row ${+draft.cell.split(",")[1] + 1} · Col ${+draft.cell.split(",")[0] + 1} <button class="loc" id="add-nocell" title="Don't tie it to a map cell">×</button>` : "";
+  const where = draft.cell ? `Row ${+draft.cell.split(",")[1] + 1} · Col ${+draft.cell.split(",")[0] + 1} <button class="loc" id="add-nocell" title="Don't tie it to a map cell">×</button>` : "not on the map";
+  // The piece as it's being built: three line spaces and three socket spaces that fill in as you type.
+  const lineSlots = [0, 1, 2].map((i) => (draft.lines[i] ? `<button class="unpick" data-unline="${i}" title="Remove">${chip(draft.lines[i])}</button>` : `<span class="slot-empty">line ${i + 1}</span>`)).join("");
+  const sockSlots = [0, 1, 2].map((i) => (draft.sockets[i] ? `<button class="unpick" data-unsock="${i}" title="Remove">${jewel(draft.sockets[i])}<span>${SOCK_WORD[draft.sockets[i]]}</span></button>` : `<span class="slot-empty sock-empty"></span>`)).join("");
   return `<div class="add-manual" id="add-manual">
-    <div class="row spread"><h2>Add manually<span class="muted small">${where}</span></h2><button class="ghost" id="add-close" aria-label="Close">×</button></div>
-    <p class="muted small add-keys">Type it or tap it. Top row: sockets (${draft.sockets.length}/3) and slot · home row: lines (${draft.lines.length}/3). <kbd>Enter</kbd> adds, <kbd>Backspace</kbd> undoes, <kbd>Esc</kbd> closes.</p>
+    <div class="row spread"><h2>Add manually</h2><span class="muted small add-keys"><kbd>Enter</kbd> adds and goes to the next · <kbd>Backspace</kbd> undoes · <kbd>Esc</kbd> closes</span><button class="ghost" id="add-close" aria-label="Close">×</button></div>
+    <div class="add-preview">
+      <div class="pv-slot">${slotIcon(draft.slot)}<div><b>${draft.slot}</b><span class="muted small">${where}</span></div></div>
+      <div class="pv-socks">${sockSlots}</div>
+      <div class="pv-lines">${lineSlots}</div>
+    </div>
     <div class="keyboard">${KEYBOARD.map((row, r) => `<div class="krow r${r}">${row.map(keycap).join("")}</div>`).join("")}</div>
     <div class="add-row">
-      <span class="draft"><b>${draft.slot}</b>
-        ${draft.lines.length ? draft.lines.map((k, i) => `<button class="unpick" data-unline="${i}" title="Remove">${chip(k)}</button>`).join("") : `<span class="muted">its lines</span>`}
-        ${draft.sockets.length ? draft.sockets.map((c, i) => `<button class="unpick" data-unsock="${i}" title="Remove">${jewel(c)}</button>`).join("") : `<span class="muted">· its sockets</span>`}</span>
       <span class="add-msg muted small">${addMsg}</span>
       ${draft.lines.length || draft.sockets.length ? `<button id="add-clear" class="ghost">Start over</button>` : ""}
       <button id="add" class="primary"${draft.sockets.length ? "" : " disabled"}>Add <kbd>Enter</kbd></button></div>
@@ -824,7 +829,7 @@ document.addEventListener("click", (e) => {
       return;
     }
     remember({ slot: draft.slot, cls: classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: false, stats: `hand-${Date.now()}`, cell: draft.cell ?? null });
-    addMsg = `Added ${draft.slot === "Shoes" || draft.slot === "Gloves" ? "" : "a "}${draft.slot.toLowerCase()}${draft.cell ? " to that cell" : ""} ✓`;
+    addMsg = `Added ${draft.slot === "Shoes" || draft.slot === "Gloves" ? "" : "a "}${draft.slot.toLowerCase()} ✓`;
     setStatus(addMsg, Boolean(stream));
     // Straight on to the next one. Started from a map cell: jump to the next cell with lines that
     // has nothing entered yet (left to right, top to bottom), or close when there are none left.

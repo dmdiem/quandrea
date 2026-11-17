@@ -2,7 +2,7 @@
 // with 1 above Q for prismatic) and the slot (Y U I O P, H for gloves); the home row picks lines
 // (A S D F the four big ones, G Crit, J K L ; ' the classes); Z X C V the lines that don't count.
 
-import { OTHER } from "./parse.js?v=30";
+import { OTHER } from "./parse.js?v=31";
 
 export const KEYS = {
   slot: { Hat: "Y", Top: "U", Bottom: "I", Cape: "O", Gloves: "H", Shoes: "P" },
