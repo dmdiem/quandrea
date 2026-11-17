@@ -1,8 +1,8 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=5";
-import { verdicts, solve, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=5";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, GRID } from "./vision.js?v=5";
+import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=6";
+import { verdicts, solve, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=6";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, GRID } from "./vision.js?v=6";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -204,7 +204,8 @@ const chip = (k, extraCopy = false) => chipHtml(k, extraCopy && k !== OTHER); //
 // The in-game hologram skill icon for each line (class lines use one skill of their pair).
 const icon = (k) => (k === OTHER ? "" : `<img class="skill-icon" src="icons/${k}.png" alt="">`);
 const chipHtml = (k, extra) => `<span class="chip k-${k}${extra ? " extra" : ""}"${extra ? ' title="Extra copy: still +1 to the skill, but a line you\'re missing would do more here"' : ""}>${icon(k)}${NAME[k]}${extra ? '<small>extra</small>' : ""}</span>`;
-const socks = (list) => `<span class="socks">${(list ?? []).map((c) => `<span class="sock ${c}" title="${c}"></span>`).join("")}</span>`;
+// Sockets drawn as the jewel that fits them (cropped from the game's jewel inventory).
+const socks = (list) => `<span class="socks">${(list ?? []).map((c) => `<img class="jewel" src="icons/jewels/${c}.png" alt="${c}" title="${c} socket">`).join("")}</span>`;
 const badge = (v) => `<span class="badge v-${v.verdict}" title="${v.why}">${VERDICT[v.verdict]}</span>`;
 const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("") : `<span class="muted">no lines</span>`);
 
@@ -253,20 +254,6 @@ function render() {
   const nowRes = solve(Object.values(worn).filter(Boolean), state.mode);
   const nowScore = state.mode === "early" ? nowRes.lines : nowRes.score;
   const seenAny = Object.values(worn).some(Boolean);
-  $("equipped").innerHTML = `
-    <div class="row spread"><h2>Currently equipped</h2>
-      ${seenAny ? `<span class="compare"><b>${nowScore}/${TOTAL}</b> now → <b>${state.mode === "early" ? res.lines : res.score}/${TOTAL}</b> with your best set</span>` : ""}</div>
-    ${seenAny ? "" : `<p class="muted">Hover any item and the scanner also reads the "Currently Equipped" box beside it. Do one item per slot to fill this in.</p>`}
-    <div class="eq-wrap"><table class="gear"><tbody>${SLOTS.map((s) => {
-      const it = worn[s];
-      const cells = it ? [0, 1, 2].map((j) => `<td>${it.lines[j] ? chip(it.lines[j], !nowRes.counted[s][j]) : `<span class="none">no line</span>`}</td>`).join("") : `<td colspan="3"><span class="none">not seen yet</span></td>`;
-      return `<tr><th>${s}</th>${cells}<td class="act-cell">${it ? socks(it.sockets) : ""}</td></tr>`;
-    }).join("")}</tbody></table>
-    <div class="tally">${TARGETS.map((t) => {
-      // Every copy you wear, so extras show (3/1 Mage); done once it reaches what the set needs.
-      const n = Object.values(worn).reduce((a, it) => a + (it ? it.lines.filter((k) => k === t.k).length : 0), 0);
-      return `<div class="tally-row ${n >= t.need ? "done" : ""}"><span class="tally-n">${n}/${t.need}</span>${icon(t.k)}<span>${t.name}</span></div>`;
-    }).join("")}</div></div>`;
 
   // Stage 1: lines. A board of the 18 lines (filled = which piece gives it), then the set itself.
   const early = state.mode === "early";
@@ -277,7 +264,9 @@ function render() {
   const anyWasted = SLOTS.some((s) => res.counted[s].includes(false));
   $("lines").innerHTML = `
     <div class="row spread"><h2>Stage 1 · ${early ? "18 lines" : "18/18 hologram lines"}</h2><span class="label">best set</span></div>
-    <div class="score"><span class="big">${head}</span><span class="muted">of ${TOTAL} ${early ? "lines" : "target lines"}${early ? ` · ${res.score} on the list` : ""}</span></div>
+    <div class="score"><span class="big">${head}</span><span class="muted">of ${TOTAL} ${early ? "lines" : "target lines"}${early ? ` · ${res.score} on the list` : ""}</span>
+      ${seenAny ? `<span class="compare">· you have <b>${nowScore}/${TOTAL}</b> on now</span>` : ""}</div>
+    ${seenAny ? "" : `<p class="muted small">Hover any item and the scanner also reads the "Currently Equipped" box beside it. Do one per slot to see what you have on now.</p>`}
     <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
       <div class="cells">${Array.from({ length: 3 }, (_, j) => (j < t.need ? cell(t.k, from[t.k][j]) : `<div class="cell-gap"></div>`)).join("")}</div></div>`).join("")}</div>
     <div class="set"><span class="label">Your set</span>
@@ -288,16 +277,18 @@ function render() {
           const wearing = state.items.find((x) => x.slot === s && x.equipped);
           const action = !it ? "" : it.equipped ? `<span class="act on">Wearing ✓</span>` : `<span class="act swap" title="${wearing ? "Equip this instead of what you have on" : "The scanner hasn't seen what you wear here"}">${wearing ? "Swap" : "Equip"}</span>`;
           if (!it) return `<tr><th>${s}</th><td colspan="${TARGETS.length + 1}" class="none">nothing scanned yet</td><td></td></tr>`;
-          const marks = TARGETS.map((t) => {
-            const idx = it.lines.map((k, j) => [k, j]).filter(([k]) => k === t.k);
+          const marks = (piece, counted) => TARGETS.map((t) => {
+            const idx = piece.lines.map((k, j) => [k, j]).filter(([k]) => k === t.k);
             if (!idx.length) return `<td></td>`;
-            const counts = idx.some(([, j]) => res.counted[s][j]);
+            const counts = idx.some(([, j]) => counted[j]);
             return `<td><span class="mark ${counts ? "on" : "extra"}" title="${counts ? t.name : `Extra ${t.name}: still +1 to the skill`}">${counts ? "●" : "+"}</span></td>`;
-          }).join("");
-          const other = it.lines.filter((k) => k === OTHER).length;
-          return `<tr><th>${s}</th>${marks}<td class="other">${other || ""}</td><td class="act-cell">${action}</td></tr>`;
+          }).join("") + `<td class="other">${piece.lines.filter((k) => k === OTHER).length || ""}</td>`;
+          // On a swap, what you wear now sits faded underneath, so the change is right there.
+          const nowRow = wearing && !it.equipped ? `<tr class="now-row"><th>now</th>${marks(wearing, nowRes.counted[s])}<td class="act-cell"><span class="tag">wearing</span></td></tr>` : "";
+          return `<tr><th>${s}</th>${marks(it, res.counted[s])}<td class="act-cell">${action}</td></tr>${nowRow}`;
         }).join("")}</tbody>
-        <tfoot><tr><th>Total</th>${TARGETS.map((t, i) => `<td class="${res.counts[i] >= t.need ? "done" : "short"}">${res.counts[i]}/${t.need}</td>`).join("")}<td></td><td></td></tr></tfoot>
+        <tfoot><tr><th>Total</th>${TARGETS.map((t, i) => `<td class="${res.counts[i] >= t.need ? "done" : "short"}">${res.counts[i]}/${t.need}</td>`).join("")}<td></td><td></td></tr>
+          ${seenAny ? `<tr class="now-row"><th>now</th>${TARGETS.map((t, i) => `<td>${nowRes.counts[i]}/${t.need}</td>`).join("")}<td></td><td></td></tr>` : ""}</tfoot>
       </table></div>
       ${anyWasted ? `<span class="muted small"><b>+</b> = an extra copy: not wasted (each skill goes up to Lv. 8), but a line you're missing, like White Hole or Leap, would do more there.</span>` : ""}
     </div>`;
@@ -371,6 +362,9 @@ $("class").addEventListener("change", (e) => {
   save();
   render();
 });
+
+// The version is the ?v=N this script was loaded with (see index.html), so it always matches.
+$("version").textContent = `Quandrea v${new URL(import.meta.url).searchParams.get("v") ?? "dev"}`;
 
 load();
 render();
