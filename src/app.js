@@ -1,8 +1,8 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=15";
-import { verdicts, solve, onePieceAway, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=15";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, GRID } from "./vision.js?v=15";
+import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=17";
+import { verdicts, solve, onePieceAway, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=17";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=17";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -75,6 +75,7 @@ async function startShare() {
   stream.getVideoTracks()[0].addEventListener("ended", stopShare);
   $("share").hidden = true;
   $("stop").hidden = false;
+  $("save-frame").hidden = false;
   setStatus("Loading the text reader (first time only)…", true);
   if (!worker) {
     try {
@@ -94,8 +95,36 @@ function stopShare() {
   stream = null;
   $("share").hidden = false;
   $("stop").hidden = true;
+  $("save-frame").hidden = true;
   setStatus("Stopped. Your items are saved in this browser.");
 }
+
+// A rectangle cut out of an image.
+function cropImage(img, a) {
+  const out = new Uint8ClampedArray(a.width * a.height * 4);
+  for (let y = 0; y < a.height; y++) {
+    const from = ((a.y + y) * img.width + a.x) * 4;
+    out.set(img.data.subarray(from, from + a.width * 4), y * a.width * 4);
+  }
+  return { width: a.width, height: a.height, data: out };
+}
+
+// The scale the game is drawn at in the shared window (1 = normal), found from the inventory grid.
+let lastCalibration = 0;
+const norm = document.createElement("canvas");
+const nctx = norm.getContext("2d", { willReadFrequently: true });
+// The frame resized back to normal scale, for reading the inventory grid.
+function normalFrame(img) {
+  const s = state.scale ?? 1;
+  if (s === 1) return img;
+  norm.width = Math.round(frame.width / s);
+  norm.height = Math.round(frame.height / s);
+  nctx.imageSmoothingQuality = "high";
+  nctx.drawImage(frame, 0, 0, norm.width, norm.height);
+  return nctx.getImageData(0, 0, norm.width, norm.height);
+}
+// Equipped tooltips already read: recognised on sight and skipped, so the hovered item gets read.
+let equippedSeen = [];
 
 async function tick() {
   if (busy || !video.videoWidth) return;
@@ -103,7 +132,8 @@ async function tick() {
   frame.height = video.videoHeight;
   fctx.drawImage(video, 0, 0);
   const img = fctx.getImageData(0, 0, frame.width, frame.height);
-  const now = findTooltips(img).map((box) => ({ box, profile: textProfile(img, box) }));
+  const scale = state.scale ?? 1;
+  const now = findTooltips(img, scale).map((box) => ({ box, profile: textProfile(img, box) }));
   const same = (a, b) => near(a.box, b.box) && profileDiff(a.profile, b.profile) < SAME;
   // A tooltip counts as still when it matches one from the last frame (it fades in, the mouse moves).
   for (const t of now) t.still = (prev.find((p) => same(p, t))?.still ?? 0) + 1;
@@ -111,25 +141,44 @@ async function tick() {
   // Forget read tooltips once they close, so hovering that item again reads it again.
   done = done.filter((d) => now.some((t) => same(d, t)));
   if (!now.length) {
-    // Nothing covering the inventory: refresh the map of what's in each cell.
-    const g = findGrid(img);
+    // Nothing covering the inventory: find the grid (and the screen's scale, once) and refresh the map.
+    const nimg = normalFrame(img);
+    let g = findGrid(nimg);
+    if (!g && Date.now() - lastCalibration > 5000) {
+      lastCalibration = Date.now();
+      setStatus("Working out your game window's size…", true);
+      const s2 = findScale(img);
+      if (s2) {
+        state.scale = s2;
+        save();
+        g = findGrid(normalFrame(img));
+        setStatus(s2 === 1 ? "Watching. Hover an item in your inventory." : `Found your inventory (game shown at ${Math.round(s2 * 100)}% size). Hover an item.`, true);
+      } else setStatus("Watching. Open your inventory's Equip tab (expanded) so the map can find it.", true);
+    }
     if (g) {
       grid = g;
       // A pasted screenshot pins the map: keep tracking where the grid is, but don't overwrite it.
-      const cells = state.mapPinned ? state.cells : readCells(img, g);
+      const cells = state.mapPinned ? state.cells : readCells(normalFrame(img), g);
       if (cells.join() !== state.cells.join()) {
         state.cells = cells;
         save();
         render();
       }
-    } else if (findGrid(img, 4)) {
+    } else if (findGrid(nimg, 4)) {
       setStatus("Your inventory is in the small view (4 columns). Expand it with the + at its top right so all 16 columns show.", true);
     }
     return;
   }
+  // Equipped tooltips we've already read are skipped on sight.
+  const known = (t) => equippedSeen.some((p) => profileDiff(p, t.profile) < SAME);
+  for (const t of now) if (!done.some((d) => same(d, t)) && known(t)) done.push(t);
   const fresh = now.filter((t) => !done.some((d) => same(d, t)));
-  if (!fresh.length) return;
-  const ready = fresh.filter((t) => t.still >= 2);
+  if (!fresh.length) {
+    if (now.length === 1 && known(now[0])) setStatus("I can see your equipped piece but not the item you're hovering. Hover it again, or move it away from bright things.", true);
+    return;
+  }
+  // The hovered item's tooltip is the left one when two are open: read it first.
+  const ready = fresh.filter((t) => t.still >= 2).sort((a, b) => a.box.x - b.box.x);
   if (!ready.length) {
     setStatus("Found a tooltip. Hold still…", true);
     return;
@@ -138,7 +187,8 @@ async function tick() {
   try {
     for (const t of ready) {
       done.push(t);
-      await readTooltip(img, t.box);
+      const parsed = await readTooltip(img, t.box);
+      if (parsed?.equipped) equippedSeen = [...equippedSeen.slice(-11), t.profile];
     }
   } finally {
     busy = false;
@@ -147,11 +197,22 @@ async function tick() {
 
 async function readTooltip(img, box) {
   setStatus("Reading…", true);
-  const icon = findIcon(img, box);
-  const sockets = findSockets(img, icon);
-  const top = Math.max(0, box.y - 40); // the title can sit just above where the border is found
+  const sc = state.scale ?? 1;
+  const top = Math.max(0, box.y - Math.round(40 * sc)); // the title can sit just above where the border is found
   const area = { x: box.x, y: top, width: box.width, height: box.y + box.height - top };
-  const prepared = prepareForOcr(img, area);
+  // Read the tooltip at normal size: when the game is shown smaller or bigger, resize just this part.
+  const tip = sc === 1 ? { img, box, area } : (() => {
+    const sub = resizeImage(cropImage(img, area), 1 / sc);
+    const b = { x: 0, y: Math.round((box.y - top) / sc), width: sub.width, height: sub.height - Math.round((box.y - top) / sc) };
+    return { img: sub, box: b, area: { x: 0, y: 0, width: sub.width, height: sub.height } };
+  })();
+  const icon = findIcon(tip.img, tip.box);
+  const sockets = findSockets(tip.img, icon);
+  // Small or scaled text reads better enlarged smoothly before the black-and-white cut.
+  const prepared = sc === 1 ? prepareForOcr(tip.img, tip.area) : (() => {
+    const big = resizeImage(cropImage(img, area), 3 / sc);
+    return prepareForOcr(big, { x: 0, y: 0, width: big.width, height: big.height }, { scale: 1 });
+  })();
   const c = document.createElement("canvas");
   c.width = prepared.width;
   c.height = prepared.height;
@@ -160,15 +221,15 @@ async function readTooltip(img, box) {
   const parsed = parseTooltip(data.text);
   if (!parsed.slot && parsed.skip) {
     setStatus(`That's a ${parsed.skip.toLowerCase()}. It can't roll hologram lines, so there's nothing to scan.`, true);
-    return;
+    return parsed;
   }
   if (!parsed.slot) {
     setStatus("Couldn't read that tooltip. Hover it again, or move it so nothing bright is behind it.", true);
-    return;
+    return parsed;
   }
   // Which inventory cell it came from: the one under the game's glove cursor.
   const at = parsed.equipped ? null : findCursor(img, box);
-  const cell = at && cellAt(grid, at.x, at.y);
+  const cell = at && cellAt(grid, at.x / sc, at.y / sc);
   const before = state.items.length;
   const item = remember({ ...parsed, sockets, cell: cell ? `${cell.c},${cell.r}` : null });
   const known = state.items.length === before;
@@ -177,6 +238,7 @@ async function readTooltip(img, box) {
   if (!item.sockets.length) setStatus(`Read ${what}, but couldn't see its sockets. Every piece has at least one: hover it again with nothing bright behind the item picture.`, true);
   else setStatus(known ? `Already have this ${what} ✓  Hover the next one.` : `Read ${what} ✓  Hover the next one.`, true);
   render();
+  return parsed;
 }
 
 
@@ -213,8 +275,16 @@ function miniLoc(cell) {
   return `<button class="loc" data-cell="${cell}" title="Show it on the Inventory map">Row ${r + 1} · Col ${c + 1}</button>`;
 }
 
-// The Libae's Supercharged item picture for each slot.
-const slotIcon = (slot) => `<img class="slot-icon" src="icons/slots/${slot.toLowerCase()}.png" alt="">`;
+// Simple line icons for each slot, drawn in the text colour.
+const SLOT_PATHS = {
+  Hat: '<path d="M7 17.5 12 4l5 13.5"/><path d="M3.5 18.5c3 1.6 14 1.6 17 0"/><path d="M9.2 12h5.6"/>',
+  Top: '<path d="M9 4 4.5 6.5l1.8 4 2.2-1V20h7V9.5l2.2 1 1.8-4L15 4c-.6 1.6-1.6 2.5-3 2.5S9.6 5.6 9 4z"/>',
+  Bottom: '<path d="M7 4h10l1.2 16h-4.4L12 10.5 10.2 20H5.8z"/><path d="M7 7h10"/>',
+  Cape: '<path d="M8.5 4h7l1.2 3.2C19 11 20 15.5 20 20H4c0-4.5 1-9 3.3-12.8z"/><path d="M8.5 4c.8 2 2 3 3.5 3s2.7-1 3.5-3"/>',
+  Gloves: '<path d="M8 20v-4.5L5.3 11.8c-.9-1.2.6-2.8 1.9-1.8L8 10.7V6.2a1.4 1.4 0 0 1 2.8 0V5.4a1.4 1.4 0 0 1 2.8 0v.8a1.4 1.4 0 0 1 2.8 0V14c0 3.3-1.2 6-3.4 6z"/><path d="M8 17h8"/>',
+  Shoes: '<path d="M7 4h5v8.5l5 2.4A3 3 0 0 1 19 17.6V19H6z"/><path d="M6 16h13"/><path d="M12 7h-5"/>',
+};
+const slotIcon = (slot) => `<svg class="slot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SLOT_PATHS[slot] ?? ""}</svg>`;
 const icon = (k) => (k === OTHER ? "" : `<img class="skill-icon" src="icons/${k}.png" alt="">`);
 const chipHtml = (k, extra) => `<span class="chip k-${k}${extra ? " extra" : ""}"${extra ? ' title="Extra copy: still +1 to the skill, but a line you\'re missing would do more here"' : ""}>${icon(k)}${NAME[k]}${extra ? '<small>extra</small>' : ""}</span>`;
 // Sockets drawn as the jewel that fits them (cropped from the game's jewel inventory).
@@ -281,7 +351,8 @@ function render() {
   // "One more piece finishes it": what a single drop in each slot would need (right-lines mode only).
   const mine = state.items.filter((it) => option.classes.includes(it.cls));
   const hunt = !early && res.score < TOTAL && mine.length ? onePieceAway(mine) : [];
-  const huntBox = early || res.score >= TOTAL || !mine.length ? ""
+  // Only shown when a single piece really can finish 18/18.
+  const huntBox = early || res.score >= TOTAL || !hunt.length ? ""
     : `<div class="hunt"><span class="label">One more piece finishes it</span>${hunt.length
       ? hunt.slice(0, 6).map((o) => `<div class="hunt-row">${slotIcon(o.slot)}<b>${o.slot}</b> with ${o.need.map((k) => chip(k)).join(" + ")}${o.need.length < 3 ? `<span class="muted small">(+ any ${o.need.length === 2 ? "3rd line" : "2 more lines"})</span>` : ""}</div>`).join("")
         + (hunt.length > 6 ? `<span class="muted small">and ${hunt.length - 6} more options</span>` : "")
@@ -302,38 +373,29 @@ function render() {
       ${seenAny ? `<span class="compare">· ${showNow ? `best combo: <b>${early ? res.lines : res.score}/${TOTAL}</b>` : `<b>${nowScore}/${TOTAL}</b> equipped now`}</span>` : ""}</div>
     ${seenAny ? "" : `<p class="muted small">Hover any item and the scanner also reads the "Currently Equipped" box beside it. Do one per slot to see what you have on now.</p>`}
     <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
-      <div class="cells">${Array.from({ length: 3 }, (_, j) => (j < t.need ? cell(t.k, from[t.k][j]) : `<div class="cell-gap"></div>`)).join("")}</div></div>`).join("")}</div>
+      <div class="cells">${Array.from({ length: 3 }, (_, j) => { const k2 = j - (3 - t.need); return k2 >= 0 ? cell(t.k, from[t.k][k2]) : `<div class="cell-gap"></div>`; }).join("")}</div></div>`).join("")}</div>
     ${huntBox}
     <details class="set pieces" id="pieces"${piecesOpen ? " open" : ""}>
       <summary><span class="label">Lines per piece</span>
         <span class="muted small">${swapNote}</span></summary>
-      <p class="muted small">Each row is one ${showNow ? "equipped piece" : "piece of the best combo"}. <b>●</b> = it gives that line · <b>+</b> = an extra copy (still +1 to the skill, up to Lv. 8, but a missing line would do more) · <b>Other</b> = lines not on the list.</p>
-      <div class="pgrid-wrap"><table class="pgrid">
-        <thead><tr><th></th>${TARGETS.map((t) => `<th title="${t.name}">${icon(t.k)}<span class="ph">${SHORT[t.k]}</span></th>`).join("")}<th class="ph" title="Lines not on the list">Other</th><th class="ph sock-h" title="Jewel sockets: usable ones are prismatic or your colour">Sockets</th></tr></thead>
-        <tbody>${SLOTS.map((s) => {
+      <p class="muted small">Each row is one ${showNow ? "equipped piece" : "piece of the best combo"}, with its lines and sockets. Faded <b>extra</b> = a copy beyond the 18 (still +1 to the skill, up to Lv. 8, but a missing line would do more).</p>
+      <div class="pieces-list">${SLOTS.map((s) => {
           const it = shown.picks[s];
           const best = res.picks[s];
           const wearing = state.items.find((x) => x.slot === s && x.equipped);
           const action = showNow
             ? !it ? "" : best && best !== it ? `<span class="act swap" title="A better piece for this slot is in your bag">Better in bag</span>${loc(best)}` : `<span class="act on">Best ✓</span>`
             : !it ? "" : it.equipped ? `<span class="act on">Equipped ✓</span>` : `<span class="act swap" title="${wearing ? "Equip this instead of what you have on" : "The scanner hasn't seen what you have equipped here"}">${wearing ? "Swap" : "Equip"}</span>${loc(it)}`;
-          if (!it) return `<tr><th>${slotIcon(s)}${s}</th><td colspan="${TARGETS.length + 2}" class="none">${showNow ? "not seen yet" : "nothing scanned yet"}</td></tr>`;
-          const marks = (piece, counted) => TARGETS.map((t) => {
-            const idx = piece.lines.map((k, j) => [k, j]).filter(([k]) => k === t.k);
-            if (!idx.length) return `<td></td>`;
-            const counts = idx.some(([, j]) => counted[j]);
-            return `<td><span class="mark k-${t.k} ${counts ? "on" : "extra"}" title="${counts ? t.name : `Extra ${t.name}: still +1 to the skill`}">${counts ? "●" : "+"}</span></td>`;
-          }).join("") + `<td class="other">${piece.lines.filter((k) => k === OTHER).length || ""}</td>`
-            + `<td class="sock-cell">${socks(piece.sockets)}<span class="tag">${socketValue(piece, state.classId).good}/3</span></td>`;
-          // On a swap, the piece you have on now, in words, right under the one to swap in.
-          const nowRow = !showNow && wearing && !it.equipped ? `<tr class="now-row"><td colspan="${TARGETS.length + 3}"><span class="wearing-now">↳ Equipped:</span> ${linesOf(wearing)}</td></tr>` : "";
-          // The slot's status (Equipped ✓ / Swap / where it is) sits under its name to keep the grid narrow.
-          return `<tr><th>${slotIcon(s)}${s}<div class="th-act">${action}</div></th>${marks(it, shown.counted[s])}</tr>${nowRow}`;
-        }).join("")}</tbody>
-        <tfoot><tr><th>${showNow ? "Equipped" : "Best combo"}</th>${TARGETS.map((t, i) => `<td class="k-${t.k} ${shown.counts[i] >= t.need ? "done" : "short"}">${shown.counts[i]}/${t.need}</td>`).join("")}<td></td>
-          <td class="sock-cell small">${(() => { const v3 = SLOTS.map((s) => shown.picks[s] && socketValue(shown.picks[s], state.classId)).filter(Boolean); return `${v3.reduce((n, x) => n + x.good, 0)}/18 usable<br>${v3.filter((x) => x.prismatic).length}/${PRISMATIC_GOAL} prismatic`; })()}</td></tr>
-          ${seenAny ? `<tr class="now-row"><th>${showNow ? "Best combo" : "Equipped"}</th>${TARGETS.map((t, i) => `<td>${(showNow ? res : nowRes).counts[i]}/${t.need}</td>`).join("")}<td></td><td></td></tr>` : ""}</tfoot>
-      </table></div>
+          if (!it) return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span><span class="none">${showNow ? "not seen yet" : "nothing scanned yet"}</span></div>`;
+          // On a swap, the piece you have on now, right under the one to swap in.
+          const nowRow = !showNow && wearing && !it.equipped ? `<div class="piece-now"><span class="wearing-now">↳ Equipped:</span> ${linesOf(wearing)}</div>` : "";
+          return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span>
+            <span class="lines">${it.lines.map((k, j) => chip(k, !shown.counted[s][j])).join("") || `<span class="muted">no lines</span>`}</span>
+            <span class="piece-socks">${socks(it.sockets)}<span class="tag">${socketValue(it, state.classId).good}/3</span></span>
+            <span class="piece-act">${action}</span></div>${nowRow}`;
+        }).join("")}
+        <div class="piece totals"><span class="piece-slot">Sockets</span><span class="muted small">${(() => { const v3 = SLOTS.map((s) => shown.picks[s] && socketValue(shown.picks[s], state.classId)).filter(Boolean); return `${v3.reduce((n, x) => n + x.good, 0)}/18 usable · ${v3.filter((x) => x.prismatic).length}/${PRISMATIC_GOAL} prismatic pieces`; })()}</span></div>
+      </div>
       ${showNow ? "" : `<div class="fuse"><span class="label">Best pieces to fuse your lines onto</span>
         <span class="muted small">Aim for 4 with prismatic + ${option.colours[0]} + ${option.colours[0]} and 2 with ${option.colours[0]} ×3 (${option.cls}: ${option.colours.join(", ")}). Orbs move your lines onto them.</span>
         <div class="fuse-list">${SLOTS.map((s) => { const it = sockets.picks[s]; const v4 = it && socketValue(it, state.classId); return `<span class="fuse-item">${slotIcon(s)}${it && v4.good ? `${socks(it.sockets)}${loc(it)}` : `<span class="none">none yet</span>`}</span>`; }).join("")}</div></div>`}
@@ -363,7 +425,12 @@ function render() {
     ${addForm()}
     <div class="gear-tabs" role="tablist">${[["trash", "Trash"], ["keep", "Keep"], ["all", "All"]].map(([k, label]) => `<button role="tab" data-gear-tab="${k}" aria-selected="${tab === k}" class="gt-${k}">${label} <span class="n">${count[k]}</span></button>`).join("")}</div>
     <p class="muted small">${tab === "trash" ? "Safe to throw away. Click Row · Col to find one on the Inventory map." : tab === "keep" ? "Hold on to these: in your best combo, a spare 3-line piece, or the best sockets for their slot." : "Everything in your bag. Equipped pieces are on the left."}</p>
-    <div class="bag-list">${list.length ? list.map(row).join("") : `<p class="none">${bag.length ? "Nothing here." : "Nothing scanned yet: hover items in your inventory."}</p>`}</div>`;
+    ${bag.length ? `<div class="slots">${SLOTS.map((sl) => {
+      const mineHere = list.filter((it) => it.slot === sl);
+      const allHere = bag.filter((it) => it.slot === sl).length;
+      return `<div class="slot" data-drop-slot="${sl}"><div class="slot-head"><h3>${slotIcon(sl)}${sl}</h3><span class="tag">${mineHere.length}${tab === "all" ? "" : ` of ${allHere}`}</span></div>
+        ${mineHere.length ? mineHere.map(row).join("") : `<div class="none">${allHere ? "Nothing here" : "Nothing scanned yet"}</div>`}</div>`;
+    }).join("")}</div>` : `<p class="none">Nothing scanned yet: hover items in your inventory.</p>`}`;
 }
 
 // ---------- equipping in game ----------
@@ -451,11 +518,25 @@ document.addEventListener("click", (e) => {
   if (!t) return;
   if (t.id !== "clear") confirmClear = false;
   if (t.id === "share") return startShare();
+  if (t.id === "save-frame") {
+    // The exact frame the scanner sees, to send for tuning (it may show character names).
+    frame.toBlob((b) => {
+      if (!b) return;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(b);
+      a.download = `quandrea-frame-${Date.now()}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }, "image/png");
+    return;
+  }
   if (t.id === "stop") return stopShare();
   if (t.dataset.themePick) return setTheme(t.dataset.themePick);
   if (t.id === "reset-map") {
     state.cells = [];
     state.mapPinned = false;
+    state.scale = undefined;
+    lastCalibration = 0;
     grid = null;
     selected = null;
     save();

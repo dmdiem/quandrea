@@ -20,8 +20,8 @@ export const TARGETS = [
 export const OTHER = "other"; // a line that isn't on the list (Boss DMG, Ignore DEF, Damage)
 
 const SKILL = [
-  ["leap", /dimens\w*\s*le[a-z]p/i],
-  ["wh", /wh[il1]te\s*h[a-z0][l1I]e/i],
+  ["leap", /mens[il1]\w*\s*le[a-z]?p/i],
+  ["wh", /\bw[a-z1]{2,4}\s*h[a-z0][l1I]e\b/i],
   ["reg", /reg[il1]str/i],
   ["atk", /magic\s*at+\w?\s*enh|attack\s*power\s*[&8]/i],
   ["crit", /crit\w*\s*da\w*\s*enh/i],
@@ -41,9 +41,14 @@ export function skillLines(text) {
   const lines = [];
   for (let i = 0; i < raw.length; i++) {
     const l = raw[i];
-    const start = /holo|enh\w*\s*sk[il1]/i.test(l) || SKILL.some(([, re]) => re.test(l)) || /dimens|wh[il1]te\s*h[a-z0]|reg[il1]str/i.test(l);
+    const start = /holo|enh\w*\s*sk[il1]/i.test(l) || SKILL.some(([, re]) => re.test(l)) || /mens[il1]|wh[il1]te\s*h[a-z0]|reg[il1]str/i.test(l);
     if (!start) continue;
-    if (LEVEL.test(l)) lines.push(l);
+    // A line naming a target skill counts even when OCR mangles its "Lv. +1" (small or blurry text):
+    // those names never appear in stat or potential lines.
+    if (LEVEL.test(l) || SKILL.some(([, re]) => re.test(l))) {
+      lines.push(l);
+      if (!LEVEL.test(l) && i + 1 < raw.length && LEVEL.test(raw[i + 1]) && !/holo/i.test(raw[i + 1]) && !SKILL.some(([, re]) => re.test(raw[i + 1]))) i++; // its wrapped "Skill Lv. +1"
+    }
     else if (i + 1 < raw.length && LEVEL.test(raw[i + 1]) && !/holo/i.test(raw[i + 1])) lines.push(`${l} ${raw[++i]}`);
   }
   return lines;

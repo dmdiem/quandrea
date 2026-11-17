@@ -229,12 +229,12 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .bag .sub { margin-top: 0; }
 
 /* Slot pictures (the Libae's Supercharged items) */
-.slot-icon { height: 18px; width: auto; vertical-align: -4px; margin-right: 5px; }
-.slot-head h3 .slot-icon { height: 22px; vertical-align: -6px; }
-.pgrid tbody th .slot-icon { height: 16px; vertical-align: -3px; }
-.cell .slot-icon { height: 14px; margin-right: 3px; }
+.slot-icon { height: 18px; width: 18px; vertical-align: -4px; margin-right: 5px; color: var(--muted); flex: none; }
+.slot-head h3 .slot-icon { height: 20px; width: 20px; vertical-align: -5px; }
+.pgrid tbody th .slot-icon { height: 16px; width: 16px; vertical-align: -3px; }
+.cell .slot-icon { height: 13px; width: 13px; margin-right: 3px; color: currentColor; }
 .cell { gap: 0; display: flex; align-items: center; justify-content: center; }
-.tap .slot-icon { height: 16px; margin-right: 2px; }
+.tap .slot-icon { height: 15px; width: 15px; margin-right: 2px; }
 .hunt-row .slot-icon { height: 18px; margin-right: 0; }
 .small-seg button { padding: 3px 10px; font-size: 12px; }
 .equip-btn { font-size: 11px; padding: 2px 8px; }
@@ -281,3 +281,23 @@ button.cell:hover { outline: 2px solid var(--accent); }
 .bag-row .bag-act { grid-area: act; display: inline-flex; gap: 4px; align-items: center; justify-self: end; }
 .bag-row.sel { background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 8px; }
 .pinned { color: var(--accent); font-weight: 600; }
+
+/* Lines per piece: one row per slot with its skill tags and sockets */
+.pieces-list { display: flex; flex-direction: column; }
+.piece { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; grid-template-areas: "slot lines socks" "slot act act"; gap: 4px 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--line); }
+.piece .piece-slot { grid-area: slot; font-weight: 600; font-size: 13px; white-space: nowrap; align-self: start; padding-top: 3px; }
+.piece .lines { grid-area: lines; }
+.piece .piece-socks { grid-area: socks; display: inline-flex; align-items: center; gap: 4px; }
+.piece .piece-socks .jewel { height: 17px; }
+.piece .piece-act { grid-area: act; display: flex; gap: 4px; align-items: center; }
+.piece .piece-act:empty { display: none; }
+.piece .none { grid-column: 2 / -1; }
+.piece-now { padding: 0 0 7px 98px; font-size: 12px; }
+.piece-now .chip { font-size: 11px; }
+.piece.totals { border-top: 2px solid var(--line); grid-template-areas: "slot lines lines"; }
+
+/* Keep or trash rows inside the per-slot cards */
+.slot .bag-row { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "badge lines" ". socks" "why act"; padding: 6px 0; }
+.slot .bag-row .socks { justify-self: start; }
+.slot .bag-row .bag-slot { display: none; }
+.slot .bag-row .badge { justify-self: start; align-self: start; margin-top: 2px; }

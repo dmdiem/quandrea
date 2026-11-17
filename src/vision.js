@@ -19,7 +19,13 @@ function isEdge(d, w, x, y) {
   const i = (y * w + x) * 4;
   const c = lum(d, i);
   if (c < 55 || c > 175) return false; // up to 175: over bright scenery the border gets lighter too
-  return c - lum(d, i - 4) >= 14 && c - lum(d, i + 4) >= 12;
+  const l1 = lum(d, i - 4);
+  const r1 = lum(d, i + 4);
+  // A sharp 1px line, or (when the game is shown smaller or bigger and the line is smeared) a softer
+  // peak over two pixels.
+  if (c - l1 >= 14 && c - r1 >= 12) return true;
+  if (x < 2 || x > w - 3 || c < l1 || c < r1) return false;
+  return c - l1 >= 7 && c - r1 >= 6 && c - Math.min(l1, lum(d, i - 8)) >= 10 && c - Math.min(r1, lum(d, i + 8)) >= 9;
 }
 
 // Vertical runs of edge pixels: [{ x, top, bottom }]. Gaps of a few rows are bridged.
@@ -44,17 +50,18 @@ export function findEdges(img, { minRun = EDGE_MIN_RUN, maxGap = 4 } = {}) {
   return edges;
 }
 
-// The tooltips on screen, left to right: [{ x, y, width, height }].
-export function findTooltips(img) {
-  const edges = findEdges(img);
+// The tooltips on screen, left to right: [{ x, y, width, height }]. scale: how big the game is drawn
+// (1 = normal), so a smaller or bigger game window still matches the tooltip's size.
+export function findTooltips(img, scale = 1) {
+  const edges = findEdges(img, { minRun: Math.round(EDGE_MIN_RUN * scale) });
   const boxes = [];
   let usedTo = -1;
   for (const left of edges.sort((a, b) => a.x - b.x || a.top - b.top)) {
     if (left.x <= usedTo) continue;
     // The nearest right edge that overlaps it vertically and makes a tooltip-sized box.
     const right = edges
-      .filter((e) => e.x - left.x >= BOX_MIN_W && e.x - left.x <= BOX_MAX_W)
-      .filter((e) => Math.min(e.bottom, left.bottom) - Math.max(e.top, left.top) >= EDGE_MIN_RUN)
+      .filter((e) => e.x - left.x >= BOX_MIN_W * scale && e.x - left.x <= BOX_MAX_W * scale)
+      .filter((e) => Math.min(e.bottom, left.bottom) - Math.max(e.top, left.top) >= EDGE_MIN_RUN * scale)
       .sort((a, b) => a.x - b.x)[0];
     if (!right) continue;
     const [y, bottom] = verticalExtent(img, left.x, right.x, Math.max(left.top, right.top), Math.min(left.bottom, right.bottom));
@@ -62,7 +69,7 @@ export function findTooltips(img) {
     boxes.push({ x: left.x, y, width: right.x - left.x + 1, height: bottom - y + 1 });
     usedTo = right.x;
   }
-  return boxes;
+  return boxes.sort((a, b) => a.x - b.x);
 }
 
 // Grow a box up and down while either side still has its border (bridging short breaks, where
@@ -454,6 +461,52 @@ export function findCursor(img, box) {
       }
       if (rows >= 5) return { x: box.x - 6, y: y + 2 };
     }
+  }
+  return null;
+}
+
+// ---- Other screen sizes ----
+// Everything above is tuned for the game drawn at its normal size (inventory cells 46px apart). If
+// the game window is shown smaller or bigger (a smaller game window, Windows display scaling), we
+// find that scale once and resize each frame back to normal before reading it.
+
+// Resize an image by a factor (bilinear). f < 1 makes it smaller.
+export function resizeImage(img, f) {
+  const { width: w, height: h, data: d } = img;
+  const ow = Math.max(1, Math.round(w * f));
+  const oh = Math.max(1, Math.round(h * f));
+  const out = new Uint8ClampedArray(ow * oh * 4);
+  for (let y = 0; y < oh; y++) {
+    const sy = Math.min(h - 1, (y + 0.5) / f - 0.5);
+    const y0 = Math.max(0, Math.floor(sy));
+    const y1 = Math.min(h - 1, y0 + 1);
+    const fy = Math.max(0, sy - y0);
+    for (let x = 0; x < ow; x++) {
+      const sx = Math.min(w - 1, (x + 0.5) / f - 0.5);
+      const x0 = Math.max(0, Math.floor(sx));
+      const x1 = Math.min(w - 1, x0 + 1);
+      const fx = Math.max(0, sx - x0);
+      const o = (y * ow + x) * 4;
+      for (let k = 0; k < 4; k++) {
+        const a = d[(y0 * w + x0) * 4 + k] * (1 - fx) + d[(y0 * w + x1) * 4 + k] * fx;
+        const b = d[(y1 * w + x0) * 4 + k] * (1 - fx) + d[(y1 * w + x1) * 4 + k] * fx;
+        out[o + k] = a * (1 - fy) + b * fy;
+      }
+    }
+  }
+  return { width: ow, height: oh, data: out };
+}
+
+// The scale the game is drawn at (1 = normal), found from the inventory grid, or null if no
+// inventory is visible. Tries sizes near 1 first.
+export function findScale(img) {
+  if (findGrid(img)) return 1;
+  const tries = [];
+  for (let s = 0.6; s <= 2.001; s += 0.01) tries.push(Math.round(s * 100) / 100);
+  tries.sort((a, b) => Math.abs(a - 1) - Math.abs(b - 1));
+  for (const s of tries) {
+    if (s === 1) continue;
+    if (findGrid(resizeImage(img, 1 / s))) return s;
   }
   return null;
 }

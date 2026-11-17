@@ -67,3 +67,11 @@ test("a piece can't have the same line twice: a repeat is a misread", () => {
   const text = "[Hologram] Magician Attack Skill Lv. +1\n[Hologram] Magician Attack Skill Lv. +1\nRegistry Lv. +1\nScroll Enhancement None";
   assert.deepEqual(parseTooltip(text).lines, ["mage", "reg"]);
 });
+
+test("small or blurry text: a named skill counts even when its Lv. +1 is mangled", () => {
+  const text = "Speed +4 (0 +4)\nChmensional Leap Lr od\nWhite Hole Jv +1\nScroll Enhancement Mone";
+  assert.deepEqual(parseTooltip("Libae's Supercharged Cape (Magician)\n" + text).lines, ["leap", "wh"]);
+  assert.equal(lineKey("Cimensional Leap Ly +"), "leap");
+  assert.equal(lineKey("wine Hole Jv +1"), "wh");
+  assert.deepEqual(skillLines("Required Job Magician\nMagic ATT +9\nAttack Power +9"), []);
+});
