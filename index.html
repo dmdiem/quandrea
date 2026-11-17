@@ -7,9 +7,9 @@
 <meta name="description" content="Reads your MapleStory Quanah gear while you hover it, and tells you what to keep for 18/18 hologram lines and the best sockets.">
 <link rel="icon" href="logo.png">
 <script>try { const t = localStorage.getItem("quandrea.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
-<link rel="stylesheet" href="style.css?v=26">
+<link rel="stylesheet" href="style.css?v=27">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
-<script type="module" src="src/app.js?v=26"></script>
+<script type="module" src="src/app.js?v=27"></script>
 </head>
 <body>
 <div class="wrap">
@@ -19,7 +19,7 @@
       <div>
       <h1>Quandrea</h1>
       <p class="tagline">Let Quandrea tell you if your gear is trash.</p>
-      <p class="muted">Share your MapleStory window and hover your Quanah gear. It reads each item's hologram lines and sockets, then tells you what to keep. Everything stays on your computer.</p>
+      <p class="muted">Hover your Quanah gear; it tells you what to keep. Nothing leaves your computer.</p>
       </div>
     </div>
     <div class="settings">
@@ -47,9 +47,9 @@
 
   <!-- Simple mode: just the socket colours of what you hover, in big words. -->
   <section class="panel simple" id="simple" hidden>
-    <div class="row spread"><div><h2>Simpling Dumpling mode</h2><p class="muted small">Jewel colours for colour-blind players: no charts, just the socket colours as big words.</p></div><div class="row"><button id="simple-share" class="primary">Share MapleStory window</button><button id="simple-popout" class="ghost" hidden title="Opens the colours in a small window that stays on top of the game (Chrome and Edge)">Pop out</button></div></div>
-    <p class="muted">Hover an item in the game. Its socket colours appear here as words. ✓ marks a colour your class can use (prismatic always can).</p>
-    <p class="browser-note" hidden>This works best in <b>Chrome</b> or <b>Edge</b>: Firefox's screen sharing often sends games black or frozen.</p>
+    <div class="row spread"><div><h2>Simpling Dumpling mode</h2><p class="muted small">Socket colours as big words, for colour-blind players.</p></div><div class="row"><button id="simple-share" class="primary">Share MapleStory window</button><button id="simple-popout" class="ghost" hidden title="Opens the colours in a small window that stays on top of the game (Chrome and Edge)">Pop out</button></div></div>
+    <p class="muted">Hover an item. ✓ = your class can use it.</p>
+    <p class="browser-note" hidden>Use <b>Chrome</b> or <b>Edge</b>: Firefox often shares games as a black screen.</p>
     <p id="simple-status" class="status">Not watching yet.</p>
     <div id="simple-out" class="simple-out"></div>
   </section>
@@ -65,31 +65,23 @@
         <button id="stop" class="ghost" hidden>Stop</button>
       </div>
     </div>
-    <p class="browser-note" hidden>The scanner works best in <b>Chrome</b> or <b>Edge</b>: Firefox's screen sharing often sends games black or frozen. Pasting a screenshot of your inventory (Ctrl+V) still works here.</p>
+    <p class="browser-note" hidden>Use <b>Chrome</b> or <b>Edge</b>: Firefox often shares games as a black screen.</p>
     <p id="status" class="status">Not watching yet.</p>
     <div id="last"></div>
     <details class="help">
       <summary>How to use it</summary>
       <ol>
-        <li>Click <b>Share MapleStory window</b> and pick the game window (or your whole screen).</li>
-        <li>Open your inventory's Equip tab and <b>expand it</b> (the + at its top right) so all 16 columns show. Move the mouse off it for a moment: the <b>Inventory map</b> fills in, with dashed cells for items that have hologram lines. You can also paste a screenshot of the inventory window (Win+Shift+S, then Ctrl+V on this page).</li>
-        <li>Hover each dashed item and wait for the ✓, about a second each. The map ticks the cell under your cursor and colours it keep, backup, donor or trash. Click a cell to see its lines and sockets.</li>
-        <li>Hover one item of each slot so the scanner also sees what you have equipped (the "Currently Equipped" box).</li>
-        <li>Don't move or sort items while scanning. When you're done, throw out what's marked <b>Trash</b>.</li>
+        <li><b>Share</b> the game window.</li>
+        <li>Open the Equip tab, <b>expanded</b> to 16 columns, and move the mouse off it. The map fills in.</li>
+        <li><b>Hover</b> each dashed item until ✓. Then throw out what says <b>Trash</b>.</li>
       </ol>
-      <p class="label">Tips for a clean scan</p>
+      <p class="label">Tips</p>
       <ul class="tips">
-        <li><b>Run MapleStory windowed</b> (or borderless), not exclusive fullscreen. If the share preview stays blank or spinning, that's why: switch to windowed, or share your <b>Entire screen</b> instead.</li>
-        <li><b>No live scan? Paste instead.</b> Hover an item in the game, snip its tooltip (Win+Shift+S), then press Ctrl+V on this page. It's read just like a hover. Snip the inventory too if you want the map to tick its cell.</li>
-        <li><b>Show the game at full size.</b> Tooltip text is tiny: pick the largest resolution that fits your screen and don't shrink the game window. Below about 90% size the text gets too blurry to read reliably (socket colours still work).</li>
-        <li><b>Use Chrome or Edge.</b> Firefox's screen sharing often sends games black, frozen or half-drawn, so the scanner sees nothing. Pasting a screenshot of your inventory works in any browser.</li>
-        <li><b>Share the MapleStory window</b>, not the browser. The browser can sit on top of the game (one monitor is fine), but <b>don't minimise the game</b>: a minimised window stops sending pictures.</li>
-        <li>On one monitor, the easiest setup is the game on one half and this page on the other (Windows key + ← / →).</li>
-        <li>Keep the inventory <b>expanded</b> (16 columns) and on plain background if you can; very bright scenery behind a tooltip makes it harder to read.</li>
-        <li>Hover one item at a time and wait for the ✓. Hover one item per slot first so your equipped gear is read.</li>
-        <li>Don't move or sort items mid-scan. If the map ever looks wrong, click <b>Reset map</b>.</li>
+        <li>Use <b>Chrome or Edge</b>, with the game <b>windowed</b> at full size (not minimised).</li>
+        <li>Can't share? Snip a tooltip (Win+Shift+S) and press <b>Ctrl+V</b> here.</li>
+        <li>Hover one item per slot so your equipped gear is read too.</li>
+        <li>Don't sort mid-scan. Map wrong? <b>Reset map</b>.</li>
       </ul>
-      <p class="muted">First, collect the 18 lines: 3 Dimensional Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, and one each of Crit DMG, Warrior, Mage, Bowman, Thief and Pirate, on six pieces (hat, top, bottom, cape, gloves, shoes). Then, a second set with the right jewel sockets (4 with prismatic + stat + stat, 2 with stat + stat + stat); Orbs move your lines onto it.</p>
     </details>
   </section>
 

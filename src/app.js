@@ -1,9 +1,9 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=26";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=26";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=26";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=26";
+import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=27";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=27";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=27";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=27";
 
 const KEY = "quandrea.v1";
 // Looks in the pop-out window too, while Simpling Dumpling's readout lives there.
@@ -372,7 +372,17 @@ const SLOT_PATHS = {
   Shoes: '<path d="M7 4h5v8.5l5 2.4A3 3 0 0 1 19 17.6V19H6z"/><path d="M6 16h13"/><path d="M12 7h-5"/>',
 };
 const slotIcon = (slot) => `<svg class="slot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SLOT_PATHS[slot] ?? ""}</svg>`;
-const icon = (k) => (!isTarget(k) ? "" : `<img class="skill-icon" src="icons/${k}.png" alt="">`);
+// A symbol for each class line, so they're easy to tell apart without colour: sword, wand, bow and
+// arrow, shuriken, anchor.
+const CLASS_PATHS = {
+  warrior: '<path d="M19.5 4.5 18.8 9 9.6 18.2 5.8 14.4 15 5.2z"/><path d="M4.2 12.8l7 7"/><path d="M7.4 16.6 3.8 20.2"/>',
+  mage: '<path d="M4 20 14 10"/><path d="M17 2.8l1.1 2.9 2.9 1.1-2.9 1.1L17 10.8l-1.1-2.9L13 6.8l2.9-1.1z"/>',
+  archer: '<path d="M5 3.5c8.5.4 15.1 7 15.5 15.5"/><path d="M5 3.5l15.5 15.5" stroke-width="1"/><path d="M3.5 20.5 16 8"/><path d="M11.8 7.6H16.4V12.2"/><path d="M3.5 17.5v3h3"/>',
+  thief: '<path d="M12 2.5l2 7.5 7.5 2-7.5 2-2 7.5-2-7.5-7.5-2 7.5-2z"/><circle cx="12" cy="12" r="1.3"/>',
+  pirate: '<circle cx="12" cy="4.6" r="2"/><path d="M12 6.6V21"/><path d="M8.2 10h7.6"/><path d="M4.8 14.2c0 3.9 3.2 6.8 7.2 6.8s7.2-2.9 7.2-6.8"/><path d="M3 16l1.8-1.8L6.6 16"/><path d="M17.4 16l1.8-1.8L21 16"/>',
+};
+const classIcon = (k) => (CLASS_PATHS[k] ? `<svg class="class-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CLASS_PATHS[k]}</svg>` : "");
+const icon = (k) => (!isTarget(k) ? "" : `<img class="skill-icon" src="icons/${k}.png" alt="">${classIcon(k)}`);
 const chipHtml = (k, extra) => `<span class="chip k-${k}${extra ? " extra" : ""}"${extra ? ' title="Extra copy: still +1 to the skill, but a line you\'re missing would do more here"' : ""}>${icon(k)}${NAME[k]}${extra ? '<small>extra</small>' : ""}</span>`;
 // Sockets drawn as the jewel that fits them (cropped from the game's jewel inventory).
 // A socket, drawn as a filled droplet in its colour. In colour-blind mode it also carries a letter.
@@ -421,7 +431,7 @@ function render() {
   const scanned = cells.filter((k, i) => k === "lines" && byCell[`${i % GRID.cols},${Math.floor(i / GRID.cols)}`]).length;
   const pick = selected && byCell[selected];
   $("map").innerHTML = !cells.length
-    ? `<p class="muted">Open your inventory's Equip tab, <b>expanded</b> so all 16 columns show (the small view only shows 4), and move the mouse off it: the map appears here. Or take a screenshot of the inventory window (Win+Shift+S) and paste it here with Ctrl+V.</p>`
+    ? `<p class="muted">Open the Equip tab (expanded, 16 columns) and move the mouse off it. Or paste a screenshot of it (Ctrl+V).</p>`
     : `<div class="row spread"><span class="muted">${scanned} scanned · ${toScan} with lines still to hover${state.mapPinned ? ` · <span class="pinned" title="Pasted from a screenshot: the live scan won't change it. Reset map to read it live again.">From your screenshot</span>` : ""}</span>
         <span class="legend"><span class="mcell lines"></span>to scan <span class="mcell item"></span>no lines (skip) <span class="mcell v-keep"></span>keep <span class="mcell v-trash"></span>trash</span></div>
       <div class="map-wrap"><div class="map">${cells.map((k, i) => {
@@ -468,18 +478,18 @@ function render() {
   $("lines").innerHTML = `
     <div class="row spread"><h2>${early ? "Hologram lines (any 3 per piece)" : "Hologram lines (18/18)"}</h2></div>
     <p class="muted small explain">${showNow
-      ? "What you have equipped right now. Row · Col shows where a better piece sits in your bag."
-      : "The best outfit you can make from everything scanned (equipped or in your bag): one piece per slot, covering as many of the 18 lines as possible. Row · Col shows where a piece sits in your bag."}</p>
+      ? "What you're wearing now."
+      : "The best set you can make from everything scanned."}</p>
     <div class="score"><span class="big">${head}</span><span class="muted">of ${TOTAL} lines ${showNow ? "equipped now" : "with the best combo"}${early ? ` · ${shown.score} on the list` : ""}</span>
       ${seenAny ? `<span class="compare">· ${showNow ? `best combo: <b>${early ? res.lines : res.score}/${TOTAL}</b>` : `<b>${nowScore}/${TOTAL}</b> equipped now`}</span>` : ""}</div>
-    ${seenAny ? "" : `<p class="muted small">Hover any item and the scanner also reads the "Currently Equipped" box beside it. Do one per slot to see what you have on now.</p>`}
+    ${seenAny ? "" : `<p class="muted small">Hover one item per slot to read what you're wearing.</p>`}
     <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
       <div class="cells">${Array.from({ length: 3 }, (_, j) => { const k2 = j - (3 - t.need); return k2 >= 0 ? cell(t.k, from[t.k][k2]) : `<div class="cell-gap"></div>`; }).join("")}</div></div>`).join("")}</div>
     ${huntBox}
     <details class="set pieces" id="pieces"${piecesOpen ? " open" : ""}>
       <summary><span class="label">Lines per piece</span>
         <span class="muted small">${swapNote}</span></summary>
-      <p class="muted small">Each row is one ${showNow ? "equipped piece" : "piece of the best combo"}, with its lines and sockets. Faded <b>extra</b> = a copy beyond the 18 (still +1 to the skill, up to Lv. 8, but a missing line would do more).</p>
+      <p class="muted small">Faded <b>extra</b> = a line you already have 3 (or 1) of.</p>
       <div class="pieces-list">${SLOTS.map((s) => {
           const it = shown.picks[s];
           const best = res.picks[s];
@@ -498,7 +508,7 @@ function render() {
         <div class="piece totals"><span class="piece-slot">Sockets</span><span class="muted small">${(() => { const v3 = SLOTS.map((s) => shown.picks[s] && socketValue(shown.picks[s], state.classId)).filter(Boolean); return `${v3.reduce((n, x) => n + x.good, 0)}/18 usable · ${v3.filter((x) => x.prismatic).length}/${PRISMATIC_GOAL} prismatic pieces`; })()}</span></div>
       </div>
       ${showNow ? "" : `<div class="fuse"><span class="label">Best pieces to fuse your lines onto</span>
-        <span class="muted small">Aim for 4 with prismatic + ${option.colours[0]} + ${option.colours[0]} and 2 with ${option.colours[0]} ×3 (${option.cls}: ${option.colours.join(", ")}). Orbs move your lines onto them.</span>
+        <span class="muted small">Goal: 4 with a prismatic, all others ${option.colours.join(" / ")}.</span>
         <div class="fuse-list">${SLOTS.map((s) => { const it = sockets.picks[s]; const v4 = it && socketValue(it, state.classId); return `<span class="fuse-item">${slotIcon(s)}${it && v4.good ? `${socks(it.sockets)}${loc(it)}` : `<span class="none">none yet</span>`}</span>`; }).join("")}</div></div>`}
     </details>`;
 
@@ -522,7 +532,7 @@ function render() {
     <h2>Keep or trash</h2>
     ${addForm()}
     <div class="gear-tabs" role="tablist">${[["trash", "Trash"], ["keep", "Keep"], ["all", "All"]].map(([k, label]) => `<button role="tab" data-gear-tab="${k}" aria-selected="${tab === k}" class="gt-${k}">${label} <span class="n">${count[k]}</span></button>`).join("")}</div>
-    <p class="muted small">${tab === "trash" ? "Safe to throw away. Click Row · Col to find one on the Inventory map." : tab === "keep" ? "Hold on to these: in your best combo, a spare 3-line piece, or the best sockets for their slot." : "Everything in your bag. Equipped pieces are on the left."}</p>
+    <p class="muted small">${tab === "trash" ? "Safe to throw away." : tab === "keep" ? "Best combo, spare 3-line pieces and the best sockets." : "Everything in your bag."}</p>
     ${bag.length ? `<div class="slots">${SLOTS.map((sl) => {
       const mineHere = list.filter((it) => it.slot === sl);
       const allHere = bag.filter((it) => it.slot === sl).length;

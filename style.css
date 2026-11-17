@@ -329,7 +329,7 @@ button.cell:hover { outline: 2px solid var(--accent); }
 .tips li { margin: 3px 0; }
 
 /* Colour-blind friendly: shapes and words instead of colour alone */
-.cb .chip.k-warrior, .cb .chip.k-mage, .cb .chip.k-archer, .cb .chip.k-thief, .cb .chip.k-pirate { --tint: var(--holo); }
+.cb .chip.k-warrior, .cb .chip.k-mage, .cb .chip.k-archer, .cb .chip.k-thief, .cb .chip.k-pirate { --holo: inherit; --holo-hi: inherit; --holo-ink: inherit; }
 .cb .mcell.v-trash { background: repeating-linear-gradient(45deg, var(--trash) 0 3px, color-mix(in srgb, var(--trash) 60%, #000) 3px 6px); }
 #cb-toggle[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: transparent; }
 
@@ -358,3 +358,15 @@ body.popout .simple-card { padding: 10px; gap: 6px; }
 body.popout .simple-words { grid-template-rows: repeat(3, 44px); gap: 6px; }
 body.popout .simple-word { height: 44px; font-size: 24px; }
 body.popout .status { margin: 0; font-size: 12px; }
+/* A socket word inside a button (Add manually): the button is the outline, so the tag drops its own. */
+button .sock-word { border: 0; padding: 0; margin: 0; background: none; }
+/* Colour-blind mode: socket words are wide, so they stack in a column on the right and the line
+   tags keep the rest of the row. */
+.cb .piece .piece-socks { flex-direction: column; align-items: stretch; align-self: start; gap: 4px; }
+.cb .piece .piece-socks .sock-word { margin: 0; }
+.cb .piece .piece-socks > :not(.socks):not(.sock-word) { align-self: flex-end; }
+.cb .piece .piece-socks .socks { display: flex; flex-direction: column; gap: 4px; }
+.cb .piece .piece-socks .socks { align-items: stretch; min-width: 104px; }
+.cb .piece .piece-socks .sock-word { justify-content: flex-start; }
+/* Class symbols (sword, wand, bow, shuriken, anchor) next to the class lines' skill icons */
+.class-icon { width: 16px; height: 16px; flex: none; color: var(--holo-ink); }
