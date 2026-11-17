@@ -1,0 +1,36 @@
+| Aref ie
+|
+:
+| Libae's Supercharged Top (Magician)
+Heroic: Untradahle :
+Interactive: Untradable |
+| Duration: 3M 072027 00:00 UTS (Can't Extend) |
+Cambat Power Increase |
+|
+| E} +42,687
+| Fd Armor
+| Tap |
+Required Job Magician !
+yo Level Lv. 160 ;
+et Effect®  Libae's Supercharged Equipment Set |
+DEX +54 {0+54) .
+INT +108 (50 +22 +36) |
+LUK +72 (a0 +22)
+Max HPF +1048 {0 +1048)
+| Magic ATT +5
+Defense +546 {325 +185 +36)
+Speed +5 (0+9)
+Enemy DEF Ignored +5% .
+| Dimensional Leap Lv. +1
+[Hologram] Critical Damage Enhancement Skill Lv. +1
+| Scroll Enhancement Mone
+(9 Remaining, 0 Restores) Available)
+Jewel Stats
+Check the enhancement details by using the
+InteractHarvest key.
+@ Potential : Epic
+= DEF +7T%
+= STR: +13
+= hax HP +124
+* Bonus Potential : Mone
+Val | HQ w m= |!

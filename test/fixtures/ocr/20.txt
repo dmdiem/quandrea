@@ -1,0 +1,35 @@
+Srl rik ri ER A.
+|
+Libae's Supercharged Top (Magician)
+Heroic: Untradahle
+1 Interactive: Untradahle
+Duration: 3M 072027 00:00 UTS (Can't Extend)
+I
+Combat Power Increase
+7 |
+ry +273.436 |
+Fd Armor |
+Top |
+Required Joh Magician |
+Reguired Level Lv. 160 i
+Set Effect™  Libae's Supercharged Equipment Set
+STR +30 {0 +30)
+T +80 (50 +30)
+Lk. +86 {50 +36)
+All Stats +5% (0% +5%)
+Magic ATT +8 (BE +3)
+Defense +325
+Enemy DEF Ignored +5%
+[Hologram] Pirate Attack Skill Ly. +1
+[Hologram] Boss Damage Enhancement Skill Ly. +1 !
+f [Hologram] Thief Attack Skill Lv. +1 ’
+: Scroll Enhancement Mone
+(9 Remaining, 0 Restores) Available)
+Jewel Stats
+Check the enhancement details by using the
+InteractHarvest key.
+@ Potential : Epic
+= NT: +7%
+w LR +d4%
+=» DEX +4%
+* Bonus Potential : Mone

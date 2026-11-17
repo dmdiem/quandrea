@@ -1,0 +1,35 @@
+IRE
+2 FE
+ba 2 ad BE 2 4 2 8 BE 24434
+iri
+Challenget's Treatise
+Heroic: Untradahle
+Interactive: Untradahle
+Duration: 2M02027 23:29 UTC (Can't Extend)
+Combat Power Increase
+ih Currently Equipped
+jp Weapon One-handed
+Dominium
+Required Joh Lethe
+Required Level Lv. 160
+Set Effect ™ Challenger Set iMagician)
+Attack Speed Stage 4
+INT +139 (60 +79)
+LUK +138 (B60 +79)
+All Stats +5% (0% +5%)
+Max HP +255 {0 +2549)
+Max MP +255 {0 +2549)
+Attack Power +228 (143 +85)
+Magic ATT +458 (241 +120 +87)
+Damage +5% (0% +9%)
+Boss Damage +40% (30% +10%)
+Enemy DEF Ignored +10%
+Star Force, Scroll, Bonus Stats Can't Enhance
+Check the enhancement details by using the
+InteractHarvest key.
+M Potential : Unigue (Fully Enhanced)
+* Hoss Damage +30%
+= |gnore Defense +15%
+= Wlagic ATT +7%
+* Bonus Potential: Cant Enhance
+& Soul: Requires Soul Weapon Conversion

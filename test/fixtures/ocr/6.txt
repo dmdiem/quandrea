@@ -1,0 +1,37 @@
+a Ae TET
+: rr fi |
+Libae's Supercharged Hat (Magician) |
+Heroic: Untradahle |
+Interactive: Untradable I
+Duration: 3M 072027 00:00 UTS (Can't Extend)
+~ Cambat Power Increase
+; on
+| <5
+) [= Arar
+i Hat
+Required Job Magician
+Required Level Lv. 160
+Set Effect™  Libae's Supercharged Equipment Set |
+= BTR +40 (0 +40)
+= DEX +25 (0+285) i
+INT +110 (80 +10 +20)
+LUK +162 (80 +10 +72)
+Max HP +395 {360 +34)
+Max MP +360
+Magic ATT +10
+Defense +960 {Fa0 +210)
+| Enemy DEF Ignored +15% ,
+| [Hologram] lgnore Defense Enhancement Skill Ly. +1 |
+[Hologram] Damage Enhancement Skill Ly. +1
+~ [Hologram] Attack Power & Magic ATT Enhancement
+Skill Lv. +1
+Scroll Enhancement Mone
+13 Remaining, 0 Restareds) Available)
+Jewel Stats
+Check the enhancement details by using the
+InteractHarvest key.
+@ Potential : Epic
+=» STR: +7%
+=» DEX +4%
+= WT: +13
+* Bonus Potential : Mone '

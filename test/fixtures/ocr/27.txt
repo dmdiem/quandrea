@@ -1,0 +1,57 @@
+a [pe | a | Cwm
+tr ENFREREPRIE
+y Ahhhh Ahhh |
+;
+i Libae's Supercharged Pants (Magician) |
+; Heroic: Untradahle |
+: Interactive: Untradahle |
+
+Duration: 3M 072027 00:00 UTS (Can't Extend) |
+Combat Power Increase |
+
+L— J. |
+
+by
+
+| ; Arrnar |
+
+Bottom |
+
+y Required Joh Magician
+3 Required Level Ly. 160 |
+Set Effect  Libae's Supercharged Equipment Set |
+© STR +30 (0 +30)
+3 DEX +45 {0 +48) i
+
+INT +72 (90 +22) |
+
+LUK +138 {50 +22 +6A) |
+
+Max HP +2985 {0 +109 +2380) [
+jj Magic ATT +B |
+
+Defense +510 {325 +1845)
+
+Enerriy DEF Ignored +5% |
+t [Hologram] Registry Ly. +1
+b White Hole Lv. +1
+= [Hologram] Magician Attack Skill Ly. +1
+
+Scroll Enhancement Mone
+
+(9 Remaining, 0 Restores) Available)
+
+Jewel Stats
+
+Check the enhancement details by using the
+
+InteractHarvest key.
+
+M Potential: Unigue
+
+= hax MP +10%
+
+= hax HP +7T%
+
+= DEF +7T%
+| * Bonus Potential : Mone |

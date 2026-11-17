@@ -1,0 +1,35 @@
+ba 2 ad BE 2 4 2 8 BE 24434
+Libae's Supercharged Top (Magician)
+Heroic: Untradahle
+Interactive: Untradahle
+Duration: 3M 072027 00:00 UTS (Can't Extend)
+Cambat Power Increase
+E} + 119,966 |
+FH Armor
+Top |
+Required Joh Magician !
+equired Level Lv. 160
+Set Effect Libae's Supercharged Equipment Set
+STR +30 {0 +30)
+IMT +80 (50 +40)
+LUK +120 {50 +40 +30)
+All Stats +4% (0% +4%)
+Max HP +255 {0 +2549)
+Magic ATT +6 ;
+Defense +723 {325 +362 +36)
+Speed +6 (0 +6) !
+Enemy DEF Ignored +5% |
+[Hologram] lgnare Defense Enhancement Skill Ly. +1
+[Hologram] Critical Damage Enhancement Skill Ly. +1
+[Hologram] Magician Attack Skill Ly. +1
+Scroll Enhancement Mone
+(9 Remaining, 0 Restores) Available)
+Jewel Stats
+Check the enhancement details by using the
+InteractHarvest key.
+3 Potential ; Epic
+= 20% chance to ignore 26 damage when attacked.
+= hax MP +125
+= All Stats +6
+* Bonus Potential : Mone
+yr

@@ -1,0 +1,153 @@
+// Picking the best set: one item per slot. The counting idea is the same as the community's
+// "3L Set Solver": walk the slots one at a time, keeping every reachable tally of target lines
+// (each count capped at what the set needs), so the best tally is exact without trying every combo.
+//
+// Two goals:
+//   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT, 1 of each other)
+//   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
+
+import { SLOTS, TARGETS, OTHER } from "./parse.js";
+
+const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
+const NEED = TARGETS.map((t) => t.need);
+const BASE = NEED.map((n) => n + 1);
+const MUL = [];
+BASE.reduce((m, b, i) => ((MUL[i] = m), m * b), 1);
+export const TOTAL = NEED.reduce((a, b) => a + b, 0); // 18
+
+const digit = (st, i) => Math.floor(st / MUL[i]) % BASE[i];
+export const counts = (st) => NEED.map((_, i) => digit(st, i));
+const tally = (st) => counts(st).reduce((a, b) => a + b, 0);
+
+function add(st, lines) {
+  for (const k of lines) {
+    const i = IDX[k];
+    if (i !== undefined && digit(st, i) < NEED[i]) st += MUL[i];
+  }
+  return st;
+}
+
+// How many of an item's lines are on the list (the most it could ever add).
+export const useful = (item) => item.lines.filter((k) => k !== OTHER).length;
+
+// items: [{ id, slot, lines, equipped? }]. Returns the picks and how good they are.
+export function solve(items, mode = "endgame") {
+  const bySlot = SLOTS.map((s) => items.filter((it) => it.slot === s));
+  // Map of tally -> { score, prev, item }. score = how much we like the path so far (lines, equipped).
+  let layer = new Map([[0, { extra: 0 }]]);
+  const layers = [];
+  for (const [si, opts] of bySlot.entries()) {
+    const next = new Map();
+    for (const [st, info] of layer) {
+      for (const it of opts.length ? opts : [null]) {
+        const ns = it ? add(st, it.lines) : st;
+        // early: every line counts; endgame: prefer what you already wear (fewer swaps)
+        const extra = info.extra + (it ? (mode === "early" ? it.lines.length * 100 : 0) + (it.equipped ? 1 : 0) : 0);
+        const cur = next.get(ns);
+        if (!cur || extra > cur.extra) next.set(ns, { extra, prev: st, item: it, slot: si });
+      }
+    }
+    layers.push(next);
+    layer = next;
+  }
+  const value = (st, e) => (mode === "early" ? e.extra * 100 + tally(st) * 10 : tally(st) * 1000 + e.extra);
+  let bestSt = 0;
+  let best = null;
+  for (const [st, e] of layer) if (!best || value(st, e) > value(bestSt, best)) [bestSt, best] = [st, e];
+
+  const picks = Object.fromEntries(SLOTS.map((s) => [s, null]));
+  for (let l = layers.length - 1, st = bestSt; l >= 0; l--) {
+    const e = layers[l].get(st);
+    if (e.item) picks[SLOTS[e.slot]] = e.item;
+    st = e.prev;
+  }
+  // Which picked lines actually count (a 4th Leap or a 2nd Pirate doesn't).
+  const run = NEED.map(() => 0);
+  const counted = {};
+  for (const s of SLOTS) {
+    const it = picks[s];
+    counted[s] = it ? it.lines.map((k) => { const i = IDX[k]; if (i === undefined || run[i] >= NEED[i]) return false; run[i]++; return true; }) : [];
+  }
+  const lines = SLOTS.reduce((n, s) => n + (picks[s]?.lines.length ?? 0), 0);
+  return { picks, counted, counts: counts(bestSt), score: tally(bestSt), lines };
+}
+
+// What's still missing from the 18, as line keys (e.g. ["wh", "wh", "mage"]).
+export const missing = (res) => TARGETS.flatMap((t, i) => Array(t.need - res.counts[i]).fill(t.k));
+
+// ---- Sockets (stage 2) ----
+// Jewels go in sockets. Once the 18 lines are done, you farm a second set with the right sockets and
+// use Orbs to move your lines onto it. The goal: 4 pieces with prismatic + stat + stat and 2 with
+// stat + stat + stat. A prismatic socket can also hold a stat gem (handy for mages), so it counts as good.
+
+// Which socket colours hold each class's stat gems. Pirates depend on their main stat.
+export const CLASS_OPTIONS = [
+  { id: "Magician", cls: "Magician", colours: ["blue"] },
+  { id: "Warrior", cls: "Warrior", colours: ["red", "green", "grey"] },
+  { id: "Bowman", cls: "Bowman", colours: ["red", "green", "grey", "purple"] },
+  { id: "Thief", cls: "Thief", colours: ["purple", "grey"] },
+  { id: "Pirate (STR)", cls: "Pirate", colours: ["red", "green", "grey"] },
+  { id: "Pirate (DEX)", cls: "Pirate", colours: ["red", "green", "grey", "purple"] },
+];
+export const classOption = (id) => CLASS_OPTIONS.find((o) => o.id === id) ?? CLASS_OPTIONS[0];
+
+export function socketValue(item, classId) {
+  const { colours } = classOption(classId);
+  const s = item.sockets ?? [];
+  const prismatic = s.filter((c) => c === "prismatic").length;
+  const mine = s.filter((c) => colours.includes(c)).length;
+  return { prismatic, mine, dead: s.length - prismatic - mine, good: Math.min(3, prismatic + mine) };
+}
+
+export const PRISMATIC_GOAL = 4;
+
+// The best socket piece per slot, aiming for 4 slots with a prismatic. Returns
+// { picks: { slot: item|null }, good (of 18), prismatic (pieces with one) }.
+export function socketSet(items, classId) {
+  const best = SLOTS.map((s) => {
+    const mine = items.filter((it) => it.slot === s).map((it) => ({ it, v: socketValue(it, classId) }));
+    const top = (list) => list.sort((a, b) => b.v.good - a.v.good || a.v.dead - b.v.dead)[0] ?? null;
+    return { any: top([...mine]), prism: top(mine.filter((x) => x.v.prismatic > 0)) };
+  });
+  let plan = null;
+  for (let mask = 0; mask < 1 << SLOTS.length; mask++) {
+    let good = 0;
+    let prism = 0;
+    let ok = true;
+    const picks = {};
+    SLOTS.forEach((s, i) => {
+      const want = mask & (1 << i) ? best[i].prism : best[i].any;
+      if (mask & (1 << i) && !want) ok = false;
+      picks[s] = want?.it ?? null;
+      good += want?.v.good ?? 0;
+      if (want?.v.prismatic) prism++;
+    });
+    if (!ok) continue;
+    const rank = Math.min(prism, PRISMATIC_GOAL) * 100 + good;
+    if (!plan || rank > plan.rank) plan = { rank, picks, good, prismatic: prism };
+  }
+  return plan;
+}
+
+// ---- Keep or trash ----
+// keep:   in the best set
+// backup: every line is on the list (a perfect 3L, or near it) - worth holding while you farm
+// donor:  in the socket set (stage 2), so your lines can be fused onto it
+// trash:  none of the above (also anything for another class)
+export function verdicts(items, { classId = "Magician", mode = "endgame" } = {}) {
+  const { cls } = classOption(classId);
+  const mine = items.filter((it) => it.cls === cls);
+  const res = solve(mine, mode);
+  const sockets = socketSet(mine, classId);
+  const picked = new Set(Object.values(res.picks).filter(Boolean).map((it) => it.id));
+  const donor = new Set(Object.values(sockets.picks).filter((it) => it && socketValue(it, classId).good > 0).map((it) => it.id));
+  const out = {};
+  for (const it of items) {
+    if (it.cls !== cls) out[it.id] = { verdict: "trash", why: `${it.cls ?? "Another class"} gear` };
+    else if (picked.has(it.id)) out[it.id] = { verdict: "keep", why: "In your best set" };
+    else if (it.lines.length === 3 && useful(it) === 3) out[it.id] = { verdict: "backup", why: "All 3 lines are on the list" };
+    else if (donor.has(it.id)) out[it.id] = { verdict: "donor", why: "Best sockets for its slot: fuse your lines onto it" };
+    else out[it.id] = { verdict: "trash", why: useful(it) ? "Your best set already does better" : "No lines on the list" };
+  }
+  return { res, sockets, verdicts: out };
+}

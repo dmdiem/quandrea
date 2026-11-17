@@ -1,0 +1,36 @@
+Ilr |i || oh [gn] [sae [leo my
+ba 2 8 5 BE & 4 3 4
+Libae's Supercharged Top (Magician)
+Heroic: Untradahle
+Interactive: Untradahle
+Duration: 3M 072027 00:00 UTS (Can't Extend)
+Cambat Power Increase
+E} +237.112
+Lin Armor
+Tap
+Required Joh Magician
+Required Level Lv. 160
+- Effect™®  Libae's Supercharged Equipment Set
+STR +30 {0 +30)
+INT +117 (50 +22 +48)
+LUK +117 (50 +22 +48)
+Max HPF +1048 {0 +1048)
+Attack Power +8 (0 +6)
+Magic ATT +86
+Defense +510 {325 +1845)
+Enemy DEF Ignored +5%
+[Hologram] Attack Power & Magic ATT Enhancement
+Skill Lv. +1
+[Hologram] Registry Lv. +1
+[Hologram] Pirate Attack Skill Ly. +1
+Scroll Enhancement Mone
+(9 Remaining, 0 Restores) Available)
+Jewel Stats
+Check the enhancement details by using the
+InteractHarvest key.
+DO Potential : Legendary
+= 4% chance to become invincible for 7 seconds
+when attacked.
+= |rwincible for +2 sec After Taking Damage
+= MT: +10%
+* Bonus Potential : Mone

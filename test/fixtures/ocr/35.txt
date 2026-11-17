@@ -1,0 +1,38 @@
+ye ram | 7 7
+me 8)
+gh 5 a d d d
+X POP
+i
+> Libae's Supercharged Cape (Magician)
+Heroic: Untradahle
+Interactive: Untradahle
+Duration: 3M 072027 00:00 UTS (Can't Extend)
+Combat Power Increase
+[
+11042 |
+\ Armor
+° Cape
+Required Job Magician F
+Required Level Lv. 145 {160 - 14) oF
+Set Effect™  Libae's Supercharged Equipment Set 5
+STR +75 {a0 +28) :
+DEX +75 {a0 +28) [
+= INT +121 (50 +8 +63) I
+LUK +58 {50 +3) L
+Max HP +25 (0 +29) f
+Attack Power +8 f
+Magic ATT +4 I
+15 Defense +768 {B00 +132 +36) CL
+a [Hologram] Attack Power & Magic ATT Enhancement :
+1 Skill Lv. +1 [l
+= [Hologram] Damade Enhancement Skill Ly. +1
+Scroll Enhancement Bane 0
+(9 Remaining, 0 Restores) Available) N
+Jewel Stats [
+Check the enhancement details by using the |
+InteractHarvest key. [
+M Potential: Unigue
+= MT: +10%
+= hax HP +7T% L
+= All Stats +4%
+* Honus Potential - Mone

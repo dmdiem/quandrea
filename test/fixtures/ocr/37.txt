@@ -1,0 +1,33 @@
+RR
+4
+Libae's Supercharged Cape (Magician)
+3 Heroic: Untradahle
+] Interactive: Untradable
+Duration: 3M 072027 00:00 UTS (Can't Extend)
+| . Combat Power Increase
+] ) ] Armor
+| ° Cape
+4 Required Joh Magician
+Required Level Ly. 145 (160 - 15)
+| Set Effect™  Libae's Supercharged Equipment Set |
+\ STR +40
+DEX +40
+INT +86 (90 +36)
+LUK +77 {a0 +27)
+Max HP +2400 {0 +2400)
+Attack Power +9
+Magic ATT +4 I
+[Defense +600 !
+EF [Hologram] Pirate Attack Skill Ly. +1 |
+" [Hologram] Darnage Enhancement Skill Lv. +1
+= [Hologram] Boss Damage Enhancement Skill Ly. +1
+Scroll Enhancement Mone
+(9 Remaining, 0 Restores) Available)
+Jewel Stats
+Check the enhancement details by using the
+InteractHarvest key.
+DO Potential : Legendary
+= 10% chance to ignore 20% damage when attacked.
+= hax MP +10%
+= Ma MP +10% |
+* Bonus Potential : Mone |

@@ -1,0 +1,34 @@
+Ea & 8 = = ¢9f
+|
+=  Libae's Supercharged Pants (Magician)
+4 Heroic: Untradahle
+Interactive: Untradahle
+: Duration: 3M 072027 00:00 UTS (Can't Extend)
+. Combat Power Increase
+| =e
+' he]
+15 om
+Bottom
+Required Joh Magician
+Required Level Lv. 135 {160 - 249)
+Set Effect™  Libae's Supercharged Equipment Set
+STR +25 {0 +29)
+= DEX +25 {0 +29)
+INT +77 (80 +27)
+Eo LUKE +40
+Max HP +1920 {0 +1920)
+Magic ATT +86
+Defense +325
+Enemy DEF Ignored +5%
+. [Hologram] Pirate Attack Skill Lv. +1
+= [Hologram] Critical Damage Enhancement Skill Lv. +1
+I Scroll Enhancement Mone
+od (5 Remaining, 0 Restoreds) Available)
+PY Jewel Stats
+Check the enhancement details by using the
+InteractHarvest key.
+DO Potential : Legendary
+= 35% chance to reflect 80% damage.
+» 5% chance to ignore 40% damage when attacked.
+» 5% chance to ignore 40% damage when attacked.
+* Bonus Potential : Mone

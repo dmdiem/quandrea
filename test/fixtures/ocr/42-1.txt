@@ -1,0 +1,31 @@
+Libae's Supercharged Shoulder Accessory
+Magician)
+Heroic: Untradahle
+Interactive: Untradahle
+Duration: 3M 072027 00:00 UTS (Can't Extend)
+— Combat Power Increase
+a] Currently Equipped
+E
+i;
+Shoulder
+
+Required Joh Magician
+Required Level Lv. 160
+Set Effect™  Libae's Supercharged Equipment Set
+STR +41
+DEX +41
+IMT +51
+LUK +51
+Attack Power +28
+Magic ATT +28
+Defense +450
+Bonus Stats Can't Enhance
+Scroll Enhancement Mone
+3 Remaining, 0 Restores) Available)
+Check the enhancement details by using the
+InteractHarvest key.
+M Potential: Unigue
+= All Stats +7%
+= MT: +10%
+= hax HP +7T%
+* Bonus Potential : Mone

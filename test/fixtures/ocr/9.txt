@@ -1,0 +1,38 @@
+8 @ ...... LE
+| AhAAA *
+I
+| Libae's Supercharged Hat (Magician)
+Heroic: Untradahle :
+Interactive: Untradahle
+| Duration: 3M 072027 00:00 UTS (Can't Extend) |
+Combat Power Increase |
+—_ I
+£2] |
+— Armor!
+| Hat |
+| Required Joh Magician :
+Reguired Level Lv. 160 :
+Set Effect™®  Libae's Supercharged Equipment Set |
+STR +15 {0 +14) ;
+DEX +45 {0 +48) ;
+IMT +83 (80 +13)
+LUK +108 {80 +13 +14)
+Max HP +2810 {360 +50 +2400)
+Max MP +360 :
+Magic ATT +10
+| Defense +1084 {7a0 +258 +44) I
+Enemy DEF Ignored +15%
+| [Hologram] Registry Ly, +1
+[Hologram] Attack Power & Magic ATT Enhancement :
+Skill Ly. +1
+Scroll Enhancement Mone
+13 Remaining, 0 Restareds) Available)
+Jewel Stats
+Check the enhancement details by using the
+InteractHarvest key.
+M Potential: Unigue
+= Max HP +10%
+= 20% chance to ignore 26 damage when attacked.
+= 20% chance to ignore 39 damage when attacked.
+* Bonus Potential : Mone
+L rn

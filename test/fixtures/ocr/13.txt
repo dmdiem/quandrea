@@ -1,0 +1,36 @@
+rr def
+|
+Libae's Supercharged Top (Magician) |
+Heroic: Untradahle :
+he Interactive: Untradable :
+hy Duration: 3M 072027 00:00 UTS (Can't Extend) |
+Ny Combat Power Increase |
+~ |
+ve = +64,085 |
+Fit FA Armor
+ai Top |
+Ap Required Joh Magician |
+Required Level Ly. 160
+Set Effect™  Libae's Supercharged Equipment Set
+STR +45 (0 +45) :
+DEX +158 {0 +148) i
+INT +88 {90 +3 +30)
+ERn  LUK +88 (50 +2 +30)
+Max HP +25 (0 +29)
+Magic ATT +11 {6 +8)
+Defense +398 (325 +73)
+" #&  Enerry DEF lgnored  +5% [
+1 [Hologram] Damage Enhancement Skill Ly, +1 |
+[Hologram] Thief Attack Skill Lv. +1 ’
+[Hologram] Boss Damage Enhancement Skill Ly. +1
+Scroll Enhancement Mone
+(9 Remaining, 0 Restores) Available)
+Jewel Stats
+Check the enhancement details by using the
+InteractHarvest key.
+M Potential: Unigue
+= 2% chance to become invincible for 7 seconds
+when attacked.
+= hax HP +7T%
+= 30% chance to ignore 53 damage when attacked. |
+* Bonus Potential : Mone i

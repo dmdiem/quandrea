@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quandrea</title>
+<meta name="description" content="Reads your MapleStory Quanah gear while you hover it, and tells you what to keep for 18/18 hologram lines and the best sockets.">
+<link rel="icon" href="logo.png">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
+<script type="module" src="src/app.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <img class="logo" src="logo.png" alt="" onerror="this.remove()">
+      <div>
+      <h1>Quandrea</h1>
+      <p class="muted">Share your MapleStory window and hover your Quanah gear. It reads each item's hologram lines and sockets, then tells you what to keep. Everything stays on your computer.</p>
+      </div>
+    </div>
+    <div class="settings">
+      <label>Class <select id="class"></select></label>
+      <div class="seg" role="group" aria-label="Goal">
+        <button id="mode-endgame" data-mode="endgame">Right lines</button>
+        <button id="mode-early" data-mode="early">Any 3 lines</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="panel" id="live">
+    <div class="row spread">
+      <h2>Scanner</h2>
+      <div class="row">
+        <button id="share" class="primary">Share MapleStory window</button>
+        <button id="stop" class="ghost" hidden>Stop</button>
+      </div>
+    </div>
+    <p id="status" class="status">Not watching yet.</p>
+    <div id="last"></div>
+    <details class="help">
+      <summary>How to use it</summary>
+      <ol>
+        <li>Click <b>Share MapleStory window</b> and pick the game window (or your whole screen).</li>
+        <li>Open your inventory and hover each item with the grey bar at the top (those have hologram lines). Wait for the ✓ before moving on, about a second each.</li>
+        <li>Hover one item of each slot so the scanner also sees what you're wearing (the "Currently Equipped" box).</li>
+        <li>Don't move or sort items while scanning. When you're done, throw out what's marked <b>Trash</b>.</li>
+      </ol>
+      <p class="muted">Stage 1 is the 18 lines: 3 Dimensional Leap, 3 White Hole, 3 Registry, 3 ATT, and one each of Crit DMG, Warrior, Mage, Bowman, Thief and Pirate, on six pieces (hat, top, bottom, cape, gloves, shoes). Stage 2 is a second set with the right sockets (4 with prismatic + stat + stat, 2 with stat + stat + stat); Orbs move your lines onto it.</p>
+    </details>
+  </section>
+
+  <div class="grid">
+    <section class="panel" id="lines"></section>
+    <section class="panel" id="sockets"></section>
+  </div>
+
+  <section class="panel" id="items"></section>
+</div>
+<video id="video" muted playsinline hidden></video>
+</body>
+</html>

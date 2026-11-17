@@ -1,0 +1,34 @@
+3 ER En
+Hy EERE Era.
+*
+Libae's Supercharged Shoes (Magician)
+Heroic: Untradahle
+Interactive: Untradahle
+Duration: 3M 072027 00:00 UTS (Can't Extend)
+Combat Power Increase
+r
+Shoes
+Required Joh Magician
+Required Level Lv. 160
+Set Effect™  Libae's Supercharged Equipment Set
+DEX +30 {0 +30)
+INT +87 (95 +2 +30)
+LUK +87 {55 +3)
+Max HP +2400 {0 +2400)
+Magic ATT +16 (12 +4)
+Defense +342 (325 +17)
+Speed +16 {10 +6)
+Jump +7
+= [Hologram] Critical Damage Enhancement Skill Lv. +1
+2| [Hologram] Attack Power & Madic ATT Enhancement
+wm. Skill Lv. +1
+|S Scroll Enhancement Mone
+- (9 Remaining, 0 Restores) Available)
+Jewel Stats
+Check the enhancement details by using the
+InteractHarvest key.
+M Potential: Unigue
+= DEX +10%
+= All Stats +4%
+= DEX +7%
+* Bonus Potential : Mone
