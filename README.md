@@ -11,8 +11,11 @@ saved only in that browser.
 ## Using it
 
 1. Open the site and click **Share MapleStory window**. Pick the game window (or the whole screen).
-2. Open your inventory's Equip tab with nothing hovered: the **Inventory map** copies it, with
+2. Open your inventory's Equip tab, **expanded** so all 16 columns show (the small view only shows 4),
+   with nothing hovered: the **Inventory map** copies it, with
    dashed cells for items that have hologram lines (the grey bar on top) and hatched ones to skip.
+   You can also paste a screenshot of the inventory window (Win+Shift+S, then Ctrl+V on the page).
+   **Reset map** clears it if it ever goes wrong.
 3. Hover each dashed item and wait for the ✓, about a second each. The map ticks the cell under the
    game's cursor and colours it by verdict; click a cell to see its lines and sockets.
 4. Hover one item per slot so it also reads the "Currently Equipped" box next to it.

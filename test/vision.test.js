@@ -161,6 +161,19 @@ test("an inventory that isn't fully unlocked: the '+ SLOT' button isn't an item"
   assert.deepEqual(readCells(img, findGrid(img)), kinds);
 });
 
+test("the small inventory view (4 columns) isn't taken for the full one, but is spotted", () => {
+  const img = screen(600, 600);
+  fill(img, 30, 80, 4 * 46 + 12, 8 * 46 + 12, [244, 246, 248]);
+  const g = { x: 38, y: 88 };
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 4; c++) {
+    const b = cellBox(g, c, r);
+    fill(img, b.x, b.y, 42, 42, [214, 218, 224]);
+    if ((r + c) % 2) fill(img, b.x + 10, b.y + 12, 22, 24, [180, 40, 40]);
+  }
+  assert.equal(findGrid(img), null);
+  assert.deepEqual(findGrid(img, 4), g);
+});
+
 test("cell under a point, with the extra gap after every 4 columns", () => {
   const g = { x: 24, y: 96 };
   assert.deepEqual(cellAt(g, 30, 100), { c: 0, r: 0 });

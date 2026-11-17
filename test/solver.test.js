@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { solve, missing, verdicts, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
+import { solve, missing, onePieceAway, verdicts, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
 
 let n = 0;
 const item = (slot, lines, extra = {}) => ({ id: String(++n), slot, cls: "Magician", lines: lines.split(" ").filter(Boolean), sockets: [], ...extra });
@@ -20,6 +20,20 @@ test("a perfect set scores 18/18 with nothing missing", () => {
   assert.equal(r.score, 18);
   assert.deepEqual(missing(r), []);
   assert.ok(Object.values(r.counted).every((c) => c.every(Boolean)));
+});
+
+test("one more piece finishes it: per slot, the exact lines a single drop needs", () => {
+  // Perfect except the cape: the other five slots leave exactly White Hole, Registry and Crit missing.
+  const five = PERFECT.filter((it) => it.slot !== "Cape");
+  const opts = onePieceAway([...five, item("Cape", "other other other")]);
+  assert.deepEqual(opts.find((o) => o.slot === "Cape"), { slot: "Cape", need: ["wh", "reg", "crit"] });
+  // Already 18/18: nothing to hunt (no slot's gap is empty after removing it... except the redundant ones)
+  assert.ok(onePieceAway(PERFECT).every((o) => o.need.length > 0));
+  // A gap that needs the same line twice can't be one piece.
+  const noLeap = PERFECT.map((it) => ({ ...it, lines: it.lines.filter((k) => k !== "leap") }));
+  assert.ok(!onePieceAway(noLeap).some((o) => o.slot === "Hat" && o.need.filter((k) => k === "leap").length > 1));
+  // Too far away: nothing.
+  assert.deepEqual(onePieceAway([item("Hat", "mage")]), []);
 });
 
 test("extra copies don't count: a 4th Leap is wasted, so the solver picks around it", () => {

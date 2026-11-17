@@ -302,10 +302,11 @@ export function profileDiff(a, b, maxShift = 4) {
 export const GRID = { cols: 16, rows: 8, cell: 42, pitch: 46 };
 const colOffset = (c) => c * GRID.pitch + 2 * Math.floor(c / 4);
 
-export function findGrid(img) {
+// cols: 16 for the full Equip tab, 4 to spot the compact view (which shows only 4 columns).
+export function findGrid(img, cols = GRID.cols) {
   const { width: w, height: h, data: d } = img;
   const span = GRID.pitch * GRID.rows;
-  if (h < span || w < colOffset(GRID.cols)) return null;
+  if (h < span || w < colOffset(cols)) return null;
   const rowBright = new Array(h).fill(0);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x += 2) if (lum(d, (y * w + x) * 4) > 236) rowBright[y]++;
   // The gap lines above, between and below the 8 rows.
@@ -318,7 +319,8 @@ export function findGrid(img) {
   }
   const lines = Array.from({ length: GRID.rows + 1 }, (_, k) => rowBright[gy + k * GRID.pitch]);
   const strong = Math.max(...lines);
-  if (strong < 150 || lines.filter((v) => v > strong * 0.5).length < 5) return null;
+  // A gap line spans every column (sampled every 2px), so a 4-column view has much shorter lines.
+  if (strong < Math.min(150, cols * 12) || lines.filter((v) => v > strong * 0.5).length < 5) return null;
   // Cells start just after the gap.
   let top = gy;
   while (top < gy + 6 && rowBright[top] > strong * 0.5) top++;
@@ -332,17 +334,42 @@ export function findGrid(img) {
   }
   let x0 = 0;
   best = -1;
-  for (let x = 0; x + colOffset(GRID.cols - 1) + GRID.cell < w; x++) {
+  for (let x = 0; x + colOffset(cols - 1) + GRID.cell < w; x++) {
     let s = 0;
-    for (let c = 0; c < GRID.cols; c++) s += colBright[x + colOffset(c)];
+    for (let c = 0; c < cols; c++) s += colBright[x + colOffset(c)];
     if (s > best) [best, x0] = [s, x];
   }
   // The gap is a few px wide: cells start right after its last bright column.
-  const score = (x) => { let t = 0; for (let c = 0; c < GRID.cols; c++) t += colBright[x + colOffset(c)] ?? 0; return t; };
+  const score = (x) => { let t = 0; for (let c = 0; c < cols; c++) t += colBright[x + colOffset(c)] ?? 0; return t; };
   while (x0 + 1 < w && score(x0 + 1) >= best * 0.85) x0++;
-  const colHits = Array.from({ length: GRID.cols }, (_, c) => colBright[x0 + colOffset(c)]);
-  if (colHits.filter((v) => v > 40).length < 8) return null;
-  return { x: x0 + 1, y: top };
+  const colHits = Array.from({ length: cols }, (_, c) => colBright[x0 + colOffset(c)]);
+  if (colHits.filter((v) => v > 40).length < Math.min(8, cols)) return null;
+  const grid = { x: x0 + 1, y: top };
+  return looksLikeInventory(img, grid, cols) ? grid : null;
+}
+
+// The real Equip tab has near-white gaps (about 238 bright) left of and above every cell. Something
+// else on screen that happens to line up won't have that nearly everywhere.
+function looksLikeInventory(img, grid, cols) {
+  const { width: w, height: h, data: d } = img;
+  let ok = 0;
+  let seen = 0;
+  for (let r = 0; r < GRID.rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const b = cellBox(grid, c, r);
+      if (b.x < 2 || b.y < 2 || b.x + b.width >= w || b.y + b.height >= h) continue;
+      seen++;
+      const gapL = [];
+      const gapT = [];
+      for (let k = 8; k < 34; k += 3) {
+        gapL.push(lum(d, ((b.y + k) * w + b.x - 1) * 4));
+        gapT.push(lum(d, ((b.y - 1) * w + b.x + k) * 4));
+      }
+      const med = (a) => a.sort((p, q) => p - q)[a.length >> 1];
+      if (med(gapL) > 225 && med(gapT) > 225) ok++;
+    }
+  }
+  return seen >= cols * 4 && ok >= seen * 0.7;
 }
 
 // Where cell (c, r) is on screen.

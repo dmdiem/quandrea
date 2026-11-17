@@ -140,7 +140,6 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .sub + .inv-item { border-top: 0; }
 .tag { font-size: 11px; color: var(--muted); }
 .none { color: var(--muted); font-size: 13px; }
-.add { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-top: 8px; border-top: 1px solid var(--line); }
 .danger { color: var(--trash); border-color: var(--trash); }
 
 /* Inventory map: the Equip tab's 16 x 8 grid. */
@@ -190,3 +189,35 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .pgrid .now-row td[colspan] { text-align: left; padding: 2px 0 6px 18px; }
 .pgrid .now-row td[colspan] .chip { font-size: 11px; }
 .wearing-now { font-size: 12px; color: var(--muted); margin-right: 4px; }
+
+/* Add manually: tap buttons instead of dropdowns. */
+.add-manual { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+.add-manual summary { cursor: pointer; display: flex; gap: 10px; align-items: baseline; list-style: none; }
+.add-manual summary::-webkit-details-marker { display: none; }
+.add-manual summary::before { content: "▸"; color: var(--muted); }
+.add-manual[open] summary::before { content: "▾"; }
+.add-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 8px; }
+.add-label { width: 74px; font-size: 12px; font-weight: 600; color: var(--muted); flex: none; }
+.tap { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; font-size: 12px; border-radius: 999px; }
+.tap.on { border-color: var(--holo); background: color-mix(in srgb, var(--holo) 22%, transparent); font-weight: 700; }
+.tap:disabled { opacity: 0.35; cursor: default; }
+.tap .jewel { height: 18px; }
+.draft { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; flex: 1; min-width: 0; }
+.unpick { border: 0; background: none; padding: 0; }
+.unpick:hover { opacity: 0.6; }
+.unpick .jewel { height: 20px; }
+
+/* Class lines take a faint tint of their jewel colour (red Warrior, blue Mage, green Bowman,
+   purple Thief, grey Pirate); the rest stay hologram cyan. Mixed with the theme's own colours,
+   so it works in light and dark. */
+.k-warrior { --tint: #d94848; } .k-mage { --tint: #3b7fe0; } .k-archer { --tint: #36a85a; } .k-thief { --tint: #9a52d6; } .k-pirate { --tint: #8a94a3; }
+.k-warrior, .k-mage, .k-archer, .k-thief, .k-pirate {
+  --holo: color-mix(in srgb, var(--tint) 75%, var(--fg) 0%);
+  --holo-hi: color-mix(in srgb, var(--tint) 22%, var(--surface));
+  --holo-ink: color-mix(in srgb, var(--tint) 55%, var(--fg));
+}
+
+/* One more piece finishes it */
+.hunt { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--holo); background: color-mix(in srgb, var(--holo) 7%, transparent); }
+.hunt-row { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; font-size: 13px; }
+.hunt-row b { min-width: 52px; }

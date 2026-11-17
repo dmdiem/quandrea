@@ -7,9 +7,9 @@
 <meta name="description" content="Reads your MapleStory Quanah gear while you hover it, and tells you what to keep for 18/18 hologram lines and the best sockets.">
 <link rel="icon" href="logo.png">
 <script>try { const t = localStorage.getItem("quandrea.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
-<script type="module" src="src/app.js?v=9"></script>
+<script type="module" src="src/app.js?v=10"></script>
 </head>
 <body>
 <div class="wrap">
@@ -56,7 +56,7 @@
       <summary>How to use it</summary>
       <ol>
         <li>Click <b>Share MapleStory window</b> and pick the game window (or your whole screen).</li>
-        <li>Open your inventory's Equip tab and move the mouse off it for a moment: the <b>Inventory map</b> fills in, with dashed cells for items that have hologram lines.</li>
+        <li>Open your inventory's Equip tab and <b>expand it</b> (the + at its top right) so all 16 columns show. Move the mouse off it for a moment: the <b>Inventory map</b> fills in, with dashed cells for items that have hologram lines. You can also paste a screenshot of the inventory window (Win+Shift+S, then Ctrl+V on this page).</li>
         <li>Hover each dashed item and wait for the ✓, about a second each. The map ticks the cell under your cursor and colours it keep, backup, donor or trash. Click a cell to see its lines and sockets.</li>
         <li>Hover one item of each slot so the scanner also sees what you have equipped (the "Currently Equipped" box).</li>
         <li>Don't move or sort items while scanning. When you're done, throw out what's marked <b>Trash</b>.</li>
@@ -66,7 +66,7 @@
   </section>
 
   <section class="panel">
-    <h2>Inventory map</h2>
+    <div class="row spread"><h2>Inventory map</h2><button id="reset-map" class="ghost" title="Clear the map and read the inventory again">Reset map</button></div>
     <div id="map"></div>
   </section>
 

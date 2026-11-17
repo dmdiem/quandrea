@@ -1,8 +1,8 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=9";
-import { verdicts, solve, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=9";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, GRID } from "./vision.js?v=9";
+import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=10";
+import { verdicts, solve, onePieceAway, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=10";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, GRID } from "./vision.js?v=10";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -120,6 +120,8 @@ async function tick() {
         save();
         render();
       }
+    } else if (findGrid(img, 4)) {
+      setStatus("Your inventory is in the small view (4 columns). Expand it with the + at its top right so all 16 columns show.", true);
     }
     return;
   }
@@ -234,7 +236,7 @@ function render() {
   const scanned = cells.filter((k, i) => k === "lines" && byCell[`${i % GRID.cols},${Math.floor(i / GRID.cols)}`]).length;
   const pick = selected && byCell[selected];
   $("map").innerHTML = !cells.length
-    ? `<p class="muted">Open your inventory's Equip tab with nothing hovered, and the map of your items appears here.</p>`
+    ? `<p class="muted">Open your inventory's Equip tab, <b>expanded</b> so all 16 columns show (the small view only shows 4), and move the mouse off it: the map appears here. Or take a screenshot of the inventory window (Win+Shift+S) and paste it here with Ctrl+V.</p>`
     : `<div class="row spread"><span class="muted">${scanned} scanned · ${toScan} with lines still to hover</span>
         <span class="legend"><span class="mcell lines"></span>to scan <span class="mcell item"></span>no lines (skip) <span class="mcell v-keep"></span>keep <span class="mcell v-backup"></span>backup <span class="mcell v-donor"></span>donor <span class="mcell v-trash"></span>trash</span></div>
       <div class="map">${cells.map((k, i) => {
@@ -258,7 +260,15 @@ function render() {
   const head = early ? res.lines : res.score;
   const from = Object.fromEntries(TARGETS.map((t) => [t.k, []])); // line -> slots that supply it
   for (const s of SLOTS) res.picks[s]?.lines.forEach((k, j) => res.counted[s][j] && from[k].push(s));
-  const cell = (k, slot) => `<div class="cell ${slot ? "on" : ""}"><span class="cell-slot">${slot ?? "missing"}</span></div>`;
+  const cell = (k, slot) => `<div class="cell k-${k} ${slot ? "on" : ""}"><span class="cell-slot">${slot ?? "missing"}</span></div>`;
+  // "One more piece finishes it": what a single drop in each slot would need (right-lines mode only).
+  const mine = state.items.filter((it) => option.classes.includes(it.cls));
+  const hunt = !early && res.score < TOTAL && mine.length ? onePieceAway(mine) : [];
+  const huntBox = early || res.score >= TOTAL || !mine.length ? ""
+    : `<div class="hunt"><span class="label">One more piece finishes it</span>${hunt.length
+      ? hunt.slice(0, 6).map((o) => `<div class="hunt-row"><b>${o.slot}</b> with ${o.need.map((k) => chip(k)).join(" + ")}${o.need.length < 3 ? `<span class="muted small">(+ any ${o.need.length === 2 ? "3rd line" : "2 more lines"})</span>` : ""}</div>`).join("")
+        + (hunt.length > 6 ? `<span class="muted small">and ${hunt.length - 6} more options</span>` : "")
+      : `<span class="muted small">More than one piece away: keep scanning and farming 3-line pieces.</span>`}</div>`;
   // What the collapsed piece list says, so a swap is never hidden.
   const swaps = SLOTS.filter((s) => res.picks[s] && !res.picks[s].equipped);
   const swapNote = !seenAny ? "Show pieces" : swaps.length ? `Show pieces · ${swaps.length} to swap: ${swaps.join(", ")}` : "Show pieces · all of them are equipped";
@@ -270,6 +280,7 @@ function render() {
     ${seenAny ? "" : `<p class="muted small">Hover any item and the scanner also reads the "Currently Equipped" box beside it. Do one per slot to see what you have on now.</p>`}
     <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
       <div class="cells">${Array.from({ length: 3 }, (_, j) => (j < t.need ? cell(t.k, from[t.k][j]) : `<div class="cell-gap"></div>`)).join("")}</div></div>`).join("")}</div>
+    ${huntBox}
     <details class="set pieces" id="pieces"${piecesOpen ? " open" : ""}>
       <summary><span class="label">Each piece in the best combo, and the lines it gives</span>
         <span class="muted small">${swapNote}</span></summary>
@@ -285,14 +296,14 @@ function render() {
             const idx = piece.lines.map((k, j) => [k, j]).filter(([k]) => k === t.k);
             if (!idx.length) return `<td></td>`;
             const counts = idx.some(([, j]) => counted[j]);
-            return `<td><span class="mark ${counts ? "on" : "extra"}" title="${counts ? t.name : `Extra ${t.name}: still +1 to the skill`}">${counts ? "●" : "+"}</span></td>`;
+            return `<td><span class="mark k-${t.k} ${counts ? "on" : "extra"}" title="${counts ? t.name : `Extra ${t.name}: still +1 to the skill`}">${counts ? "●" : "+"}</span></td>`;
           }).join("") + `<td class="other">${piece.lines.filter((k) => k === OTHER).length || ""}</td>`;
           // On a swap, what you wear now sits faded underneath, so the change is right there.
           // On a swap, the piece you have on now, in words, right under the one to swap in.
           const nowRow = wearing && !it.equipped ? `<tr class="now-row"><td colspan="${TARGETS.length + 3}"><span class="wearing-now">↳ Equipped:</span> ${linesOf(wearing)}</td></tr>` : "";
           return `<tr><th>${s}</th>${marks(it, res.counted[s])}<td class="act-cell">${action}</td></tr>${nowRow}`;
         }).join("")}</tbody>
-        <tfoot><tr><th>Best combo</th>${TARGETS.map((t, i) => `<td class="${res.counts[i] >= t.need ? "done" : "short"}">${res.counts[i]}/${t.need}</td>`).join("")}<td></td><td></td></tr>
+        <tfoot><tr><th>Best combo</th>${TARGETS.map((t, i) => `<td class="k-${t.k} ${res.counts[i] >= t.need ? "done" : "short"}">${res.counts[i]}/${t.need}</td>`).join("")}<td></td><td></td></tr>
           ${seenAny ? `<tr class="now-row"><th>Equipped</th>${TARGETS.map((t, i) => `<td>${nowRes.counts[i]}/${t.need}</td>`).join("")}<td></td><td></td></tr>` : ""}</tfoot>
       </table></div>
     </details>`;
@@ -315,6 +326,7 @@ function render() {
     <div class="row spread"><h2>Your gear <span class="muted">(${state.items.length})</span></h2>
       <div class="row">${Object.entries(totals).map(([k, n]) => `<span class="badge v-${k}">${VERDICT[k]} ${n}</span>`).join("")}
       ${state.items.length ? `<button id="clear" class="ghost ${confirmClear ? "danger" : ""}">${confirmClear ? "Click again to clear all" : "Clear all"}</button>` : ""}</div></div>
+    ${addForm()}
     <div class="slots">${SLOTS.map((s) => {
       const list = state.items.filter((it) => it.slot === s);
       // Something you're wearing isn't "trash": a better piece should replace it.
@@ -326,12 +338,47 @@ function render() {
         <div class="sub">In inventory <span class="tag">${bag.length}</span></div>${bag.length ? bag.map(row).join("") : `<div class="none">nothing scanned yet</div>`}
       </div>`;
     }).join("")}</div>
-    <div class="add"><span class="label">Add by hand</span>
-      <select id="add-slot">${SLOTS.map((s) => `<option>${s}</option>`).join("")}</select>
-      ${[0, 1, 2].map((i) => `<select id="add-line-${i}"><option value="">line ${i + 1}</option>${[...TARGETS.map((t) => t.k), OTHER].map((k) => `<option value="${k}">${NAME[k]}</option>`).join("")}</select>`).join("")}
-      ${[0, 1, 2].map((i) => `<select id="add-sock-${i}"><option value="">socket ${i + 1}</option>${SOCKETS.map((c) => `<option>${c}</option>`).join("")}</select>`).join("")}
-      <button id="add">Add</button></div>`;
+`;
 }
+
+// ---------- add manually ----------
+// Tap a slot, up to 3 lines and up to 3 sockets, then Add. The slot stays picked for the next one.
+let draft = { slot: "Hat", lines: [], sockets: [] };
+let addOpen = false;
+try {
+  addOpen = localStorage.getItem("quandrea.addOpen") === "1";
+} catch {}
+
+function addForm() {
+  const tap = (attr, val, label, on, off = false, extra = "") => `<button class="tap${attr === "pick-line" ? ` k-${val}` : ""}${on ? " on" : ""}" data-${attr}="${val}"${off ? " disabled" : ""}${extra}>${label}</button>`;
+  const fullLines = draft.lines.length >= 3;
+  const fullSocks = draft.sockets.length >= 3;
+  return `<details class="add-manual" id="add-manual"${addOpen ? " open" : ""}>
+    <summary><span class="label">Add manually</span><span class="muted small">for an item the scanner can't read</span></summary>
+    <div class="add-row"><span class="add-label">Slot</span>${SLOTS.map((s) => tap("pick-slot", s, s, draft.slot === s)).join("")}</div>
+    <div class="add-row"><span class="add-label">Lines <span class="muted">${draft.lines.length}/3</span></span>${[...TARGETS.map((t) => t.k), OTHER].map((k) => {
+      const picked = draft.lines.includes(k);
+      // A piece can't have the same line twice; Other (Boss, IED, Damage) can repeat.
+      const off = fullLines && !picked;
+      return tap("pick-line", k, `${icon(k)}${NAME[k]}${k === OTHER && draft.lines.filter((x) => x === OTHER).length > 1 ? ` ×${draft.lines.filter((x) => x === OTHER).length}` : ""}`, picked, off);
+    }).join("")}</div>
+    <div class="add-row"><span class="add-label">Sockets <span class="muted">${draft.sockets.length}/3</span></span>${SOCKETS.map((c) => tap("pick-sock", c, `<img class="jewel" src="icons/jewels/${c}.png" alt="">${draft.sockets.filter((x) => x === c).length > 1 ? `×${draft.sockets.filter((x) => x === c).length}` : ""}`, draft.sockets.includes(c), fullSocks && !draft.sockets.includes(c), ` title="${c}"`)).join("")}</div>
+    <div class="add-row"><span class="add-label"></span>
+      <span class="draft"><b>${draft.slot}</b>
+        ${draft.lines.length ? draft.lines.map((k, i) => `<button class="unpick" data-unline="${i}" title="Remove">${chip(k)}</button>`).join("") : `<span class="muted">tap its lines</span>`}
+        ${draft.sockets.length ? draft.sockets.map((c, i) => `<button class="unpick" data-unsock="${i}" title="Remove"><img class="jewel" src="icons/jewels/${c}.png" alt="${c}"></button>`).join("") : `<span class="muted">· tap its sockets</span>`}</span>
+      <button id="add" class="primary"${draft.sockets.length ? "" : " disabled"}>Add</button>
+      ${draft.lines.length || draft.sockets.length ? `<button id="add-clear" class="ghost">Start over</button>` : ""}</div>
+  </details>`;
+}
+
+document.addEventListener("toggle", (e) => {
+  if (e.target.id !== "add-manual") return;
+  addOpen = e.target.open;
+  try {
+    localStorage.setItem("quandrea.addOpen", addOpen ? "1" : "0");
+  } catch {}
+}, true);
 
 // ---------- events ----------
 
@@ -342,6 +389,15 @@ document.addEventListener("click", (e) => {
   if (t.id === "share") return startShare();
   if (t.id === "stop") return stopShare();
   if (t.dataset.themePick) return setTheme(t.dataset.themePick);
+  if (t.id === "reset-map") {
+    state.cells = [];
+    grid = null;
+    selected = null;
+    save();
+    render();
+    setStatus(stream ? "Map cleared. Move the mouse off your inventory and it reads it again." : "Map cleared. Share your game window, or paste a screenshot of your inventory (Ctrl+V).", Boolean(stream));
+    return;
+  }
   if (t.dataset.cell) selected = selected === t.dataset.cell ? null : t.dataset.cell;
   else if (t.dataset.mode) state.mode = t.dataset.mode;
   else if (t.dataset.stat) state.classId = `Pirate (${t.dataset.stat})`;
@@ -349,22 +405,35 @@ document.addEventListener("click", (e) => {
   else if (t.id === "clear") {
     if (confirmClear) {
       state.items = [];
+      state.cells = [];
+      grid = null;
+      selected = null;
       last = null;
       done = [];
     }
     confirmClear = !confirmClear;
-  } else if (t.id === "add") {
-    const lines = [0, 1, 2].map((i) => $(`add-line-${i}`).value).filter(Boolean);
-    const sockets = [0, 1, 2].map((i) => $(`add-sock-${i}`).value).filter(Boolean);
-    if (new Set(lines.filter((k) => k !== OTHER)).size !== lines.filter((k) => k !== OTHER).length) {
-      setStatus("A piece can't have the same line twice. Pick different lines.");
+  } else if (t.dataset.pickSlot) draft.slot = t.dataset.pickSlot;
+  else if (t.dataset.pickLine) {
+    const k = t.dataset.pickLine;
+    // Tapping a picked line removes it; Other adds another copy (Boss + IED are both Other).
+    if (k !== OTHER && draft.lines.includes(k)) draft.lines = draft.lines.filter((x) => x !== k);
+    else if (draft.lines.length < 3) draft.lines = [...draft.lines, k];
+    else if (k === OTHER && draft.lines.includes(OTHER)) draft.lines.splice(draft.lines.lastIndexOf(OTHER), 1);
+  } else if (t.dataset.pickSock) {
+    const c = t.dataset.pickSock;
+    if (draft.sockets.length < 3) draft.sockets = [...draft.sockets, c];
+    else draft.sockets.splice(draft.sockets.lastIndexOf(c), 1);
+  } else if (t.dataset.unline) draft.lines.splice(+t.dataset.unline, 1);
+  else if (t.dataset.unsock) draft.sockets.splice(+t.dataset.unsock, 1);
+  else if (t.id === "add-clear") draft = { ...draft, lines: [], sockets: [] };
+  else if (t.id === "add") {
+    if (!draft.sockets.length) {
+      setStatus("Every piece has at least one socket. Tap its socket colours.");
       return;
     }
-    if (!sockets.length) {
-      setStatus("Every piece has at least one socket. Pick its socket colours.");
-      return;
-    }
-    remember({ slot: $("add-slot").value, cls: classOption(state.classId).classes[0], lines, sockets, equipped: false, stats: `hand-${Date.now()}` });
+    remember({ slot: draft.slot, cls: classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: false, stats: `hand-${Date.now()}` });
+    setStatus(`Added a ${draft.slot.toLowerCase()} ✓`, Boolean(stream));
+    draft = { ...draft, lines: [], sockets: [] };
   } else return;
   save();
   render();
@@ -383,6 +452,33 @@ document.addEventListener("toggle", (e) => {
     localStorage.setItem("quandrea.piecesOpen", piecesOpen ? "1" : "0");
   } catch {}
 }, true);
+
+// Paste a screenshot of the inventory window (Win+Shift+S, then Ctrl+V here) to fill in the map.
+document.addEventListener("paste", async (e) => {
+  const file = [...(e.clipboardData?.items ?? [])].find((i) => i.type.startsWith("image/"))?.getAsFile();
+  if (!file) return;
+  e.preventDefault();
+  try {
+    const bmp = await createImageBitmap(file);
+    const c = document.createElement("canvas");
+    c.width = bmp.width;
+    c.height = bmp.height;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(bmp, 0, 0);
+    const img = ctx.getImageData(0, 0, c.width, c.height);
+    const g = findGrid(img);
+    if (!g) {
+      setStatus(findGrid(img, 4) ? "That's the small inventory view (4 columns). Expand it with the + at its top right, then take the screenshot again." : "Couldn't find the inventory in that screenshot. Capture the whole Equip tab, expanded so all 16 columns show.", Boolean(stream));
+      return;
+    }
+    state.cells = readCells(img, g);
+    save();
+    render();
+    setStatus("Map filled in from your screenshot ✓", Boolean(stream));
+  } catch (err) {
+    setStatus(`Couldn't read that image: ${err.message}`, Boolean(stream));
+  }
+});
 
 // Light, dark, or follow the computer ("auto"). Remembered in this browser.
 function setTheme(pick) {

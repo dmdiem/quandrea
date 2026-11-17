@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS, OTHER } from "./parse.js?v=9";
+import { SLOTS, TARGETS, OTHER } from "./parse.js?v=10";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const NEED = TARGETS.map((t) => t.need);
@@ -71,6 +71,37 @@ export function solve(items, mode = "endgame") {
   }
   const lines = SLOTS.reduce((n, s) => n + (picks[s]?.lines.length ?? 0), 0);
   return { picks, counted, counts: counts(bestSt), score: tally(bestSt), lines };
+}
+
+// "One more piece finishes it": for each slot, the lines a single new piece there would need to
+// reach 18/18, keeping the best possible pieces in the other five slots. A piece holds at most 3
+// lines and can't repeat one, so only gaps of up to 3 different lines count. Fewest lines first.
+export function onePieceAway(items) {
+  const bySlot = SLOTS.map((s) => items.filter((it) => it.slot === s));
+  const out = [];
+  const seen = new Set();
+  for (let skip = 0; skip < SLOTS.length; skip++) {
+    let layer = new Set([0]);
+    for (const [si, opts] of bySlot.entries()) {
+      if (si === skip) continue;
+      const next = new Set();
+      for (const st of layer) for (const it of opts.length ? opts : [null]) next.add(it ? add(st, it.lines) : st);
+      layer = next;
+    }
+    for (const st of layer) {
+      if (tally(st) < TOTAL - 3) continue;
+      const need = TARGETS.flatMap((t, i) => Array(t.need - digit(st, i)).fill(t.k));
+      if (!need.length || new Set(need).size !== need.length) continue;
+      const key = `${skip}:${need.join(",")}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push({ slot: SLOTS[skip], need });
+      }
+    }
+  }
+  // Fewer lines needed is an easier drop; drop options that ask for more than another in the same slot.
+  out.sort((a, b) => a.need.length - b.need.length || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
+  return out.filter((o, i) => !out.slice(0, i).some((p) => p.slot === o.slot && p.need.every((k) => o.need.includes(k))));
 }
 
 // What's still missing from the 18, as line keys (e.g. ["wh", "wh", "mage"]).
