@@ -1,9 +1,10 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=29";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=29";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=29";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=29";
+import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=30";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=30";
+import { KEYS, KEY_TO } from "./keys.js?v=30";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=30";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=30";
 
 const KEY = "quandrea.v1";
 // Looks in the pop-out window too, while Simpling Dumpling's readout lives there.
@@ -400,6 +401,7 @@ const badge = (v) => `<span class="badge v-${v.verdict}" title="${v.why}">${VERD
 const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("") : `<span class="muted">no lines</span>`);
 
 function render() {
+  if (typeof addDialog !== "undefined" && addDialog.open) addDialog.innerHTML = addForm();
   const { res, sockets, verdicts: v } = verdicts(state.items, state);
   const option = classOption(state.classId);
 
@@ -533,8 +535,7 @@ function render() {
     </div>`;
   };
   $("items").innerHTML = `
-    <h2>Keep or trash</h2>
-    ${addForm()}
+    <div class="row spread"><h2>Keep or trash</h2><button id="add-open" class="ghost" title="Type in a piece the scanner can't read">Add manually</button></div>
     <div class="gear-tabs" role="tablist">${[["trash", "Trash"], ["keep", "Keep"], ["all", "All"]].map(([k, label]) => `<button role="tab" data-gear-tab="${k}" aria-selected="${tab === k}" class="gt-${k}">${label} <span class="n">${count[k]}</span></button>`).join("")}</div>
     <p class="muted small">${tab === "trash" ? "Safe to throw away." : tab === "keep" ? "Best combo, spare 3-line pieces and the best sockets." : "Everything in your bag."}</p>
     ${bag.length ? `<div class="slots">${SLOTS.map((sl) => {
@@ -606,41 +607,116 @@ function cellPane(it, v) {
 // ---------- add manually ----------
 // Tap a slot, up to 3 lines and up to 3 sockets, then Add. The slot stays picked for the next one.
 let draft = { slot: "Hat", lines: [], sockets: [] };
-let addOpen = false;
-try {
-  addOpen = localStorage.getItem("quandrea.addOpen") === "1";
-} catch {}
+let addMsg = ""; // "Added a hat ✓", shown in the pop-up after each piece
+const addDialog = $("add-dialog");
+const addIsOpen = () => addDialog.open;
+// The next inventory cell after `from` that has hologram lines and no item entered for it yet.
+function nextCellToEnter(from) {
+  const [c0, r0] = from.split(",").map(Number);
+  const taken = new Set(state.items.map((it) => it.cell).filter(Boolean));
+  for (let i = r0 * GRID.cols + c0 + 1; i < state.cells.length; i++) {
+    const cell = `${i % GRID.cols},${Math.floor(i / GRID.cols)}`;
+    if (state.cells[i] === "lines" && !taken.has(cell)) return cell;
+  }
+  return null;
+}
+function openAdd() {
+  addMsg = "";
+  addDialog.innerHTML = addForm();
+  addDialog.showModal();
+}
+function closeAdd() {
+  addDialog.close();
+}
+addDialog.addEventListener("close", () => {
+  draft = { ...draft, lines: [], sockets: [], cell: null };
+  render();
+});
+// A click on the dimmed backdrop (outside the box) closes it.
+addDialog.addEventListener("click", (e) => {
+  if (e.target === addDialog) closeAdd();
+});
+
+// Fast entry: while the pop-up is open, keys pick for you (see keys.js). Enter adds the piece,
+// Backspace takes back the last pick, Esc closes.
+
+document.addEventListener("keydown", (e) => {
+  if (!addIsOpen() || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.target.closest?.("input, select, textarea")) return;
+  const form = $("add-manual");
+  if (!form) return;
+  const click = (sel) => form.querySelector(sel)?.click();
+  if (e.key === "Escape") return; // the pop-up closes itself
+  if (e.key === "Enter") click("#add");
+  else if (e.key === "Backspace") {
+    if (draft.sockets.length) draft.sockets.pop();
+    else draft.lines.pop();
+    render();
+  } else {
+    const hit = KEY_TO[e.key.toLowerCase()];
+    if (!hit) return;
+    const [kind, v] = hit;
+    click(`[data-pick-${kind}="${v}"]:not([disabled])`);
+    // Light the key up, like a dance pad.
+    const cap = $("add-manual")?.querySelector(`[data-pick-${kind}="${v}"]`);
+    if (cap) {
+      cap.classList.add("hit");
+      setTimeout(() => cap.classList.remove("hit"), 180);
+    }
+  }
+  e.preventDefault();
+});
+
+// The form is drawn as a keyboard: each key sits where it is on a real keyboard (top row: sockets
+// then slot; home row: lines; Z row: the rest), and lights up when pressed.
+const KEYBOARD = [
+  ["1"],
+  ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+  ["A", "S", "D", "F", "G", "H", "J", "K", "L", ";", "'"],
+  ["Z", "X", "C", "V"],
+];
+const KEY_SHORT = { leap: "Leap", wh: "White Hole", reg: "Registry", atk: "ATT", crit: "Crit", warrior: "Warrior", mage: "Mage", archer: "Bowman", thief: "Thief", pirate: "Pirate", boss: "Boss", ied: "IED", dmg: "Damage", [OTHER]: "Other" };
 
 function addForm() {
-  const tap = (attr, val, label, on, off = false, extra = "") => `<button class="tap${attr === "pick-line" ? ` k-${val}` : ""}${on ? " on" : ""}" data-${attr}="${val}"${off ? " disabled" : ""}${extra}>${label}</button>`;
   const fullLines = draft.lines.length >= 3;
   const fullSocks = draft.sockets.length >= 3;
-  return `<details class="add-manual" id="add-manual"${addOpen ? " open" : ""}>
-    <summary><span class="label">Add manually</span><span class="muted small">${draft.cell ? `for the item at Row ${+draft.cell.split(",")[1] + 1} · Col ${+draft.cell.split(",")[0] + 1} <button class="loc" id="add-nocell" title="Don't tie it to a map cell">×</button>` : "for an item the scanner can't read"}</span></summary>
-    <div class="add-row"><span class="add-label">Slot</span>${SLOTS.map((s) => tap("pick-slot", s, `${slotIcon(s)}${s}`, draft.slot === s)).join("")}</div>
-    <div class="add-row"><span class="add-label">Lines <span class="muted">${draft.lines.length}/3</span></span>${[...TARGETS.map((t) => t.k), ...FILLERS.map((f) => f.k), OTHER].map((k) => {
-      const picked = draft.lines.includes(k);
+  const count = (list, v) => list.filter((x) => x === v).length;
+  const keycap = (key) => {
+    if (!key) return `<span class="keycap gap"></span>`;
+    const [kind, v] = KEY_TO[key.toLowerCase()];
+    let on, off, label, cls = `keycap kind-${kind}`;
+    if (kind === "slot") {
+      on = draft.slot === v;
+      label = `${slotIcon(v)}<span>${v}</span>`;
+    } else if (kind === "line") {
+      on = draft.lines.includes(v);
       // A piece can't have the same line twice; only unrecognised "Other" lines can repeat.
-      const off = fullLines && !picked;
-      return tap("pick-line", k, `${icon(k)}${NAME[k]}${k === OTHER && draft.lines.filter((x) => x === OTHER).length > 1 ? ` ×${draft.lines.filter((x) => x === OTHER).length}` : ""}`, picked, off);
-    }).join("")}</div>
-    <div class="add-row"><span class="add-label">Sockets <span class="muted">${draft.sockets.length}/3</span></span>${SOCKETS.map((c) => tap("pick-sock", c, `${jewel(c)}${draft.sockets.filter((x) => x === c).length > 1 ? `×${draft.sockets.filter((x) => x === c).length}` : ""}`, draft.sockets.includes(c), fullSocks && !draft.sockets.includes(c), ` title="${c}"`)).join("")}</div>
-    <div class="add-row"><span class="add-label"></span>
+      off = fullLines && !on;
+      label = `${classIcon(v)}<span>${KEY_SHORT[v]}${count(draft.lines, v) > 1 ? ` ×${count(draft.lines, v)}` : ""}</span>`;
+      cls += ` k-${v}${isTarget(v) ? "" : " filler"}`;
+    } else {
+      on = draft.sockets.includes(v);
+      off = fullSocks && !on;
+      label = `<span class="sock ${v}"></span><span>${SOCK_WORD[v]}${count(draft.sockets, v) > 1 ? ` ×${count(draft.sockets, v)}` : ""}</span>`;
+    }
+    return `<button class="${cls}${on ? " on" : ""}" data-pick-${kind}="${v}" data-key="${key}"${off ? " disabled" : ""} title="${key}"><kbd>${key}</kbd>${label}</button>`;
+  };
+  const where = draft.cell ? ` · for Row ${+draft.cell.split(",")[1] + 1} · Col ${+draft.cell.split(",")[0] + 1} <button class="loc" id="add-nocell" title="Don't tie it to a map cell">×</button>` : "";
+  return `<div class="add-manual" id="add-manual">
+    <div class="row spread"><h2>Add manually<span class="muted small">${where}</span></h2><button class="ghost" id="add-close" aria-label="Close">×</button></div>
+    <p class="muted small add-keys">Type it or tap it. Top row: sockets (${draft.sockets.length}/3) and slot · home row: lines (${draft.lines.length}/3). <kbd>Enter</kbd> adds, <kbd>Backspace</kbd> undoes, <kbd>Esc</kbd> closes.</p>
+    <div class="keyboard">${KEYBOARD.map((row, r) => `<div class="krow r${r}">${row.map(keycap).join("")}</div>`).join("")}</div>
+    <div class="add-row">
       <span class="draft"><b>${draft.slot}</b>
-        ${draft.lines.length ? draft.lines.map((k, i) => `<button class="unpick" data-unline="${i}" title="Remove">${chip(k)}</button>`).join("") : `<span class="muted">tap its lines</span>`}
-        ${draft.sockets.length ? draft.sockets.map((c, i) => `<button class="unpick" data-unsock="${i}" title="Remove">${jewel(c)}</button>`).join("") : `<span class="muted">· tap its sockets</span>`}</span>
-      <button id="add" class="primary"${draft.sockets.length ? "" : " disabled"}>Add</button>
-      ${draft.lines.length || draft.sockets.length ? `<button id="add-clear" class="ghost">Start over</button>` : ""}</div>
-  </details>`;
+        ${draft.lines.length ? draft.lines.map((k, i) => `<button class="unpick" data-unline="${i}" title="Remove">${chip(k)}</button>`).join("") : `<span class="muted">its lines</span>`}
+        ${draft.sockets.length ? draft.sockets.map((c, i) => `<button class="unpick" data-unsock="${i}" title="Remove">${jewel(c)}</button>`).join("") : `<span class="muted">· its sockets</span>`}</span>
+      <span class="add-msg muted small">${addMsg}</span>
+      ${draft.lines.length || draft.sockets.length ? `<button id="add-clear" class="ghost">Start over</button>` : ""}
+      <button id="add" class="primary"${draft.sockets.length ? "" : " disabled"}>Add <kbd>Enter</kbd></button></div>
+  </div>`;
 }
 
-document.addEventListener("toggle", (e) => {
-  if (e.target.id !== "add-manual") return;
-  addOpen = e.target.open;
-  try {
-    localStorage.setItem("quandrea.addOpen", addOpen ? "1" : "0");
-  } catch {}
-}, true);
+
 
 // ---------- events ----------
 
@@ -688,11 +764,14 @@ document.addEventListener("click", (e) => {
     setStatus(stream ? "Map cleared. Move the mouse off your inventory and it reads it again." : "Map cleared. Paste a screenshot of your inventory (Ctrl+V).", Boolean(stream));
     return;
   }
+  if (t.id === "add-open") {
+    draft = { ...draft, lines: [], sockets: [], cell: nextCellToEnter("-1,0") };
+    return openAdd();
+  }
+  if (t.id === "add-close") return closeAdd();
   if (t.dataset.cellAdd) {
     draft = { ...draft, cell: t.dataset.cellAdd, lines: [], sockets: [] };
-    addOpen = true;
-    render();
-    $("add-manual")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    openAdd();
     return;
   }
   if (t.dataset.gearTab) {
@@ -745,8 +824,18 @@ document.addEventListener("click", (e) => {
       return;
     }
     remember({ slot: draft.slot, cls: classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: false, stats: `hand-${Date.now()}`, cell: draft.cell ?? null });
-    setStatus(`Added a ${draft.slot.toLowerCase()}${draft.cell ? " to that cell" : ""} ✓`, Boolean(stream));
-    draft = { ...draft, lines: [], sockets: [], cell: null };
+    addMsg = `Added ${draft.slot === "Shoes" || draft.slot === "Gloves" ? "" : "a "}${draft.slot.toLowerCase()}${draft.cell ? " to that cell" : ""} ✓`;
+    setStatus(addMsg, Boolean(stream));
+    // Straight on to the next one. Started from a map cell: jump to the next cell with lines that
+    // has nothing entered yet (left to right, top to bottom), or close when there are none left.
+    const from = draft.cell;
+    draft = { ...draft, lines: [], sockets: [], cell: from ? nextCellToEnter(from) : null };
+    if (from && !draft.cell) {
+      save();
+      closeAdd();
+      return;
+    }
+    if (draft.cell) addMsg += `, now Row ${+draft.cell.split(",")[1] + 1} · Col ${+draft.cell.split(",")[0] + 1}`;
   } else return;
   save();
   render();

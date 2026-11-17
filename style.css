@@ -195,7 +195,12 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .wearing-now { font-size: 12px; color: var(--muted); margin-right: 4px; }
 
 /* Add manually: tap buttons instead of dropdowns. */
-.add-manual { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+.add-dialog { width: min(820px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--fg); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35); }
+.add-dialog::backdrop { background: rgba(10, 14, 22, 0.55); }
+.add-dialog h2 { margin: 0; display: flex; gap: 8px; align-items: baseline; }
+.add-dialog .add-row { justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.add-dialog .draft { margin-right: auto; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.add-dialog #add kbd { margin-left: 6px; font: 600 10px/1 ui-monospace, monospace; opacity: 0.8; }
 .add-manual summary { cursor: pointer; display: flex; gap: 10px; align-items: baseline; list-style: none; }
 .add-manual summary::-webkit-details-marker { display: none; }
 .add-manual summary::before { content: "▸"; color: var(--muted); }
@@ -367,3 +372,25 @@ button .sock-word { border: 0; padding: 0; margin: 0; background: none; }
 /* Class symbols (sword, wand, bow, shuriken, anchor) next to the class lines' skill icons */
 .class-icon { width: 16px; height: 16px; flex: none; color: var(--holo-ink); }
 .sock-word.not-read { color: var(--muted); font-weight: 600; border-style: dashed; background: transparent; }
+/* Fast-entry key hints on the Add manually buttons */
+.tap kbd { margin-left: 6px; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; font: 600 10px/1.5 ui-monospace, monospace; color: var(--muted); background: var(--sunk); }
+.add-keys { margin: 6px 0 2px; }
+.add-keys kbd { padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; font: 600 10px/1.5 ui-monospace, monospace; background: var(--sunk); }
+/* Add manually as a keyboard: keys sit in their real rows, staggered like a keyboard */
+.keyboard { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; max-width: 760px; }
+.krow { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 6px; }
+.krow.r1 { padding-left: 2.5%; } .krow.r2 { padding-left: 5%; } .krow.r3 { padding-left: 7.5%; }
+.krow.r2 { grid-template-columns: repeat(11, minmax(0, 1fr)); }
+.krow.r0, .krow.r1, .krow.r3 { grid-template-columns: repeat(11, minmax(0, 1fr)); }
+.keycap { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 58px; padding: 16px 2px 5px; border: 1px solid var(--line); border-bottom-width: 3px; border-radius: 9px; background: var(--surface); font-size: 11px; font-weight: 600; line-height: 1.15; text-align: center; color: var(--fg); transition: transform 80ms, box-shadow 80ms; }
+.keycap span { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.keycap kbd { position: absolute; top: 3px; left: 6px; font: 700 11px/1 ui-monospace, monospace; color: var(--muted); }
+.keycap.gap { visibility: hidden; }
+.keycap .slot-icon, .keycap .class-icon { width: 16px; height: 16px; }
+.keycap .sock { width: 13px; height: 13px; }
+.keycap.kind-line { border-color: color-mix(in srgb, var(--holo) 55%, var(--line)); background: color-mix(in srgb, var(--holo-hi) 45%, var(--surface)); color: var(--holo-ink); }
+.keycap.kind-line.filler { border-style: dashed; background: var(--surface); color: var(--muted); }
+.keycap.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--surface)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); font-weight: 800; }
+.keycap:disabled { opacity: 0.32; cursor: default; }
+.keycap.hit { transform: translateY(2px); border-bottom-width: 1px; box-shadow: 0 0 14px 2px color-mix(in srgb, var(--accent) 65%, transparent); }
+@media (max-width: 640px) { .keycap { min-height: 48px; font-size: 9px; } .keycap span:not(.sock) { display: none; } }

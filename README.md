@@ -15,8 +15,12 @@ saved only in that browser.
    items that have hologram lines. **Reset map** clears it.
 2. Hover an item, press **PrtScn**, then **Ctrl+V** on the page. Repeat for each dashed item. The
    "Currently Equipped" box beside the tooltip is read too.
-3. Show the game at full size; tiny text reads poorly. Don't sort items mid-scan.
-4. Throw out what's marked **Trash**.
+3. If a screenshot won't read, type the piece in **Add manually**, laid out like your keyboard:
+   Y U I O P Hat / Top / Bottom / Cape / Shoes and H Gloves; A S D F Leap / White Hole / Registry /
+   ATT, G Crit, J K L ; ' Warrior / Mage / Bowman / Thief / Pirate; Q W E R T Blue / Green / Purple /
+   Red / Grey and 1 Prismatic; then Enter, which adds it and moves on to the next map cell with lines.
+4. Show the game at full size; tiny text reads poorly. Don't sort items mid-scan.
+5. Throw out what's marked **Trash**.
 
 Live screen sharing is switched off for now (`LIVE_SHARE` in `src/app.js`).
 

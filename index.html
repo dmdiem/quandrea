@@ -7,9 +7,9 @@
 <meta name="description" content="Reads your MapleStory Quanah gear while you hover it, and tells you what to keep for 18/18 hologram lines and the best sockets.">
 <link rel="icon" href="logo.gif">
 <script>try { const t = localStorage.getItem("quandrea.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
-<link rel="stylesheet" href="style.css?v=29">
+<link rel="stylesheet" href="style.css?v=30">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
-<script type="module" src="src/app.js?v=29"></script>
+<script type="module" src="src/app.js?v=30"></script>
 </head>
 <body>
 <div class="wrap">
@@ -101,6 +101,7 @@
 
   <footer class="foot muted"><span id="version"></span> · Everything stays in your browser · <a href="https://github.com/dmdiem/quandrea">Source</a></footer>
 </div>
+<dialog id="add-dialog" class="add-dialog" aria-label="Add manually"></dialog>
 <video id="video" muted playsinline hidden></video>
 </body>
 </html>
