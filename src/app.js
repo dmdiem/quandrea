@@ -2,7 +2,7 @@
 
 import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js";
 import { verdicts, solve, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff } from "./vision.js";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, GRID } from "./vision.js";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -10,7 +10,9 @@ const NAME = Object.fromEntries([...TARGETS.map((t) => [t.k, t.name]), [OTHER, "
 const SOCKETS = ["prismatic", "blue", "red", "green", "purple", "grey"];
 const VERDICT = { keep: "Keep", backup: "Backup", donor: "Socket donor", trash: "Trash" };
 
-let state = { items: [], classId: "Magician", mode: "endgame" };
+let state = { items: [], classId: "Magician", mode: "endgame", cells: [] };
+let grid = null; // where the inventory grid is on screen (found while no tooltip is open)
+let selected = null; // the inventory cell clicked in the map, "c,r"
 let last = null; // { item, crop } of the most recent hovered (not equipped) tooltip
 let confirmClear = false;
 
@@ -97,7 +99,20 @@ async function tick() {
   prev = now;
   // Forget read tooltips once they close, so hovering that item again reads it again.
   done = done.filter((d) => now.some((t) => same(d, t)));
-  if (!now.length) return;
+  if (!now.length) {
+    // Nothing covering the inventory: refresh the map of what's in each cell.
+    const g = findGrid(img);
+    if (g) {
+      grid = g;
+      const cells = readCells(img, g);
+      if (cells.join() !== state.cells.join()) {
+        state.cells = cells;
+        save();
+        render();
+      }
+    }
+    return;
+  }
   const fresh = now.filter((t) => !done.some((d) => same(d, t)));
   if (!fresh.length) return;
   const ready = fresh.filter((t) => t.still >= 2);
@@ -137,8 +152,11 @@ async function readTooltip(img, box) {
     setStatus("Couldn't read that tooltip. Hover it again, or move it so nothing bright is behind it.", true);
     return;
   }
+  // Which inventory cell it came from: the one under the game's glove cursor.
+  const at = parsed.equipped ? null : findCursor(img, box);
+  const cell = at && cellAt(grid, at.x, at.y);
   const before = state.items.length;
-  const item = remember({ ...parsed, sockets });
+  const item = remember({ ...parsed, sockets, cell: cell ? `${cell.c},${cell.r}` : null });
   const known = state.items.length === before;
   if (!parsed.equipped) last = { id: item.id, crop: cropCanvas(img, area) };
   const what = `${parsed.equipped ? "your equipped " : ""}${item.slot.toLowerCase()}`;
@@ -163,10 +181,15 @@ function cropCanvas(img, area) {
 function remember(p) {
   const key = [p.slot, p.cls, p.lines.join(","), p.sockets.join(","), p.stats].join("|");
   if (p.equipped) for (const it of state.items) if (it.slot === p.slot) it.equipped = false;
+  // A cell holds one item: whatever was there before has moved or gone.
+  if (p.cell) for (const it of state.items) if (it.cell === p.cell && it.key !== key) it.cell = null;
   let item = state.items.find((it) => it.key === key);
-  if (item) item.equipped = p.equipped || item.equipped;
+  if (item) {
+    item.equipped = p.equipped || item.equipped;
+    if (p.cell) item.cell = p.cell;
+  }
   else {
-    item = { id: crypto.randomUUID?.() ?? String(Date.now() + Math.random()), key, slot: p.slot, cls: p.cls, lines: p.lines, sockets: p.sockets, equipped: p.equipped };
+    item = { id: crypto.randomUUID?.() ?? String(Date.now() + Math.random()), key, slot: p.slot, cls: p.cls, lines: p.lines, sockets: p.sockets, equipped: p.equipped, cell: p.cell ?? null };
     state.items.push(item);
   }
   save();
@@ -177,7 +200,9 @@ function remember(p) {
 
 // extra: a copy beyond what the 18 need. Still +1 to that skill (they go to Lv. 8), just not best in slot.
 const chip = (k, extraCopy = false) => chipHtml(k, extraCopy && k !== OTHER); // filler is never an "extra"
-const chipHtml = (k, extra) => `<span class="chip k-${k}${extra ? " extra" : ""}"${extra ? ' title="Extra copy: still +1 to the skill, but a line you\'re missing would do more here"' : ""}>${NAME[k]}${extra ? '<small>extra</small>' : ""}</span>`;
+// The in-game hologram skill icon for each line (class lines use one skill of their pair).
+const icon = (k) => (k === OTHER ? "" : `<img class="skill-icon" src="icons/${k}.png" alt="">`);
+const chipHtml = (k, extra) => `<span class="chip k-${k}${extra ? " extra" : ""}"${extra ? ' title="Extra copy: still +1 to the skill, but a line you\'re missing would do more here"' : ""}>${icon(k)}${NAME[k]}${extra ? '<small>extra</small>' : ""}</span>`;
 const socks = (list) => `<span class="socks">${(list ?? []).map((c) => `<span class="sock ${c}" title="${c}"></span>`).join("")}</span>`;
 const badge = (v) => `<span class="badge v-${v.verdict}" title="${v.why}">${VERDICT[v.verdict]}</span>`;
 const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("") : `<span class="muted">no lines</span>`);
@@ -201,6 +226,26 @@ function render() {
         <div class="lines">${linesOf(lastItem)}</div></div></div>`
     : "";
   if (lastItem) $("last-crop").replaceWith(last.crop);
+
+  // The inventory map: every cell, ticked once scanned, coloured by verdict.
+  const byCell = Object.fromEntries(state.items.filter((it) => it.cell).map((it) => [it.cell, it]));
+  const cells = state.cells.length ? state.cells : [];
+  const toScan = cells.filter((k, i) => k === "lines" && !byCell[`${i % GRID.cols},${Math.floor(i / GRID.cols)}`]).length;
+  const scanned = cells.filter((k, i) => k === "lines" && byCell[`${i % GRID.cols},${Math.floor(i / GRID.cols)}`]).length;
+  const pick = selected && byCell[selected];
+  $("map").innerHTML = !cells.length
+    ? `<p class="muted">Open your inventory's Equip tab with nothing hovered, and the map of your items appears here.</p>`
+    : `<div class="row spread"><span class="muted">${scanned} scanned · ${toScan} with lines still to hover</span>
+        <span class="legend"><span class="mcell lines"></span>to scan <span class="mcell item"></span>no lines (skip) <span class="mcell v-keep"></span>keep <span class="mcell v-backup"></span>backup <span class="mcell v-donor"></span>donor <span class="mcell v-trash"></span>trash</span></div>
+      <div class="map">${cells.map((k, i) => {
+        const id = `${i % GRID.cols},${Math.floor(i / GRID.cols)}`;
+        const it = byCell[id];
+        const cls = it ? `v-${v[it.id].verdict}` : k;
+        return `<button class="mcell ${cls}${selected === id ? " sel" : ""}" data-cell="${id}" title="${it ? VERDICT[v[it.id].verdict] : k === "lines" ? "Has hologram lines: hover it" : k === "item" ? "An item with no hologram lines: nothing to scan" : "Empty"}">${it ? "✓" : k === "item" ? "–" : ""}</button>`;
+      }).join("")}</div>
+      ${pick ? `<div class="last"><div class="info"><div class="row"><span class="verdict-big" style="color:var(--${v[pick.id].verdict})">${VERDICT[v[pick.id].verdict]}</span><span class="muted">${v[pick.id].why}</span></div>
+        <div class="row"><b>${pick.slot}</b><span class="tag">row ${+selected.split(",")[1] + 1}, column ${+selected.split(",")[0] + 1}</span>${socks(pick.sockets)}</div><div class="lines">${linesOf(pick)}</div></div></div>`
+        : selected ? `<p class="muted">Nothing scanned in that cell yet. Hover it in the game.</p>` : `<p class="muted small">Click a ticked cell to see its lines and sockets.</p>`}`;
 
   // What you're wearing now (from the "Currently Equipped" boxes), and how it compares.
   const worn = Object.fromEntries(SLOTS.map((s) => [s, state.items.find((it) => it.slot === s && it.equipped) ?? null]));
@@ -227,7 +272,7 @@ function render() {
   $("lines").innerHTML = `
     <div class="row spread"><h2>Stage 1 · ${early ? "18 lines" : "18/18 hologram lines"}</h2><span class="label">best set</span></div>
     <div class="score"><span class="big">${head}</span><span class="muted">of ${TOTAL} ${early ? "lines" : "target lines"}${early ? ` · ${res.score} on the list` : ""}</span></div>
-    ${["main", "single"].map((g) => `<div class="board ${g}">${TARGETS.filter((t) => (t.need > 1) === (g === "main")).map((t) => `<div class="board-row"><span class="board-name">${t.name}</span>
+    ${["main", "single"].map((g) => `<div class="board ${g}">${TARGETS.filter((t) => (t.need > 1) === (g === "main")).map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
       <div class="cells">${Array.from({ length: t.need }, (_, j) => cell(t.k, from[t.k][j])).join("")}</div></div>`).join("")}</div>`).join("")}
     <div class="set"><span class="label">Your set</span>
       <table class="gear"><tbody>${SLOTS.map((s) => {
@@ -284,7 +329,8 @@ document.addEventListener("click", (e) => {
   if (t.id !== "clear") confirmClear = false;
   if (t.id === "share") return startShare();
   if (t.id === "stop") return stopShare();
-  if (t.dataset.mode) state.mode = t.dataset.mode;
+  if (t.dataset.cell) selected = selected === t.dataset.cell ? null : t.dataset.cell;
+  else if (t.dataset.mode) state.mode = t.dataset.mode;
   else if (t.dataset.stat) state.classId = `Pirate (${t.dataset.stat})`;
   else if (t.dataset.del) state.items = state.items.filter((it) => it.id !== t.dataset.del);
   else if (t.id === "clear") {

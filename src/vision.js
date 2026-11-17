@@ -294,3 +294,128 @@ export function profileDiff(a, b, maxShift = 4) {
   }
   return best / total;
 }
+
+// ---- The inventory grid ----
+// The Equip tab is 16 x 8 cells of 42px, 46px apart, with 2px more after every 4 columns. Between
+// cells the window shows through near-white, so the grid is where bright lines repeat that way.
+
+export const GRID = { cols: 16, rows: 8, cell: 42, pitch: 46 };
+const colOffset = (c) => c * GRID.pitch + 2 * Math.floor(c / 4);
+
+export function findGrid(img) {
+  const { width: w, height: h, data: d } = img;
+  const span = GRID.pitch * GRID.rows;
+  if (h < span || w < colOffset(GRID.cols)) return null;
+  const rowBright = new Array(h).fill(0);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x += 2) if (lum(d, (y * w + x) * 4) > 236) rowBright[y]++;
+  // The gap lines above, between and below the 8 rows.
+  let gy = 0;
+  let best = -1;
+  for (let y = 0; y + span < h; y++) {
+    let s = 0;
+    for (let k = 0; k <= GRID.rows; k++) s += rowBright[y + k * GRID.pitch];
+    if (s > best) [best, gy] = [s, y];
+  }
+  const lines = Array.from({ length: GRID.rows + 1 }, (_, k) => rowBright[gy + k * GRID.pitch]);
+  const strong = Math.max(...lines);
+  if (strong < 150 || lines.filter((v) => v > strong * 0.5).length < 5) return null;
+  // Cells start just after the gap.
+  let top = gy;
+  while (top < gy + 6 && rowBright[top] > strong * 0.5) top++;
+  // (If the best line found was a gap's last row, top is already the first cell row.)
+  // Columns: the bright line at each cell's left edge, through the middle of every row.
+  const colBright = new Array(w).fill(0);
+  for (let r = 0; r < GRID.rows; r++) {
+    for (let y = top + r * GRID.pitch + 6; y < top + r * GRID.pitch + 36 && y < h; y += 2) {
+      for (let x = 0; x < w; x++) if (lum(d, (y * w + x) * 4) > 236) colBright[x]++;
+    }
+  }
+  let x0 = 0;
+  best = -1;
+  for (let x = 0; x + colOffset(GRID.cols - 1) + GRID.cell < w; x++) {
+    let s = 0;
+    for (let c = 0; c < GRID.cols; c++) s += colBright[x + colOffset(c)];
+    if (s > best) [best, x0] = [s, x];
+  }
+  // The gap is a few px wide: cells start right after its last bright column.
+  const score = (x) => { let t = 0; for (let c = 0; c < GRID.cols; c++) t += colBright[x + colOffset(c)] ?? 0; return t; };
+  while (x0 + 1 < w && score(x0 + 1) >= best * 0.85) x0++;
+  const colHits = Array.from({ length: GRID.cols }, (_, c) => colBright[x0 + colOffset(c)]);
+  if (colHits.filter((v) => v > 40).length < 8) return null;
+  return { x: x0 + 1, y: top };
+}
+
+// Where cell (c, r) is on screen.
+export const cellBox = (grid, c, r) => ({ x: grid.x + colOffset(c), y: grid.y + r * GRID.pitch, width: GRID.cell, height: GRID.cell });
+
+// Which cell a screen point falls in, or null.
+export function cellAt(grid, px, py) {
+  if (!grid) return null;
+  const r = Math.floor((py - grid.y) / GRID.pitch);
+  if (r < 0 || r >= GRID.rows) return null;
+  for (let c = 0; c < GRID.cols; c++) {
+    const b = cellBox(grid, c, r);
+    if (px >= b.x - 2 && px < b.x + GRID.pitch) return { c, r };
+  }
+  return null;
+}
+
+// Each cell: "empty", "item", or "lines" (an item with the grey bar on top, which has hologram lines).
+export function readCells(img, grid) {
+  const { width: w, data: d } = img;
+  const out = [];
+  for (let r = 0; r < GRID.rows; r++) {
+    for (let c = 0; c < GRID.cols; c++) {
+      const b = cellBox(grid, c, r);
+      // The grey bar: a flat grey band a few rows down from the top.
+      let bar = 0;
+      let n = 0;
+      for (let y = b.y + 2; y <= b.y + 5; y++) {
+        for (let x = b.x + 6; x < b.x + b.width - 6; x++) {
+          const i = (y * w + x) * 4;
+          const c2 = hsv(d[i], d[i + 1], d[i + 2]);
+          n++;
+          if (lum(d, i) < 165 && lum(d, i) > 60 && c2.s < 0.18) bar++;
+        }
+      }
+      // Empty cells are one flat colour; items have art in the middle.
+      const vals = [];
+      for (let y = b.y + 12; y < b.y + 36; y += 2) for (let x = b.x + 8; x < b.x + 34; x += 2) vals.push(lum(d, (y * w + x) * 4));
+      const mean = vals.reduce((a, v) => a + v, 0) / vals.length;
+      const spread = Math.sqrt(vals.reduce((a, v) => a + (v - mean) ** 2, 0) / vals.length);
+      out.push(spread < 6 ? "empty" : bar / n > 0.6 ? "lines" : "item");
+    }
+  }
+  return out;
+}
+
+// The game's glove cursor, at the tooltip's top-left: on the left border while it points, or just
+// above the corner while it's an open grabbing hand (it animates). Returns the point it's on, or null.
+export function findCursor(img, box) {
+  const { width: w, height: h, data: d } = img;
+  const x0 = Math.max(0, box.x - 2);
+  const x1 = Math.min(w, box.x + 12); // tooltip text starts ~14px in, so this stays clear of it
+  const y0 = Math.max(0, box.y - 80);
+  const y1 = Math.min(h, box.y + box.height);
+  for (let y = y0; y < y1; y++) {
+    let white = 0;
+    for (let x = x0; x < x1; x++) {
+      const i = (y * w + x) * 4;
+      if (Math.min(d[i], d[i + 1], d[i + 2]) >= 245) white++;
+    }
+    // The glove is a few pure-white pixels wide on several rows in a row.
+    if (white >= 3) {
+      let rows = 0;
+      for (let yy = y; yy < Math.min(y1, y + 8); yy++) {
+        let n = 0;
+        for (let x = x0; x < x1; x++) {
+          const i = (yy * w + x) * 4;
+          if (Math.min(d[i], d[i + 1], d[i + 2]) >= 245) n++;
+        }
+        if (n >= 2) rows++;
+      }
+      if (rows >= 5) return { x: box.x - 6, y: y + 2 };
+    }
+  }
+  return null;
+}

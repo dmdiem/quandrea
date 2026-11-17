@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { findTooltips, findIcon, findSockets, socketColor, prepareForOcr, textProfile, profileDiff } from "../src/vision.js";
+import { findTooltips, findIcon, findSockets, socketColor, prepareForOcr, textProfile, profileDiff, findGrid, readCells, cellAt, cellBox, findCursor, GRID } from "../src/vision.js";
 
 // A fake screen: dark game background with a tooltip drawn the way MapleStory draws one
 // (dark outline, 1px light border, dark navy inside) and an item picture with socket droplets.
@@ -122,6 +122,56 @@ test("over bright scenery: still finds the tooltip and keeps only its text", () 
   assert.equal(at(x + 50, y + 301), 0); // white text kept
   assert.equal(at(x + 50, y + 321), 0); // grey text kept
   assert.equal(at(x + 50, y + 200), 255); // lit-up background dropped
+});
+
+// A fake Equip tab: near-white window, 16 x 8 cells (2px extra gap after every 4 columns).
+function inventory(img, x0, y0, kinds) {
+  fill(img, x0 - 8, y0 - 8, 16 * 46 + 6 + 12, 8 * 46 + 12, [244, 246, 248]);
+  const grid = { x: x0, y: y0 };
+  kinds.forEach((k, i) => {
+    const b = cellBox(grid, i % 16, Math.floor(i / 16));
+    fill(img, b.x, b.y, 42, 42, [214, 218, 224]);
+    if (k === "empty") return;
+    fill(img, b.x + 10, b.y + 12, 22, 24, [180, 40, 40]); // item art
+    fill(img, b.x + 16, b.y + 18, 8, 8, [250, 220, 60]);
+    if (k === "lines") fill(img, b.x + 1, b.y + 1, 40, 6, [120, 124, 130]); // the grey bar
+  });
+  return grid;
+}
+
+test("finds the inventory grid and what's in each cell", () => {
+  const kinds = Array.from({ length: 128 }, (_, i) => (i % 7 === 0 ? "empty" : i % 3 === 0 ? "item" : "lines"));
+  kinds[0] = kinds[16] = "lines";
+  for (const [x0, y0] of [[24, 96], [337, 151]]) {
+    const img = screen(1100, 600);
+    inventory(img, x0, y0, kinds);
+    assert.deepEqual(findGrid(img), { x: x0, y: y0 });
+    assert.deepEqual(readCells(img, findGrid(img)), kinds);
+  }
+  assert.equal(findGrid(screen(1100, 600)), null);
+});
+
+test("cell under a point, with the extra gap after every 4 columns", () => {
+  const g = { x: 24, y: 96 };
+  assert.deepEqual(cellAt(g, 30, 100), { c: 0, r: 0 });
+  assert.deepEqual(cellAt(g, 24 + 4 * 46 + 2 + 5, 96 + 46 + 5), { c: 4, r: 1 });
+  assert.deepEqual(cellAt(g, 24 + 15 * 46 + 6 + 40, 96 + 7 * 46 + 40), { c: 15, r: 7 });
+  assert.equal(cellAt(g, 30, 96 + 8 * 46 + 5), null);
+  assert.equal(cellAt(null, 30, 100), null);
+  assert.equal(GRID.cols * GRID.rows, 128);
+});
+
+test("the glove cursor at the tooltip's corner, pointing or grabbing", () => {
+  const img = screen(800, 700);
+  tooltip(img, 300, 150, 320, 500);
+  const box = findTooltips(img)[0];
+  assert.equal(findCursor(img, box), null);
+  fill(img, 298, 190, 8, 9, [255, 255, 255]); // pointing glove on the left border
+  assert.deepEqual(findCursor(img, box), { x: 294, y: 192 });
+  const img2 = screen(800, 700);
+  tooltip(img2, 300, 150, 320, 500);
+  fill(img2, 302, 120, 9, 14, [255, 255, 255]); // open hand just above the corner
+  assert.deepEqual(findCursor(img2, findTooltips(img2)[0]), { x: 294, y: 122 });
 });
 
 // Optional: real screenshots, converted to raw RGBA (8-byte size header). Not in the repo because

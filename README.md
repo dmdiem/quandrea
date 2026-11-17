@@ -11,10 +11,12 @@ saved only in that browser.
 ## Using it
 
 1. Open the site and click **Share MapleStory window**. Pick the game window (or the whole screen).
-2. Open your inventory and hover each item with the grey bar on top (those have hologram lines).
-   Wait for the ✓, about a second each.
-3. Hover one item per slot so it also reads the "Currently Equipped" box next to it.
-4. Don't move or sort items while scanning. When you're done, throw out what's marked **Trash**.
+2. Open your inventory's Equip tab with nothing hovered: the **Inventory map** copies it, with
+   dashed cells for items that have hologram lines (the grey bar on top) and hatched ones to skip.
+3. Hover each dashed item and wait for the ✓, about a second each. The map ticks the cell under the
+   game's cursor and colours it by verdict; click a cell to see its lines and sockets.
+4. Hover one item per slot so it also reads the "Currently Equipped" box next to it.
+5. Don't move or sort items while scanning. When you're done, throw out what's marked **Trash**.
 
 Pick your class at the top (pirates also pick STR or DEX). It decides which gear is yours and
 which socket colours you can use.
@@ -67,6 +69,9 @@ piece already covers. Thanks to the community's 3L Set Solver for the idea.
 - **Text:** read with [Tesseract.js](https://github.com/naptha/tesseract.js) after enlarging and
   keeping only bright pixels (the tooltip is see-through).
 - **Sockets:** read from the colour of each droplet's outline above the item picture.
+- **Inventory map:** the Equip tab's grid (16 x 8 cells, 46px apart) is found by the bright gaps
+  between cells; the grey bar marks items with lines; the game's glove cursor says which cell a
+  tooltip belongs to.
 
 If a line is misread, delete the item (×) and hover it again, or use **Add by hand**.
 
