@@ -1,8 +1,8 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=19";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=19";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=19";
+import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js?v=20";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=20";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=20";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -288,7 +288,13 @@ const slotIcon = (slot) => `<svg class="slot-icon" viewBox="0 0 24 24" fill="non
 const icon = (k) => (k === OTHER ? "" : `<img class="skill-icon" src="icons/${k}.png" alt="">`);
 const chipHtml = (k, extra) => `<span class="chip k-${k}${extra ? " extra" : ""}"${extra ? ' title="Extra copy: still +1 to the skill, but a line you\'re missing would do more here"' : ""}>${icon(k)}${NAME[k]}${extra ? '<small>extra</small>' : ""}</span>`;
 // Sockets drawn as the jewel that fits them (cropped from the game's jewel inventory).
-const socks = (list) => (!list?.length ? `<span class="socks unknown" title="Sockets not read yet: hover the item again">?</span>` : `<span class="socks">${list.map((c) => `<img class="jewel" src="icons/jewels/${c}.png" alt="${c}" title="${c} socket">`).join("")}</span>`);
+// A socket, drawn as a filled droplet in its colour. In colour-blind mode it also carries a letter.
+const SOCK_WORD = { red: "Red", green: "Green", blue: "Blue", purple: "Purple", grey: "Grey", prismatic: "Prismatic" };
+// Colour-blind mode: the colour's name as a word, so nothing depends on seeing the colour.
+const jewel = (c) => (state.cb
+  ? `<span class="sock-word" title="${c} socket">${SOCK_WORD[c] ?? c}</span>`
+  : `<span class="sock ${c}" title="${c} socket"></span>`);
+const socks = (list) => (!list?.length ? `<span class="socks unknown" title="Sockets not read yet: hover the item again">?</span>` : `<span class="socks">${list.map(jewel).join("")}</span>`);
 const badge = (v) => `<span class="badge v-${v.verdict}" title="${v.why}">${VERDICT[v.verdict]}</span>`;
 const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("") : `<span class="muted">no lines</span>`);
 
@@ -301,6 +307,8 @@ function render() {
   $("pirate-stat").hidden = option.cls !== "Pirate";
   for (const st of ["STR", "DEX"]) $(`pirate-${st}`).setAttribute("aria-pressed", String(option.stat === st));
   for (const m of ["endgame", "early"]) $(`mode-${m}`).setAttribute("aria-pressed", String(state.mode === m));
+  $("cb-toggle").setAttribute("aria-pressed", String(Boolean(state.cb)));
+  document.documentElement.classList.toggle("cb", Boolean(state.cb));
 
   // The last item hovered, big.
   const lastItem = last && state.items.find((it) => it.id === last.id);
@@ -320,15 +328,13 @@ function render() {
     ? `<p class="muted">Open your inventory's Equip tab, <b>expanded</b> so all 16 columns show (the small view only shows 4), and move the mouse off it: the map appears here. Or take a screenshot of the inventory window (Win+Shift+S) and paste it here with Ctrl+V.</p>`
     : `<div class="row spread"><span class="muted">${scanned} scanned · ${toScan} with lines still to hover${state.mapPinned ? ` · <span class="pinned" title="Pasted from a screenshot: the live scan won't change it. Reset map to read it live again.">From your screenshot</span>` : ""}</span>
         <span class="legend"><span class="mcell lines"></span>to scan <span class="mcell item"></span>no lines (skip) <span class="mcell v-keep"></span>keep <span class="mcell v-trash"></span>trash</span></div>
-      <div class="map">${cells.map((k, i) => {
+      <div class="map-wrap"><div class="map">${cells.map((k, i) => {
         const id = `${i % GRID.cols},${Math.floor(i / GRID.cols)}`;
         const it = byCell[id];
         const cls = it ? `v-${v[it.id].verdict}` : k;
-        return `<button class="mcell ${cls}${selected === id ? " sel" : ""}" data-cell="${id}" title="${it ? VERDICT[v[it.id].verdict] : k === "lines" ? "Has hologram lines: hover it" : k === "item" ? "An item with no hologram lines: nothing to scan" : "Empty"}">${it ? "✓" : k === "item" ? "–" : ""}</button>`;
+        return `<button class="mcell ${cls}${selected === id ? " sel" : ""}" data-cell="${id}" title="${it ? VERDICT[v[it.id].verdict] : k === "lines" ? "Has hologram lines: hover it" : k === "item" ? "An item with no hologram lines: nothing to scan" : "Empty"}">${it ? (v[it.id].verdict === "keep" ? "✓" : "✕") : k === "item" ? "–" : ""}</button>`;
       }).join("")}</div>
-      ${pick ? `<div class="last"><div class="info"><div class="row"><span class="verdict-big" style="color:var(--${v[pick.id].verdict})">${VERDICT[v[pick.id].verdict]}</span><span class="muted">${v[pick.id].why}</span></div>
-        <div class="row"><b>${pick.slot}</b><span class="tag">row ${+selected.split(",")[1] + 1}, column ${+selected.split(",")[0] + 1}</span>${socks(pick.sockets)}</div><div class="lines">${linesOf(pick)}</div></div></div>`
-        : selected ? `<p class="muted">Nothing scanned in that cell yet. Hover it in the game.</p>` : `<p class="muted small">Click a ticked cell to see its lines and sockets.</p>`}`;
+      ${cellPane(pick, v)}</div>`;
 
   // What you're wearing now (from the "Currently Equipped" boxes), and how it compares.
   const worn = Object.fromEntries(SLOTS.map((s) => [s, state.items.find((it) => it.slot === s && it.equipped) ?? null]));
@@ -348,7 +354,7 @@ function render() {
     // Just the slot's icon (its name on hover); an empty dashed box when the line is missing.
     const inner = slot ? slotIcon(slot) : "";
     const tip = slot ? `${slot}${at ? " (in your bag: click to show it on the Inventory map)" : ""}` : "Missing";
-    return at ? `<button class="cell k-${k} on" data-cell="${at}" title="${tip}" aria-label="${tip}">${inner}</button>` : `<div class="cell k-${k} ${slot ? "on" : ""}" title="${tip}" aria-label="${tip}">${inner}</div>`;
+    return at ? `<button class="cell on" data-cell="${at}" title="${tip}" aria-label="${tip}">${inner}</button>` : `<div class="cell ${slot ? "on" : ""}" title="${tip}" aria-label="${tip}">${inner}</div>`;
   };
   // Still missing: the lines this set doesn't have yet, with how many of each.
   const gaps = early ? [] : missing(shown);
@@ -410,12 +416,10 @@ function render() {
   const row = (it) => {
     const vv = v[it.id];
     return `<div class="bag-row v-row-${vv.verdict}${it.cell && it.cell === selected ? " sel" : ""}" draggable="true" data-drag="${it.id}">
-      <span class="badge v-${vv.verdict}" title="${vv.why}">${VERDICT[vv.verdict]}</span>
-      <span class="bag-slot">${slotIcon(it.slot)}${it.slot}</span>
-      <span class="lines">${linesOf(it)}${!option.classes.includes(it.cls) ? `<span class="tag">${it.cls ?? "?"}</span>` : ""}</span>
+      <div class="bag-top"><span class="badge v-${vv.verdict}" title="${vv.why}">${VERDICT[vv.verdict]}</span><span class="bag-why muted small">${vv.reason ? REASON[vv.reason] : vv.why}</span>
+        <span class="bag-act">${miniLoc(it.cell)}<button class="equip-btn" data-equip="${it.id}" title="You equipped this in game: mark it equipped">Equip</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
+      <div class="lines">${linesOf(it)}${!option.classes.includes(it.cls) ? `<span class="tag">${it.cls ?? "?"}</span>` : ""}</div>
       ${socks(it.sockets)}
-      <span class="bag-why muted small">${vv.reason ? REASON[vv.reason] : vv.why}</span>
-      <span class="bag-act">${miniLoc(it.cell)}<button class="equip-btn" data-equip="${it.id}" title="You equipped this in game: mark it equipped">Equip</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span>
     </div>`;
   };
   $("items").innerHTML = `
@@ -471,6 +475,25 @@ document.addEventListener("drop", (e) => {
   render();
 });
 
+// The pane beside the map: what's in the clicked cell, or a way to add it by hand.
+function cellPane(it, v) {
+  if (!selected) return `<div class="cell-pane muted small">Click a cell to see what's in it.</div>`;
+  const [c, r] = selected.split(",").map(Number);
+  const where = `Row ${r + 1} · Col ${c + 1}`;
+  if (!it) {
+    return `<div class="cell-pane"><span class="label">${where}</span>
+      <p class="muted small">Nothing scanned here yet. Hover it in the game, or add it by hand.</p>
+      <button id="add-here" data-cell-add="${selected}">Add this item manually</button></div>`;
+  }
+  const vv = v[it.id];
+  return `<div class="cell-pane"><span class="label">${where}</span>
+    <div class="row"><span class="badge v-${vv.verdict}">${VERDICT[vv.verdict]}</span><span class="muted small">${vv.reason ? REASON[vv.reason] : vv.why}</span></div>
+    <div class="row"><b>${slotIcon(it.slot)}${it.slot}</b></div>
+    <div class="lines">${linesOf(it)}</div>
+    <div>${socks(it.sockets)}</div>
+    <div class="row"><button class="equip-btn" data-equip="${it.id}">Equip</button><button class="equip-btn" data-del="${it.id}">Remove</button></div></div>`;
+}
+
 // ---------- add manually ----------
 // Tap a slot, up to 3 lines and up to 3 sockets, then Add. The slot stays picked for the next one.
 let draft = { slot: "Hat", lines: [], sockets: [] };
@@ -484,7 +507,7 @@ function addForm() {
   const fullLines = draft.lines.length >= 3;
   const fullSocks = draft.sockets.length >= 3;
   return `<details class="add-manual" id="add-manual"${addOpen ? " open" : ""}>
-    <summary><span class="label">Add manually</span><span class="muted small">for an item the scanner can't read</span></summary>
+    <summary><span class="label">Add manually</span><span class="muted small">${draft.cell ? `for the item at Row ${+draft.cell.split(",")[1] + 1} · Col ${+draft.cell.split(",")[0] + 1} <button class="loc" id="add-nocell" title="Don't tie it to a map cell">×</button>` : "for an item the scanner can't read"}</span></summary>
     <div class="add-row"><span class="add-label">Slot</span>${SLOTS.map((s) => tap("pick-slot", s, `${slotIcon(s)}${s}`, draft.slot === s)).join("")}</div>
     <div class="add-row"><span class="add-label">Lines <span class="muted">${draft.lines.length}/3</span></span>${[...TARGETS.map((t) => t.k), OTHER].map((k) => {
       const picked = draft.lines.includes(k);
@@ -492,11 +515,11 @@ function addForm() {
       const off = fullLines && !picked;
       return tap("pick-line", k, `${icon(k)}${NAME[k]}${k === OTHER && draft.lines.filter((x) => x === OTHER).length > 1 ? ` ×${draft.lines.filter((x) => x === OTHER).length}` : ""}`, picked, off);
     }).join("")}</div>
-    <div class="add-row"><span class="add-label">Sockets <span class="muted">${draft.sockets.length}/3</span></span>${SOCKETS.map((c) => tap("pick-sock", c, `<img class="jewel" src="icons/jewels/${c}.png" alt="">${draft.sockets.filter((x) => x === c).length > 1 ? `×${draft.sockets.filter((x) => x === c).length}` : ""}`, draft.sockets.includes(c), fullSocks && !draft.sockets.includes(c), ` title="${c}"`)).join("")}</div>
+    <div class="add-row"><span class="add-label">Sockets <span class="muted">${draft.sockets.length}/3</span></span>${SOCKETS.map((c) => tap("pick-sock", c, `${jewel(c)}${draft.sockets.filter((x) => x === c).length > 1 ? `×${draft.sockets.filter((x) => x === c).length}` : ""}`, draft.sockets.includes(c), fullSocks && !draft.sockets.includes(c), ` title="${c}"`)).join("")}</div>
     <div class="add-row"><span class="add-label"></span>
       <span class="draft"><b>${draft.slot}</b>
         ${draft.lines.length ? draft.lines.map((k, i) => `<button class="unpick" data-unline="${i}" title="Remove">${chip(k)}</button>`).join("") : `<span class="muted">tap its lines</span>`}
-        ${draft.sockets.length ? draft.sockets.map((c, i) => `<button class="unpick" data-unsock="${i}" title="Remove"><img class="jewel" src="icons/jewels/${c}.png" alt="${c}"></button>`).join("") : `<span class="muted">· tap its sockets</span>`}</span>
+        ${draft.sockets.length ? draft.sockets.map((c, i) => `<button class="unpick" data-unsock="${i}" title="Remove">${jewel(c)}</button>`).join("") : `<span class="muted">· tap its sockets</span>`}</span>
       <button id="add" class="primary"${draft.sockets.length ? "" : " disabled"}>Add</button>
       ${draft.lines.length || draft.sockets.length ? `<button id="add-clear" class="ghost">Start over</button>` : ""}</div>
   </details>`;
@@ -531,6 +554,12 @@ document.addEventListener("click", (e) => {
   }
   if (t.id === "stop") return stopShare();
   if (t.dataset.themePick) return setTheme(t.dataset.themePick);
+  if (t.id === "cb-toggle") {
+    state.cb = !state.cb;
+    save();
+    render();
+    return;
+  }
   if (t.id === "reset-map") {
     state.cells = [];
     state.mapPinned = false;
@@ -541,6 +570,13 @@ document.addEventListener("click", (e) => {
     save();
     render();
     setStatus(stream ? "Map cleared. Move the mouse off your inventory and it reads it again." : "Map cleared. Share your game window, or paste a screenshot of your inventory (Ctrl+V).", Boolean(stream));
+    return;
+  }
+  if (t.dataset.cellAdd) {
+    draft = { ...draft, cell: t.dataset.cellAdd, lines: [], sockets: [] };
+    addOpen = true;
+    render();
+    $("add-manual")?.scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
   if (t.dataset.gearTab) {
@@ -592,9 +628,9 @@ document.addEventListener("click", (e) => {
       setStatus("Every piece has at least one socket. Tap its socket colours.");
       return;
     }
-    remember({ slot: draft.slot, cls: classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: false, stats: `hand-${Date.now()}` });
-    setStatus(`Added a ${draft.slot.toLowerCase()} ✓`, Boolean(stream));
-    draft = { ...draft, lines: [], sockets: [] };
+    remember({ slot: draft.slot, cls: classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: false, stats: `hand-${Date.now()}`, cell: draft.cell ?? null });
+    setStatus(`Added a ${draft.slot.toLowerCase()}${draft.cell ? " to that cell" : ""} ✓`, Boolean(stream));
+    draft = { ...draft, lines: [], sockets: [], cell: null };
   } else return;
   save();
   render();

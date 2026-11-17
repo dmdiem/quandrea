@@ -78,9 +78,13 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .board-name .skill-icon { width: 20px; height: 20px; }
 .chip.extra { opacity: 0.6; border-style: dashed; }
 .chip small { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
-.sock { display: inline-block; width: 12px; height: 14px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; border: 2px solid var(--sc); background: color-mix(in srgb, var(--sc) 30%, transparent); vertical-align: -2px; }
+/* Sockets: filled droplets in their colour; in colour-blind mode they also carry a letter. */
+.sock { position: relative; display: inline-grid; place-items: center; width: 13px; height: 16px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; border-top-left-radius: 1px; transform: rotate(45deg) scale(0.85); background: var(--sc); border: 1px solid color-mix(in srgb, var(--sc) 70%, #000); vertical-align: -3px; }
 .sock.blue { --sc: var(--s-blue); } .sock.red { --sc: var(--s-red); } .sock.green { --sc: var(--s-green); } .sock.purple { --sc: var(--s-purple); } .sock.grey { --sc: var(--s-grey); }
-.sock.prismatic { border-color: transparent; background: conic-gradient(#e94b4b, #f0c040, #3cc070, #3b7fe0, #9a52d6, #e94b4b); }
+.sock.prismatic { --sc: #e7d9ff; background: conic-gradient(#e94b4b, #f0c040, #3cc070, #3b7fe0, #9a52d6, #e94b4b); }
+.sock-word { display: inline-flex; align-items: center; gap: 3px; padding: 1px 8px; margin: 1px 2px 1px 0; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; color: var(--fg); background: var(--surface); white-space: nowrap; }
+.sock-word .sock { transform: rotate(45deg) scale(0.75); }
+.cb .socks { flex-wrap: wrap; gap: 3px; }
 .socks { display: inline-flex; gap: 2px; align-items: center; }
 .jewel { height: 21px; width: auto; }
 .socks.unknown { width: 18px; height: 20px; justify-content: center; border: 1px dashed var(--muted); border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; color: var(--muted); font-size: 11px; font-weight: 700; }
@@ -305,3 +309,25 @@ button.cell:hover { outline: 2px solid var(--accent); }
 .slot .bag-row .bag-slot { display: none; }
 .slot .bag-row .badge { justify-self: start; align-self: start; margin-top: 2px; }
 .hunt .times { font-size: 12px; font-weight: 700; color: var(--muted); margin: 0 6px 0 -2px; }
+
+/* Inventory map with the clicked cell's details beside it */
+.map-wrap { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+.cell-pane { flex: 1 1 200px; min-width: 200px; display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; background: var(--sunk); }
+.cell-pane .slot-icon { color: var(--fg); }
+
+/* Keep or trash rows: badge + reason + actions on top, then lines, then sockets; everything wraps */
+.slot { min-width: 0; }
+.slot .bag-row, .bag-row { display: flex; flex-direction: column; gap: 4px; padding: 7px 0; }
+.bag-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.bag-top .bag-act { margin-left: auto; display: inline-flex; gap: 4px; align-items: center; }
+.bag-row .lines { min-width: 0; }
+.chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+/* Scan tips */
+.tips { margin: 4px 0 10px; padding-left: 18px; }
+.tips li { margin: 3px 0; }
+
+/* Colour-blind friendly: shapes and words instead of colour alone */
+.cb .chip.k-warrior, .cb .chip.k-mage, .cb .chip.k-archer, .cb .chip.k-thief, .cb .chip.k-pirate { --tint: var(--holo); }
+.cb .mcell.v-trash { background: repeating-linear-gradient(45deg, var(--trash) 0 3px, color-mix(in srgb, var(--trash) 60%, #000) 3px 6px); }
+#cb-toggle[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: transparent; }

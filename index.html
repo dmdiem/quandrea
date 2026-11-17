@@ -7,9 +7,9 @@
 <meta name="description" content="Reads your MapleStory Quanah gear while you hover it, and tells you what to keep for 18/18 hologram lines and the best sockets.">
 <link rel="icon" href="logo.png">
 <script>try { const t = localStorage.getItem("quandrea.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
-<link rel="stylesheet" href="style.css?v=19">
+<link rel="stylesheet" href="style.css?v=20">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
-<script type="module" src="src/app.js?v=19"></script>
+<script type="module" src="src/app.js?v=20"></script>
 </head>
 <body>
 <div class="wrap">
@@ -32,6 +32,7 @@
         <button id="mode-endgame" data-mode="endgame">Right lines</button>
         <button id="mode-early" data-mode="early">Any 3 lines</button>
       </div>
+      <button id="cb-toggle" class="ghost" title="Adds letters to sockets and symbols to the map so nothing depends on colour">Colour-blind friendly</button>
       <div class="seg" role="group" aria-label="Theme">
         <button data-theme-pick="auto" title="Follow your computer's setting">Auto</button>
         <button data-theme-pick="light">Light</button>
@@ -62,6 +63,16 @@
         <li>Hover one item of each slot so the scanner also sees what you have equipped (the "Currently Equipped" box).</li>
         <li>Don't move or sort items while scanning. When you're done, throw out what's marked <b>Trash</b>.</li>
       </ol>
+      <p class="label">Tips for a clean scan</p>
+      <ul class="tips">
+        <li><b>Run MapleStory windowed</b> (or borderless), not exclusive fullscreen. If the share preview stays blank or spinning, that's why: switch to windowed, or share your <b>Entire screen</b> instead.</li>
+        <li><b>Firefox:</b> sharing just the MapleStory window can come through black for games. Share your <b>Entire screen</b> instead; the scanner finds the inventory anywhere on it. If you're unsure what it sees, click <b>Save what the scanner sees</b> while sharing.</li>
+        <li><b>Share the MapleStory window</b>, not the browser. The browser can sit on top of the game (one monitor is fine), but <b>don't minimise the game</b>: a minimised window stops sending pictures.</li>
+        <li>On one monitor, the easiest setup is the game on one half and this page on the other (Windows key + ← / →).</li>
+        <li>Keep the inventory <b>expanded</b> (16 columns) and on plain background if you can; very bright scenery behind a tooltip makes it harder to read.</li>
+        <li>Hover one item at a time and wait for the ✓. Hover one item per slot first so your equipped gear is read.</li>
+        <li>Don't move or sort items mid-scan. If the map ever looks wrong, click <b>Reset map</b>.</li>
+      </ul>
       <p class="muted">First, collect the 18 lines: 3 Dimensional Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, and one each of Crit DMG, Warrior, Mage, Bowman, Thief and Pirate, on six pieces (hat, top, bottom, cape, gloves, shoes). Then, a second set with the right jewel sockets (4 with prismatic + stat + stat, 2 with stat + stat + stat); Orbs move your lines onto it.</p>
     </details>
   </section>

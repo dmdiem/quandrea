@@ -6,7 +6,7 @@ export const SLOTS = ["Hat", "Top", "Bottom", "Cape", "Gloves", "Shoes"];
 
 // The 18 lines a finished set wants: 3 each of four, and one of each class plus Crit DMG.
 export const TARGETS = [
-  { k: "leap", name: "Dimensional Leap", need: 3 },
+  { k: "leap", name: "Leap", need: 3 },
   { k: "wh", name: "White Hole", need: 3 },
   { k: "reg", name: "Registry", need: 3 },
   { k: "atk", name: "ATT & M.ATT", need: 3 },
