@@ -7,9 +7,9 @@
 <meta name="description" content="Reads your MapleStory Quanah gear while you hover it, and tells you what to keep for 18/18 hologram lines and the best sockets.">
 <link rel="icon" href="logo.png">
 <script>try { const t = localStorage.getItem("quandrea.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
-<link rel="stylesheet" href="style.css?v=27">
+<link rel="stylesheet" href="style.css?v=28">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
-<script type="module" src="src/app.js?v=27"></script>
+<script type="module" src="src/app.js?v=28"></script>
 </head>
 <body>
 <div class="wrap">
@@ -19,7 +19,7 @@
       <div>
       <h1>Quandrea</h1>
       <p class="tagline">Let Quandrea tell you if your gear is trash.</p>
-      <p class="muted">Hover your Quanah gear; it tells you what to keep. Nothing leaves your computer.</p>
+      <p class="muted">Screenshot your Quanah gear; it tells you what to keep. Nothing leaves your computer.</p>
       </div>
     </div>
     <div class="settings">
@@ -48,9 +48,9 @@
   <!-- Simple mode: just the socket colours of what you hover, in big words. -->
   <section class="panel simple" id="simple" hidden>
     <div class="row spread"><div><h2>Simpling Dumpling mode</h2><p class="muted small">Socket colours as big words, for colour-blind players.</p></div><div class="row"><button id="simple-share" class="primary">Share MapleStory window</button><button id="simple-popout" class="ghost" hidden title="Opens the colours in a small window that stays on top of the game (Chrome and Edge)">Pop out</button></div></div>
-    <p class="muted">Hover an item. ✓ = your class can use it.</p>
+    <p class="muted">Hover an item in the game, press <b>PrtScn</b>, then <b>Ctrl+V</b> here. ✓ = your class can use it.</p>
     <p class="browser-note" hidden>Use <b>Chrome</b> or <b>Edge</b>: Firefox often shares games as a black screen.</p>
-    <p id="simple-status" class="status">Not watching yet.</p>
+    <p id="simple-status" class="status"></p>
     <div id="simple-out" class="simple-out"></div>
   </section>
 
@@ -61,25 +61,27 @@
       <h2>Scanner</h2>
       <div class="row">
         <button id="share" class="primary">Share MapleStory window</button>
+        <button id="video-open" class="ghost" title="Read a screen recording of you hovering your items (mp4 from Xbox Game Bar, OBS…)">Open a video</button>
+        <input id="video-file" type="file" accept="video/*" hidden>
         <button id="save-frame" class="ghost" hidden title="Download exactly what the scanner sees, to send for tuning">Save what the scanner sees</button>
         <button id="stop" class="ghost" hidden>Stop</button>
       </div>
     </div>
     <p class="browser-note" hidden>Use <b>Chrome</b> or <b>Edge</b>: Firefox often shares games as a black screen.</p>
-    <p id="status" class="status">Not watching yet.</p>
+    <p id="status" class="status">Paste a screenshot (Ctrl+V) or open a video.</p>
     <div id="last"></div>
     <details class="help">
       <summary>How to use it</summary>
       <ol>
-        <li><b>Share</b> the game window.</li>
-        <li>Open the Equip tab, <b>expanded</b> to 16 columns, and move the mouse off it. The map fills in.</li>
-        <li><b>Hover</b> each dashed item until ✓. Then throw out what says <b>Trash</b>.</li>
+        <li>Open the Equip tab, <b>expanded</b> to 16 columns, nothing hovered. Press <b>PrtScn</b>, then <b>Ctrl+V</b> here: the map fills in.</li>
+        <li>Hover an item, press <b>PrtScn</b>, <b>Ctrl+V</b> here. Repeat for each dashed item.</li>
+        <li>Throw out what says <b>Trash</b>.</li>
       </ol>
       <p class="label">Tips</p>
       <ul class="tips">
-        <li>Use <b>Chrome or Edge</b>, with the game <b>windowed</b> at full size (not minimised).</li>
-        <li>Can't share? Snip a tooltip (Win+Shift+S) and press <b>Ctrl+V</b> here.</li>
-        <li>Hover one item per slot so your equipped gear is read too.</li>
+        <li>Faster: record yourself hovering everything (<b>Win+Alt+R</b>), hold each item still for half a second, then <b>Open a video</b>.</li>
+        <li>Show the game at full size: tiny text reads badly.</li>
+        <li>Your equipped piece is read from the "Currently Equipped" box beside each tooltip.</li>
         <li>Don't sort mid-scan. Map wrong? <b>Reset map</b>.</li>
       </ul>
     </details>

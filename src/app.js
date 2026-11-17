@@ -1,9 +1,9 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
-import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=27";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=27";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=27";
-import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=27";
+import { parseTooltip, SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=28";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=28";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=28";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff, findGrid, readCells, findCursor, cellAt, findScale, resizeImage, GRID } from "./vision.js?v=28";
 
 const KEY = "quandrea.v1";
 // Looks in the pop-out window too, while Simpling Dumpling's readout lives there.
@@ -47,6 +47,9 @@ function save() {
 }
 
 // ---------- capture and scanning ----------
+// Live screen sharing is switched off for now: screenshots (Ctrl+V) and recorded videos only.
+// Set to true to bring the Share buttons back.
+const LIVE_SHARE = false;
 
 const video = $("video");
 const frame = document.createElement("canvas");
@@ -103,15 +106,73 @@ async function startShare() {
 }
 
 function stopShare() {
+  if (videoRun) {
+    videoRun.cancel = true;
+    return;
+  }
   clearInterval(timer);
   stream?.getTracks().forEach((t) => t.stop());
   stream = null;
-  $("share").hidden = false;
-  $("simple-share").hidden = false;
+  $("share").hidden = !LIVE_SHARE;
+  $("simple-share").hidden = !LIVE_SHARE;
   $("stop").hidden = true;
   $("save-frame").hidden = true;
   setStatus("Stopped. Your items are saved in this browser.");
 }
+
+// ---------- reading a recorded video ----------
+// A screen recording of you hovering your items (Xbox Game Bar's Win+Alt+R, OBS…) is read like a
+// live share: step through it a few frames a second, and every tooltip held still gets read.
+// The file is opened in this browser only; it's never uploaded.
+const VIDEO_STEP = 0.25; // seconds between frames read
+let videoRun = null;
+async function readVideo(file) {
+  if (stream) stopShare();
+  if (!(await ensureWorker())) return;
+  const url = URL.createObjectURL(file);
+  videoRun = { cancel: false };
+  const before = state.items.length;
+  $("share").hidden = true;
+  $("video-open").hidden = true;
+  $("stop").hidden = false;
+  try {
+    video.srcObject = null;
+    video.src = url;
+    await new Promise((ok, fail) => {
+      video.onloadedmetadata = ok;
+      video.onerror = () => fail(new Error("this browser can't play that video (try an .mp4)"));
+    });
+    prev = [];
+    done = [];
+    const end = video.duration;
+    for (let t = 0; t < end && !videoRun.cancel; t += VIDEO_STEP) {
+      await new Promise((ok) => {
+        video.onseeked = ok;
+        video.currentTime = t;
+      });
+      await tick();
+      if (!busy) setStatus(`Reading your video… ${Math.round((t / end) * 100)}%`, true);
+    }
+    const n = state.items.length - before;
+    setStatus(`${videoRun.cancel ? "Stopped" : "Done"}: ${n} new item${n === 1 ? "" : "s"} from your video${n ? " ✓" : ". Hold each item still for half a second while recording."}`);
+  } catch (err) {
+    setStatus(`Couldn't read that video: ${err.message}`);
+  } finally {
+    videoRun = null;
+    video.removeAttribute("src");
+    video.load();
+    URL.revokeObjectURL(url);
+    $("share").hidden = !LIVE_SHARE;
+    $("video-open").hidden = false;
+    $("stop").hidden = true;
+  }
+}
+$("video-open").addEventListener("click", () => $("video-file").click());
+$("video-file").addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = "";
+  if (file) readVideo(file);
+});
 
 // A rectangle cut out of an image.
 function cropImage(img, a) {
@@ -180,7 +241,7 @@ function showSimple(img, { now = false } = {}) {
     simpleLast = html;
     $("simple-out").innerHTML = html;
   }
-  $("simple-status").textContent = stream ? "Watching." : "Not watching.";
+  $("simple-status").textContent = stream ? "Watching." : LIVE_SHARE ? "Not watching." : "Read from your screenshot.";
 }
 
 // The scale the game is drawn at in the shared window (1 = normal), found from the inventory grid.
@@ -431,7 +492,7 @@ function render() {
   const scanned = cells.filter((k, i) => k === "lines" && byCell[`${i % GRID.cols},${Math.floor(i / GRID.cols)}`]).length;
   const pick = selected && byCell[selected];
   $("map").innerHTML = !cells.length
-    ? `<p class="muted">Open the Equip tab (expanded, 16 columns) and move the mouse off it. Or paste a screenshot of it (Ctrl+V).</p>`
+    ? `<p class="muted">Open the Equip tab (expanded, 16 columns), nothing hovered, press PrtScn and Ctrl+V here.</p>`
     : `<div class="row spread"><span class="muted">${scanned} scanned · ${toScan} with lines still to hover${state.mapPinned ? ` · <span class="pinned" title="Pasted from a screenshot: the live scan won't change it. Reset map to read it live again.">From your screenshot</span>` : ""}</span>
         <span class="legend"><span class="mcell lines"></span>to scan <span class="mcell item"></span>no lines (skip) <span class="mcell v-keep"></span>keep <span class="mcell v-trash"></span>trash</span></div>
       <div class="map-wrap"><div class="map">${cells.map((k, i) => {
@@ -644,7 +705,7 @@ document.addEventListener("click", (e) => {
   const t = e.target.closest("button");
   if (!t) return;
   if (t.id !== "clear") confirmClear = false;
-  if (t.id === "share") return startShare();
+  if (t.id === "share" && LIVE_SHARE) return startShare();
   if (t.id === "save-frame") {
     // The exact frame the scanner sees, to send for tuning (it may show character names).
     frame.toBlob((b) => {
@@ -665,7 +726,7 @@ document.addEventListener("click", (e) => {
     render();
     return;
   }
-  if (t.id === "simple-share") return startShare();
+  if (t.id === "simple-share" && LIVE_SHARE) return startShare();
   if (t.id === "cb-toggle") {
     state.cb = !state.cb;
     save();
@@ -681,7 +742,7 @@ document.addEventListener("click", (e) => {
     selected = null;
     save();
     render();
-    setStatus(stream ? "Map cleared. Move the mouse off your inventory and it reads it again." : "Map cleared. Share your game window, or paste a screenshot of your inventory (Ctrl+V).", Boolean(stream));
+    setStatus(stream ? "Map cleared. Move the mouse off your inventory and it reads it again." : "Map cleared. Paste a screenshot of your inventory (Ctrl+V).", Boolean(stream));
     return;
   }
   if (t.dataset.cellAdd) {
@@ -815,7 +876,6 @@ document.addEventListener("paste", async (e) => {
     const img = ctx.getImageData(0, 0, c.width, c.height);
     if (state.simple) {
       showSimple(img, { now: true });
-      $("simple-status").textContent = "Read from your screenshot.";
       return;
     }
     if (busy) return;
@@ -843,7 +903,7 @@ document.addEventListener("paste", async (e) => {
 // ---------- Simpling Dumpling pop-out ----------
 // Chrome and Edge can open a small always-on-top window (Document Picture-in-Picture). The
 // readout moves into it, so the colours stay visible over the game; closing it moves them back.
-if ("documentPictureInPicture" in window) $("simple-popout").hidden = false;
+if (LIVE_SHARE && "documentPictureInPicture" in window) $("simple-popout").hidden = false;
 $("simple-popout").addEventListener("click", async () => {
   if (pipDoc) {
     pipDoc.defaultView.close();
@@ -959,10 +1019,14 @@ function showTheme() {
 showTheme();
 
 // Firefox's screen capture often sends games black or frozen: point people to Chrome or Edge.
-if (/firefox/i.test(navigator.userAgent)) for (const el of document.querySelectorAll(".browser-note")) el.hidden = false;
+if (LIVE_SHARE && /firefox/i.test(navigator.userAgent)) for (const el of document.querySelectorAll(".browser-note")) el.hidden = false;
 
 // The version is the ?v=N this script was loaded with (see index.html), so it always matches.
 $("version").textContent = `Quandrea v${new URL(import.meta.url).searchParams.get("v") ?? "dev"}`;
 
+if (!LIVE_SHARE) {
+  $("share").hidden = true;
+  $("simple-share").hidden = true;
+}
 load();
 render();
