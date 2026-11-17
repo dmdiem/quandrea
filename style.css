@@ -1,14 +1,14 @@
 :root {
   --bg: #eef1f6; --surface: #ffffff; --sunk: #e4e9f1; --fg: #182033; --muted: #5b6679; --line: #d0d7e3;
   --accent: #6d4ae8; --on-accent: #ffffff; --keep: #1f8a4c; --backup: #2f7fc1; --donor: #a96a12; --trash: #c0392b;
-  --c-leap: #7a5cf0; --c-wh: #2f9bd6; --c-reg: #1fa67a; --c-atk: #e0484d; --c-crit: #d6409f; --c-class: #c98a1b; --c-other: #8590a3;
+  --holo: #1aa9c2; --holo-ink: #0a5866; --holo-hi: #d8f7fc;
   --s-blue: #3b7fe0; --s-red: #d94848; --s-green: #36a85a; --s-purple: #9a52d6; --s-grey: #7d8796;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #11161f; --surface: #1a212d; --sunk: #141a24; --fg: #e8ecf4; --muted: #98a3b6; --line: #2d3748;
-    --accent: #9d84ff; --on-accent: #120d24; --keep: #4cc38a; --backup: #6cb4f0; --donor: #e0b050; --trash: #f07b6e;
+    --accent: #9d84ff; --on-accent: #120d24; --holo: #5fdcef; --holo-ink: #c8f6fc; --holo-hi: #1d4a55; --keep: #4cc38a; --backup: #6cb4f0; --donor: #e0b050; --trash: #f07b6e;
     color-scheme: dark;
   }
 }
@@ -47,10 +47,14 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .help summary { cursor: pointer; color: var(--muted); }
 .help ol { margin: 8px 0; padding-left: 20px; }
 
-.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); white-space: nowrap; }
-.chip.wasted { text-decoration: line-through; opacity: 0.55; }
-.k-leap { --c: var(--c-leap); } .k-wh { --c: var(--c-wh); } .k-reg { --c: var(--c-reg); } .k-atk { --c: var(--c-atk); } .k-crit { --c: var(--c-crit); }
-.k-warrior, .k-mage, .k-archer, .k-thief, .k-pirate { --c: var(--c-class); } .k-other { --c: var(--c-other); }
+/* Hologram lines get the icy cyan of the in-game hologram skill icons. Socket colours are the
+   only other colours on the page, and the socket blue is a deeper royal blue. */
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap;
+  color: var(--holo-ink); border: 1px solid color-mix(in srgb, var(--holo) 55%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--holo) 26%, transparent), color-mix(in srgb, var(--holo-hi) 30%, transparent) 50%, color-mix(in srgb, var(--holo) 14%, transparent)); }
+.chip.k-leap, .chip.k-wh, .chip.k-reg, .chip.k-atk { font-weight: 700; border-color: var(--holo); }
+.chip.k-other { color: var(--muted); background: transparent; border: 1px dashed var(--line); }
+.chip.wasted { text-decoration: line-through; opacity: 0.5; }
 .sock { display: inline-block; width: 12px; height: 14px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; border: 2px solid var(--sc); background: color-mix(in srgb, var(--sc) 30%, transparent); vertical-align: -2px; }
 .sock.blue { --sc: var(--s-blue); } .sock.red { --sc: var(--s-red); } .sock.green { --sc: var(--s-green); } .sock.purple { --sc: var(--s-purple); } .sock.grey { --sc: var(--s-grey); }
 .sock.prismatic { border-color: transparent; background: conic-gradient(#e94b4b, #f0c040, #3cc070, #3b7fe0, #9a52d6, #e94b4b); }
@@ -67,7 +71,28 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .req.miss .name { color: var(--muted); }
 .pips { display: inline-flex; gap: 3px; }
 .pip { width: 10px; height: 10px; border-radius: 3px; background: var(--sunk); border: 1px solid var(--line); }
-.pip.on { background: var(--c); border-color: var(--c); }
+.pip.on { background: linear-gradient(135deg, var(--holo), var(--holo-hi) 140%); border-color: var(--holo); }
+/* The 18-line board: one box per line you need; filled boxes say which piece gives it. */
+.board { display: grid; gap: 6px 16px; }
+.board.main { grid-template-columns: minmax(0, 1fr); }
+.board.single { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.board.main .cell { width: 72px; }
+.board-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.board-name { font-size: 13px; }
+.cells { display: inline-flex; gap: 4px; }
+.cell { width: 54px; height: 24px; border-radius: 6px; border: 1px dashed var(--line); display: grid; place-items: center; }
+.cell-slot { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.cell.on { border: 1px solid var(--holo); background: linear-gradient(135deg, color-mix(in srgb, var(--holo) 30%, transparent), color-mix(in srgb, var(--holo-hi) 30%, transparent)); }
+.cell.on .cell-slot { color: var(--holo-ink); font-weight: 700; }
+@media (max-width: 520px) { .board.single { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.gear { border-collapse: collapse; width: 100%; }
+.gear th { text-align: left; font-size: 13px; padding: 4px 8px 4px 0; width: 64px; }
+.gear td { padding: 4px 6px 4px 0; }
+.act-cell { text-align: right; white-space: nowrap; }
+.act { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line); }
+.act.on { color: var(--keep); border-color: color-mix(in srgb, var(--keep) 50%, transparent); }
+.act.swap { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+.small { font-size: 12px; }
 .set { display: flex; flex-direction: column; gap: 6px; }
 .set .item { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; align-items: center; }
 .slotname { font-weight: 600; font-size: 13px; }

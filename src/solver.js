@@ -3,7 +3,7 @@
 // (each count capped at what the set needs), so the best tally is exact without trying every combo.
 //
 // Two goals:
-//   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT, 1 of each other)
+//   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
 import { SLOTS, TARGETS, OTHER } from "./parse.js";
@@ -80,16 +80,39 @@ export const missing = (res) => TARGETS.flatMap((t, i) => Array(t.need - res.cou
 // use Orbs to move your lines onto it. The goal: 4 pieces with prismatic + stat + stat and 2 with
 // stat + stat + stat. A prismatic socket can also hold a stat gem (handy for mages), so it counts as good.
 
-// Which socket colours hold each class's stat gems. Pirates depend on their main stat.
-export const CLASS_OPTIONS = [
-  { id: "Magician", cls: "Magician", colours: ["blue"] },
-  { id: "Warrior", cls: "Warrior", colours: ["red", "green", "grey"] },
-  { id: "Bowman", cls: "Bowman", colours: ["red", "green", "grey", "purple"] },
-  { id: "Thief", cls: "Thief", colours: ["purple", "grey"] },
-  { id: "Pirate (STR)", cls: "Pirate", colours: ["red", "green", "grey"] },
-  { id: "Pirate (DEX)", cls: "Pirate", colours: ["red", "green", "grey", "purple"] },
+// Which socket colours hold your stat gems. Each colour's gems roll one class's stats plus Attack
+// Power (Magic ATT for blue): red = Warrior, green = Bowman, grey = Pirate, purple = Thief, blue = Magician.
+const COLOURS = {
+  STR: ["red", "green", "grey"],
+  DEX: ["red", "green", "grey", "purple"],
+  LUK: ["purple", "grey"],
+  INT: ["blue"],
+};
+
+// Every job, with its branch (the class in brackets on Quanah gear) and main stat.
+const JOB_LIST = [
+  ["Warrior", "STR", "Hero", "Paladin", "Dark Knight", "Dawn Warrior", "Mihile", "Aran", "Blaster", "Demon Slayer", "Demon Avenger", "Kaiser", "Adele", "Hayato", "Zero", "Ren"],
+  ["Magician", "INT", "Arch Mage (F/P)", "Arch Mage (I/L)", "Bishop", "Blaze Wizard", "Evan", "Luminous", "Battle Mage", "Kanna", "Illium", "Lara", "Beast Tamer", "Kinesis", "Lethe"],
+  ["Bowman", "DEX", "Bowmaster", "Marksman", "Pathfinder", "Wind Archer", "Mercedes", "Wild Hunter", "Kain"],
+  ["Thief", "LUK", "Night Lord", "Shadower", "Dual Blade", "Night Walker", "Phantom", "Cadena", "Hoyoung", "Khali"],
+  ["Pirate", "STR", "Buccaneer", "Cannoneer", "Thunder Breaker", "Shade", "Ark"],
+  ["Pirate", "DEX", "Corsair", "Mechanic", "Angelic Buster"],
 ];
-export const classOption = (id) => CLASS_OPTIONS.find((o) => o.id === id) ?? CLASS_OPTIONS[0];
+export const JOBS = [
+  ...JOB_LIST.flatMap(([branch, stat, ...names]) => names.map((id) => ({ id, branch, classes: [branch], stat, colours: COLOURS[stat] }))),
+  // Xenon wears thief and pirate gear and uses STR, DEX and LUK.
+  { id: "Xenon", branch: "Thief", classes: ["Thief", "Pirate"], stat: "STR/DEX/LUK", colours: ["red", "green", "grey", "purple"] },
+];
+export const BRANCHES = ["Warrior", "Magician", "Bowman", "Thief", "Pirate"];
+export const CLASS_OPTIONS = JOBS;
+
+// A job by name. Older saves stored a branch ("Magician", "Pirate (DEX)"); those get a job of that branch.
+export function classOption(id) {
+  const job = JOBS.find((j) => j.id === id);
+  if (job) return job;
+  const [branch, stat] = String(id).match(/^(\w+)(?: \((\w+)\))?/)?.slice(1) ?? [];
+  return JOBS.find((j) => j.branch === branch && (!stat || j.stat === stat)) ?? JOBS.find((j) => j.id === "Lethe");
+}
 
 export function socketValue(item, classId) {
   const { colours } = classOption(classId);
@@ -101,11 +124,28 @@ export function socketValue(item, classId) {
 
 export const PRISMATIC_GOAL = 4;
 
+// Worth fusing your lines onto: a prismatic socket, or at least 2 sockets you can use. One usable
+// socket next to dead ones isn't worth an Orb; prismatic + your colour is the usual stepping stone.
+export const worthSockets = (v) => v.prismatic > 0 || v.good >= 2;
+
+// "2 of 3 usable (prismatic, blue); red is no use to you"
+export function socketNote(item, classId) {
+  const { colours } = classOption(classId);
+  const s = item.sockets ?? [];
+  const usable = s.filter((c) => c === "prismatic" || colours.includes(c));
+  const dead = s.filter((c) => !(c === "prismatic" || colours.includes(c)));
+  const deadText = dead.length ? `; ${[...new Set(dead)].join(" and ")} ${dead.length > 1 ? "are" : "is"} no use to you` : "";
+  return `${usable.length} of ${s.length} usable (${usable.join(", ")})${deadText}`;
+}
+
 // The best socket piece per slot, aiming for 4 slots with a prismatic. Returns
 // { picks: { slot: item|null }, good (of 18), prismatic (pieces with one) }.
 export function socketSet(items, classId) {
   const best = SLOTS.map((s) => {
-    const mine = items.filter((it) => it.slot === s).map((it) => ({ it, v: socketValue(it, classId) }));
+    const mine = items
+      .filter((it) => it.slot === s)
+      .map((it) => ({ it, v: socketValue(it, classId) }))
+      .filter(({ v }) => worthSockets(v));
     const top = (list) => list.sort((a, b) => b.v.good - a.v.good || a.v.dead - b.v.dead)[0] ?? null;
     return { any: top([...mine]), prism: top(mine.filter((x) => x.v.prismatic > 0)) };
   });
@@ -134,19 +174,19 @@ export function socketSet(items, classId) {
 // backup: every line is on the list (a perfect 3L, or near it) - worth holding while you farm
 // donor:  in the socket set (stage 2), so your lines can be fused onto it
 // trash:  none of the above (also anything for another class)
-export function verdicts(items, { classId = "Magician", mode = "endgame" } = {}) {
-  const { cls } = classOption(classId);
-  const mine = items.filter((it) => it.cls === cls);
+export function verdicts(items, { classId = "Lethe", mode = "endgame" } = {}) {
+  const { classes } = classOption(classId);
+  const mine = items.filter((it) => classes.includes(it.cls));
   const res = solve(mine, mode);
   const sockets = socketSet(mine, classId);
   const picked = new Set(Object.values(res.picks).filter(Boolean).map((it) => it.id));
-  const donor = new Set(Object.values(sockets.picks).filter((it) => it && socketValue(it, classId).good > 0).map((it) => it.id));
+  const donor = new Set(Object.values(sockets.picks).filter(Boolean).map((it) => it.id));
   const out = {};
   for (const it of items) {
-    if (it.cls !== cls) out[it.id] = { verdict: "trash", why: `${it.cls ?? "Another class"} gear` };
+    if (!classes.includes(it.cls)) out[it.id] = { verdict: "trash", why: `${it.cls ?? "Another class"} gear` };
     else if (picked.has(it.id)) out[it.id] = { verdict: "keep", why: "In your best set" };
     else if (it.lines.length === 3 && useful(it) === 3) out[it.id] = { verdict: "backup", why: "All 3 lines are on the list" };
-    else if (donor.has(it.id)) out[it.id] = { verdict: "donor", why: "Best sockets for its slot: fuse your lines onto it" };
+    else if (donor.has(it.id)) out[it.id] = { verdict: "donor", why: `Best ${it.slot.toLowerCase()} sockets so far: ${socketNote(it, classId)}` };
     else out[it.id] = { verdict: "trash", why: useful(it) ? "Your best set already does better" : "No lines on the list" };
   }
   return { res, sockets, verdicts: out };

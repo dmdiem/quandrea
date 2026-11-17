@@ -9,7 +9,7 @@ export const TARGETS = [
   { k: "leap", name: "Dimensional Leap", need: 3 },
   { k: "wh", name: "White Hole", need: 3 },
   { k: "reg", name: "Registry", need: 3 },
-  { k: "atk", name: "ATT", need: 3 },
+  { k: "atk", name: "ATT & M.ATT", need: 3 },
   { k: "crit", name: "Crit DMG", need: 1 },
   { k: "warrior", name: "Warrior", need: 1 },
   { k: "mage", name: "Mage", need: 1 },

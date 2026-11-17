@@ -1,8 +1,8 @@
 // The page: screen capture, the scan loop, and drawing everything.
 
 import { parseTooltip, SLOTS, TARGETS, OTHER } from "./parse.js";
-import { verdicts, missing, TOTAL, CLASS_OPTIONS, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js";
-import { findTooltips, findIcon, findSockets, prepareForOcr, regionHash } from "./vision.js";
+import { verdicts, TOTAL, JOBS, BRANCHES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js";
+import { findTooltips, findIcon, findSockets, prepareForOcr, textProfile, profileDiff } from "./vision.js";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -10,7 +10,7 @@ const NAME = Object.fromEntries([...TARGETS.map((t) => [t.k, t.name]), [OTHER, "
 const SOCKETS = ["prismatic", "blue", "red", "green", "purple", "grey"];
 const VERDICT = { keep: "Keep", backup: "Backup", donor: "Socket donor", trash: "Trash" };
 
-let state = { items: [], classId: "Magician", mode: "endgame" };
+let state = { items: [], classId: "Lethe", mode: "endgame" };
 let last = null; // { item, crop } of the most recent hovered (not equipped) tooltip
 let confirmClear = false;
 
@@ -35,8 +35,11 @@ let stream = null;
 let timer = null;
 let worker = null;
 let busy = false;
-const seen = new Map(); // tooltip hash -> time it was read (so a tooltip left open isn't re-read)
-let pending = new Map(); // hash -> frames it has stayed the same
+// Tooltips seen last frame ({ box, profile, still }), and ones already read that are still open.
+let prev = [];
+let done = [];
+const SAME = 0.04; // profiles closer than this are the same tooltip
+const near = (a, b) => Math.abs(a.x - b.x) <= 6 && Math.abs(a.y - b.y) <= 6;
 
 function setStatus(text, on = false) {
   $("status").textContent = text;
@@ -87,27 +90,26 @@ async function tick() {
   frame.height = video.videoHeight;
   fctx.drawImage(video, 0, 0);
   const img = fctx.getImageData(0, 0, frame.width, frame.height);
-  const boxes = findTooltips(img);
-  if (!boxes.length) {
-    pending = new Map();
+  const now = findTooltips(img).map((box) => ({ box, profile: textProfile(img, box) }));
+  const same = (a, b) => near(a.box, b.box) && profileDiff(a.profile, b.profile) < SAME;
+  // A tooltip counts as still when it matches one from the last frame (it fades in, the mouse moves).
+  for (const t of now) t.still = (prev.find((p) => same(p, t))?.still ?? 0) + 1;
+  prev = now;
+  // Forget read tooltips once they close, so hovering that item again reads it again.
+  done = done.filter((d) => now.some((t) => same(d, t)));
+  if (!now.length) return;
+  const fresh = now.filter((t) => !done.some((d) => same(d, t)));
+  if (!fresh.length) return;
+  const ready = fresh.filter((t) => t.still >= 2);
+  if (!ready.length) {
+    setStatus("Found a tooltip. Hold still…", true);
     return;
   }
-  // Read a tooltip once it has held still for two frames (it fades in, and the mouse moves).
-  const next = new Map();
-  const ready = [];
-  for (const box of boxes) {
-    const h = regionHash(img, box);
-    const n = (pending.get(h) ?? 0) + 1;
-    next.set(h, n);
-    if (n >= 2 && !(Date.now() - (seen.get(h) ?? 0) < 30000)) ready.push({ box, h });
-  }
-  pending = next;
-  if (!ready.length) return;
   busy = true;
   try {
-    for (const { box, h } of ready) {
-      seen.set(h, Date.now());
-      await readTooltip(img, box);
+    for (const t of ready) {
+      done.push(t);
+      await readTooltip(img, t.box);
     }
   } finally {
     busy = false;
@@ -135,9 +137,12 @@ async function readTooltip(img, box) {
     setStatus("Couldn't read that tooltip. Hover it again, or move it so nothing bright is behind it.", true);
     return;
   }
+  const before = state.items.length;
   const item = remember({ ...parsed, sockets });
+  const known = state.items.length === before;
   if (!parsed.equipped) last = { id: item.id, crop: cropCanvas(img, area) };
-  setStatus(`Read ${parsed.equipped ? "your equipped " : ""}${item.slot.toLowerCase()} ✓  Hover the next one.`, true);
+  const what = `${parsed.equipped ? "your equipped " : ""}${item.slot.toLowerCase()}`;
+  setStatus(known ? `Already have this ${what} ✓  Hover the next one.` : `Read ${what} ✓  Hover the next one.`, true);
   render();
 }
 
@@ -179,7 +184,7 @@ function render() {
   const { res, sockets, verdicts: v } = verdicts(state.items, state);
   const option = classOption(state.classId);
 
-  $("class").innerHTML = CLASS_OPTIONS.map((o) => `<option ${o.id === state.classId ? "selected" : ""}>${o.id}</option>`).join("");
+  $("class").innerHTML = BRANCHES.map((b) => `<optgroup label="${b}">${JOBS.filter((j) => j.branch === b).map((j) => `<option ${j.id === option.id ? "selected" : ""}>${j.id}</option>`).join("")}</optgroup>`).join("");
   for (const m of ["endgame", "early"]) $(`mode-${m}`).setAttribute("aria-pressed", String(state.mode === m));
 
   // The last item hovered, big.
@@ -192,24 +197,32 @@ function render() {
     : "";
   if (lastItem) $("last-crop").replaceWith(last.crop);
 
-  // Stage 1: lines.
+  // Stage 1: lines. A board of the 18 lines (filled = which piece gives it), then the set itself.
   const early = state.mode === "early";
   const head = early ? res.lines : res.score;
-  const miss = missing(res);
+  const from = Object.fromEntries(TARGETS.map((t) => [t.k, []])); // line -> slots that supply it
+  for (const s of SLOTS) res.picks[s]?.lines.forEach((k, j) => res.counted[s][j] && from[k].push(s));
+  const cell = (k, slot) => `<div class="cell ${slot ? "on" : ""}"><span class="cell-slot">${slot ?? "missing"}</span></div>`;
+  const anyWasted = SLOTS.some((s) => res.counted[s].includes(false));
   $("lines").innerHTML = `
     <div class="row spread"><h2>Stage 1 · ${early ? "18 lines" : "18/18 hologram lines"}</h2><span class="label">best set</span></div>
     <div class="score"><span class="big">${head}</span><span class="muted">of ${TOTAL} ${early ? "lines" : "target lines"}${early ? ` · ${res.score} on the list` : ""}</span></div>
-    <div class="reqs">${TARGETS.map((t, i) => `<div class="req k-${t.k} ${res.counts[i] < t.need ? "miss" : ""}"><span class="name">${t.name}</span>
-      <span class="pips">${Array.from({ length: t.need }, (_, j) => `<span class="pip ${j < res.counts[i] ? "on" : ""}"></span>`).join("")}</span></div>`).join("")}</div>
-    <div class="set"><span class="label">Wear these</span>${SLOTS.map((s) => {
-      const it = res.picks[s];
-      return `<div class="item"><span class="slotname">${s}</span>${it ? `<span class="lines">${it.lines.map((k, j) => chip(k, !res.counted[s][j])).join("")}${it.equipped ? '<span class="tag">wearing</span>' : ""}</span>` : `<span class="none">nothing scanned yet</span>`}</div>`;
-    }).join("")}</div>
-    ${miss.length && !early ? `<div><span class="label">Still missing</span><div class="lines">${miss.map((k) => chip(k)).join("")}</div></div>` : ""}`;
+    ${["main", "single"].map((g) => `<div class="board ${g}">${TARGETS.filter((t) => (t.need > 1) === (g === "main")).map((t) => `<div class="board-row"><span class="board-name">${t.name}</span>
+      <div class="cells">${Array.from({ length: t.need }, (_, j) => cell(t.k, from[t.k][j])).join("")}</div></div>`).join("")}</div>`).join("")}
+    <div class="set"><span class="label">Your set</span>
+      <table class="gear"><tbody>${SLOTS.map((s) => {
+        const it = res.picks[s];
+        const wearing = state.items.find((x) => x.slot === s && x.equipped);
+        const action = !it ? "" : it.equipped ? `<span class="act on">Wearing ✓</span>` : `<span class="act swap" title="${wearing ? "Equip this instead of what you have on" : "The scanner hasn't seen what you wear here"}">${wearing ? "Swap" : "Equip"}</span>`;
+        const cells = it ? [0, 1, 2].map((j) => `<td>${it.lines[j] ? chip(it.lines[j], !res.counted[s][j]) : `<span class="none">no line</span>`}</td>`).join("") : `<td colspan="3"><span class="none">nothing scanned yet</span></td>`;
+        return `<tr><th>${s}</th>${cells}<td class="act-cell">${action}</td></tr>`;
+      }).join("")}</tbody></table>
+      ${anyWasted ? `<span class="muted small">Crossed out: another piece already covers that line, so it doesn't count.</span>` : ""}
+    </div>`;
 
   // Stage 2: sockets.
   $("sockets").innerHTML = `
-    <div class="row spread"><h2>Stage 2 · Sockets</h2><span class="label">${option.id}: ${option.colours.join(", ")}</span></div>
+    <div class="row spread"><h2>Stage 2 · Sockets</h2><span class="label">${option.id} (${option.stat}): ${option.colours.join(", ")}</span></div>
     <div class="score"><span class="big">${sockets.good}</span><span class="muted">of 18 good sockets · ${sockets.prismatic}/${PRISMATIC_GOAL} prismatic pieces</span></div>
     <p class="muted">Aim for 4 pieces with prismatic + stat + stat and 2 with stat + stat + stat. Orbs move your 18 lines onto these. A prismatic + ${option.colours[0]} piece is a fine stepping stone.</p>
     <div class="set"><span class="label">Socket pieces</span>${SLOTS.map((s) => {
@@ -228,7 +241,7 @@ function render() {
     <div class="slots">${SLOTS.map((s) => {
       const list = state.items.filter((it) => it.slot === s);
       return `<div class="slot"><div class="slot-head"><h3>${s}</h3><span class="tag">${list.length}</span></div>
-        ${list.length ? list.map((it) => `<div class="inv-item">${badge(v[it.id])}<span class="lines">${linesOf(it)}${it.cls !== option.cls ? `<span class="tag">${it.cls ?? "?"}</span>` : ""}${it.equipped ? '<span class="tag">wearing</span>' : ""}</span>${socks(it.sockets)}<button class="x" data-del="${it.id}" aria-label="Remove">×</button></div>`).join("") : `<div class="none">Nothing scanned yet</div>`}
+        ${list.length ? list.map((it) => `<div class="inv-item">${badge(v[it.id])}<span class="lines">${linesOf(it)}${!option.classes.includes(it.cls) ? `<span class="tag">${it.cls ?? "?"}</span>` : ""}${it.equipped ? '<span class="tag">wearing now</span>' : ""}</span>${socks(it.sockets)}<button class="x" data-del="${it.id}" aria-label="Remove">×</button></div>`).join("") : `<div class="none">Nothing scanned yet</div>`}
       </div>`;
     }).join("")}</div>
     <div class="add"><span class="label">Add by hand</span>
@@ -252,13 +265,13 @@ document.addEventListener("click", (e) => {
     if (confirmClear) {
       state.items = [];
       last = null;
-      seen.clear();
+      done = [];
     }
     confirmClear = !confirmClear;
   } else if (t.id === "add") {
     const lines = [0, 1, 2].map((i) => $(`add-line-${i}`).value).filter(Boolean);
     const sockets = [0, 1, 2].map((i) => $(`add-sock-${i}`).value).filter(Boolean);
-    remember({ slot: $("add-slot").value, cls: classOption(state.classId).cls, lines, sockets, equipped: false, stats: `hand-${Date.now()}` });
+    remember({ slot: $("add-slot").value, cls: classOption(state.classId).classes[0], lines, sockets, equipped: false, stats: `hand-${Date.now()}` });
   } else return;
   save();
   render();

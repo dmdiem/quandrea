@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { solve, missing, verdicts, socketSet, socketValue, classOption, TOTAL } from "../src/solver.js";
+import { solve, missing, verdicts, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
 
 let n = 0;
 const item = (slot, lines, extra = {}) => ({ id: String(++n), slot, cls: "Magician", lines: lines.split(" ").filter(Boolean), sockets: [], ...extra });
@@ -66,8 +66,10 @@ test("socket colours per class, with prismatic counted as good", () => {
   assert.equal(socketValue(it, "Thief").good, 2); // grey is a thief colour
   assert.equal(socketValue(item("Hat", "", { sockets: ["purple", "purple", "purple"] }), "Pirate (DEX)").good, 3);
   assert.equal(socketValue(item("Hat", "", { sockets: ["purple", "purple", "purple"] }), "Pirate (STR)").good, 0);
-  assert.equal(classOption("Pirate (STR)").cls, "Pirate");
-  assert.equal(classOption("nonsense").id, "Magician");
+  assert.deepEqual(classOption("Pirate (STR)").classes, ["Pirate"]);
+  assert.equal(classOption("Pirate (DEX)").stat, "DEX");
+  assert.equal(classOption("Magician").branch, "Magician"); // older saves stored a branch
+  assert.equal(classOption("nonsense").id, "Lethe");
 });
 
 test("socket set: aims for 4 prismatic pieces, the rest all your colour", () => {
@@ -81,21 +83,43 @@ test("socket set: aims for 4 prismatic pieces, the rest all your colour", () => 
   const few = socketSet([...prism.slice(0, 3), ...stat], "Magician");
   assert.equal(few.prismatic, 3);
   assert.equal(few.good, 18);
+  // One usable socket next to a dead one isn't worth an Orb; prismatic + anything is.
+  assert.equal(socketSet([item("Shoes", "", { sockets: ["red", "blue"] })], "Magician").picks.Shoes, null);
+  assert.ok(socketSet([item("Shoes", "", { sockets: ["prismatic", "red"] })], "Magician").picks.Shoes);
+  assert.ok(socketSet([item("Shoes", "", { sockets: ["blue", "blue"] })], "Magician").picks.Shoes);
+  assert.equal(socketNote(item("Shoes", "", { sockets: ["prismatic", "blue", "red"] }), "Magician"), "2 of 3 usable (prismatic, blue); red is no use to you");
+  assert.equal(socketNote(item("Shoes", "", { sockets: ["blue", "blue", "blue"] }), "Magician"), "3 of 3 usable (blue, blue, blue)");
   // A slot with nothing useful is left empty.
   assert.equal(socketSet([item("Hat", "", { sockets: ["red"] })], "Magician").picks.Top, null);
+});
+
+test("jobs: branch and main stat decide the socket colours", () => {
+  assert.deepEqual(classOption("Lethe").colours, ["blue"]);
+  assert.deepEqual(classOption("Bishop").classes, ["Magician"]);
+  assert.deepEqual(classOption("Corsair").colours, ["red", "green", "grey", "purple"]);
+  assert.deepEqual(classOption("Buccaneer").colours, ["red", "green", "grey"]);
+  assert.deepEqual(classOption("Night Lord").colours, ["purple", "grey"]);
+  assert.deepEqual(classOption("Xenon").classes, ["Thief", "Pirate"]);
+  // Xenon keeps both thief and pirate gear
+  const t = item("Hat", "leap", { cls: "Thief" });
+  const p = item("Top", "wh", { cls: "Pirate" });
+  const { verdicts: v } = verdicts([t, p], { classId: "Xenon" });
+  assert.equal(v[t.id].verdict, "keep");
+  assert.equal(v[p.id].verdict, "keep");
 });
 
 test("verdicts: keep, backup, donor, trash, and other classes' gear", () => {
   const set = PERFECT.map((it) => ({ ...it }));
   const spare = item("Top", "leap wh reg"); // also perfect lines, but the set already has a top
   const prism = item("Top", "other", { sockets: ["prismatic", "blue", "blue"] });
-  const junk = item("Top", "mage other");
+  const junk = item("Top", "mage other", { sockets: ["red", "blue"] }); // one blue isn't enough
   const warrior = item("Bottom", "leap wh reg", { cls: "Warrior" });
   const { res, verdicts: v } = verdicts([...set, spare, prism, junk, warrior]);
   assert.equal(res.score, 18);
   assert.equal(v[set[0].id].verdict, "keep");
   assert.equal(v[spare.id].verdict, "backup");
   assert.equal(v[prism.id].verdict, "donor");
+  assert.match(v[prism.id].why, /^Best top sockets so far: 3 of 3 usable/);
   assert.equal(v[junk.id].verdict, "trash");
   assert.deepEqual(v[warrior.id], { verdict: "trash", why: "Warrior gear" });
 });

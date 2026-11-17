@@ -18,7 +18,7 @@ const BOX_MAX_W = 460;
 function isEdge(d, w, x, y) {
   const i = (y * w + x) * 4;
   const c = lum(d, i);
-  if (c < 55 || c > 135) return false;
+  if (c < 55 || c > 175) return false; // up to 175: over bright scenery the border gets lighter too
   return c - lum(d, i - 4) >= 14 && c - lum(d, i + 4) >= 12;
 }
 
@@ -88,13 +88,13 @@ function verticalExtent(img, xl, xr, top, bottom, gap = 14) {
   return [Math.max(tl, tr), Math.max(bl, br)];
 }
 
-// Tooltips are dark navy inside. Rules out light windows (like the inventory) that have lines too.
+// Tooltips are dark navy inside (lighter where bright scenery shows through). Rules out light windows (like the inventory) that have lines too.
 function isDarkInside(img, x0, x1, y0, y1) {
   const { width: w, data: d } = img;
   const vals = [];
   for (let y = y0; y <= y1; y += 7) for (let x = x0 + 6; x < x1 - 6; x += 9) vals.push(lum(d, (y * w + x) * 4));
   vals.sort((a, b) => a - b);
-  return vals[Math.floor(vals.length / 2)] < 90;
+  return vals[Math.floor(vals.length / 2)] < 125; // see-through, so lighter over bright scenery
 }
 
 // ---- The item picture ----
@@ -228,11 +228,28 @@ export function socketColor(px) {
   return hues.filter((k) => k !== "yellow").sort((a, b) => counts[b] - counts[a])[0];
 }
 
-// ---- Getting text ready for OCR ----
-// Enlarge 3x (nearest neighbour is enough for this crisp game font) and keep only bright pixels,
-// as black text on white. Dim text showing through the see-through tooltip falls under the cut.
-export function prepareForOcr(img, box, { scale = 3, cut = 120 } = {}) {
+// ---- Text vs background ----
+// The tooltip is see-through, so its background is lighter over bright scenery. Each row's cut-off
+// sits a margin above that row's own background (the darker quarter of its pixels; text is sparse).
+export function rowCuts(img, box, { min = 120, margin = 50 } = {}) {
   const { width: w, data: d } = img;
+  const cuts = [];
+  const vals = [];
+  for (let y = box.y; y < box.y + box.height; y++) {
+    vals.length = 0;
+    for (let x = box.x + 4; x < box.x + box.width - 4; x += 2) vals.push(lum(d, (y * w + x) * 4));
+    vals.sort((a, b) => a - b);
+    cuts.push(Math.max(min, (vals[Math.floor(vals.length / 4)] ?? 0) + margin));
+  }
+  return cuts;
+}
+
+// ---- Getting text ready for OCR ----
+// Enlarge 3x (nearest neighbour is enough for this crisp game font) and keep only pixels brighter
+// than their row's cut-off, as black text on white. Scenery showing through falls under it.
+export function prepareForOcr(img, box, { scale = 3 } = {}) {
+  const { width: w, data: d } = img;
+  const cuts = rowCuts(img, box);
   const ow = box.width * scale;
   const oh = box.height * scale;
   const out = new Uint8ClampedArray(ow * oh * 4);
@@ -240,7 +257,7 @@ export function prepareForOcr(img, box, { scale = 3, cut = 120 } = {}) {
     const sy = box.y + Math.floor(y / scale);
     for (let x = 0; x < ow; x++) {
       const sx = box.x + Math.floor(x / scale);
-      const v = lum(d, (sy * w + sx) * 4) > cut ? 0 : 255;
+      const v = lum(d, (sy * w + sx) * 4) > cuts[sy - box.y] ? 0 : 255;
       const o = (y * ow + x) * 4;
       out[o] = out[o + 1] = out[o + 2] = v;
       out[o + 3] = 255;
@@ -249,12 +266,31 @@ export function prepareForOcr(img, box, { scale = 3, cut = 120 } = {}) {
   return { width: ow, height: oh, data: out };
 }
 
-// A cheap fingerprint of a region, to notice when the tooltip changes.
-export function regionHash(img, box) {
+// A tooltip's "shape": how many bright text pixels are on each row. The game showing through the
+// see-through tooltip is far too dim to count, so animation behind it doesn't change this; only
+// the tooltip's own text does.
+export function textProfile(img, box) {
   const { width: w, data: d } = img;
-  let hash = 0;
-  for (let y = box.y; y < box.y + box.height; y += 5) {
-    for (let x = box.x; x < box.x + box.width; x += 5) hash = (hash * 31 + (lum(d, (y * w + x) * 4) >> 4)) | 0;
+  const cuts = rowCuts(img, box, { min: 150, margin: 60 });
+  const rows = [];
+  for (let y = box.y; y < box.y + box.height; y++) {
+    let n = 0;
+    const cut = cuts[y - box.y];
+    for (let x = box.x + 4; x < box.x + box.width - 4; x++) if (lum(d, (y * w + x) * 4) > cut) n++;
+    rows.push(n);
   }
-  return hash;
+  return rows;
+}
+
+// How different two profiles are, from 0 (same) to 1, allowing the box to shift a few rows.
+export function profileDiff(a, b, maxShift = 4) {
+  const total = Math.max(1, a.reduce((s, v) => s + v, 0), b.reduce((s, v) => s + v, 0));
+  let best = Infinity;
+  for (let k = -maxShift; k <= maxShift; k++) {
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) diff += Math.abs(a[i] - (b[i + k] ?? 0));
+    for (let j = 0; j < b.length; j++) if (j - k < 0 || j - k >= a.length) diff += b[j];
+    best = Math.min(best, diff);
+  }
+  return best / total;
 }

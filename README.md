@@ -14,7 +14,8 @@ saved only in that browser.
 3. Hover one item per slot so it also reads the "Currently Equipped" box next to it.
 4. Don't move or sort items while scanning. When you're done, throw out what's marked **Trash**.
 
-Pick your class at the top. Pirates choose STR or DEX, since that changes which sockets are useful.
+Pick your job at the top (Lethe, Bishop, Corsair…). Your branch and main stat decide which gear
+is yours and which socket colours you can use.
 
 ## What it's aiming for
 
@@ -36,22 +37,24 @@ stat + stat + stat. Orbs move your 18 lines onto them.
 Each socket colour takes one class's gems, which roll that class's stats plus Attack Power (or
 Magic ATT for blue). You can use any colour whose gems roll your stats:
 
-| Class | Main / secondary stat | Socket colours you can use |
+| Jobs | Main / secondary stat | Socket colours you can use |
 |---|---|---|
-| Magician | INT / LUK | blue only (the only Magic ATT gems) |
-| Warrior | STR / DEX | red, green, grey |
-| Bowman | DEX / STR | red, green, grey, purple |
-| Thief | LUK / DEX or STR | purple, grey |
-| Pirate (STR) | STR / DEX | red, green, grey |
-| Pirate (DEX) | DEX / STR | red, green, grey, purple |
+| Magicians | INT / LUK | blue only (the only Magic ATT gems) |
+| Warriors | STR / DEX | red, green, grey |
+| Bowmen | DEX / STR | red, green, grey, purple |
+| Thieves | LUK / DEX or STR | purple, grey |
+| Buccaneer, Cannoneer, Thunder Breaker, Shade, Ark | STR / DEX | red, green, grey |
+| Corsair, Mechanic, Angelic Buster | DEX / STR | red, green, grey, purple |
 
 Gem colours by class: red = Warrior, green = Bowman, grey = Pirate, purple = Thief, blue = Magician.
+Xenon can wear thief and pirate gear and uses red, green, grey and purple.
 
 ### Verdicts
 
 - **Keep**: part of your best 18-line set.
 - **Backup**: all three lines are on the list, but the set already has a better piece for that slot.
-- **Socket donor**: the best socket piece for its slot (stage 2).
+- **Socket donor**: the best socket piece for its slot so far (stage 2). It needs a prismatic socket
+  or at least 2 usable ones; one usable socket isn't worth an Orb.
 - **Trash**: none of the above, or gear for another class.
 
 The best set is worked out over every combination, so it never wastes a slot on a line another
