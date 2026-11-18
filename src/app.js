@@ -1,10 +1,10 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=36";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=36";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=36";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=36";
-import { findTooltips, findIcon, findSockets, findGrid, readCells, GRID } from "./vision.js?v=36";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=38";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=38";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=38";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=38";
+import { findTooltips, findIcon, findSockets } from "./vision.js?v=38";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -14,8 +14,7 @@ const SOCKETS = ["prismatic", "blue", "red", "green", "purple", "grey"];
 const VERDICT = { keep: "Keep", trash: "Trash" };
 const REASON = { best: "best combo", spare: "spare 3-line", sockets: "for sockets" };
 
-let state = { items: [], classId: "Magician", mode: "endgame", cells: [] };
-let selected = null; // the inventory cell clicked in the map, "c,r"
+let state = { items: [], classId: "Magician", mode: "endgame" };
 let piecesOpen = false; // the "each piece" section; kept across redraws and remembered
 try {
   piecesOpen = localStorage.getItem("quandrea.piecesOpen") === "1";
@@ -104,73 +103,14 @@ function showSimple(img, { now = false } = {}) {
     simpleLast = html;
     $("simple-out").innerHTML = html;
   }
-  $("simple-status").textContent = cam ? "Watching OBS." : "Read from your screenshot.";
+  $("simple-status").textContent = "Read from your screenshot.";
 }
-
-// ---------- Simpling Dumpling from OBS ----------
-// OBS's Virtual Camera turns what OBS shows (the game) into a webcam. Reading that camera a few
-// times a second names the sockets of whatever you hover, live, without sharing your screen.
-let cam = null; // the camera stream
-let camTimer = null;
-const camFrame = document.createElement("canvas");
-const camCtx = camFrame.getContext("2d", { willReadFrequently: true });
-
-async function startCam(deviceId) {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    $("simple-status").textContent = "This browser can't use a camera.";
-    return;
-  }
-  stopCam();
-  try {
-    cam = await navigator.mediaDevices.getUserMedia({ video: { ...(deviceId ? { deviceId: { exact: deviceId } } : {}), width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
-  } catch (err) {
-    cam = null;
-    $("simple-status").textContent = err?.name === "NotAllowedError" ? "The camera wasn't allowed. Click Use OBS camera and allow it." : "No camera found. In OBS, click Start Virtual Camera, then try again.";
-    return;
-  }
-  // Names only show once a camera is allowed: offer them all, and switch to OBS's if this isn't it.
-  const cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
-  const now = cam.getVideoTracks()[0];
-  const obs = cams.find((d) => /obs/i.test(d.label));
-  if (!deviceId && obs && !/obs/i.test(now.label)) return startCam(obs.deviceId);
-  const pick = $("cam-pick");
-  pick.innerHTML = cams.map((d, i) => `<option value="${d.deviceId}"${d.label === now.label ? " selected" : ""}>${d.label ? d.label.replace(/[<>&"]/g, "") : `Camera ${i + 1}`}</option>`).join("");
-  pick.hidden = cams.length < 2;
-  const video = $("cam");
-  video.srcObject = cam;
-  await video.play();
-  now.addEventListener("ended", stopCam);
-  $("cam-start").hidden = true;
-  $("cam-stop").hidden = false;
-  $("simple-status").textContent = /obs/i.test(now.label) ? "Watching OBS." : `Watching ${now.label || "a camera"}: pick OBS Virtual Camera in the list if that's not it.`;
-  camTimer = setInterval(() => {
-    if (!video.videoWidth || !state.simple) return;
-    camFrame.width = video.videoWidth;
-    camFrame.height = video.videoHeight;
-    camCtx.drawImage(video, 0, 0);
-    showSimple(camCtx.getImageData(0, 0, camFrame.width, camFrame.height));
-  }, 300);
-}
-
-function stopCam() {
-  clearInterval(camTimer);
-  camTimer = null;
-  cam?.getTracks().forEach((t) => t.stop());
-  cam = null;
-  $("cam").srcObject = null;
-  $("cam-start").hidden = false;
-  $("cam-stop").hidden = true;
-}
-
-$("cam-pick").addEventListener("change", (e) => startCam(e.target.value));
 
 // Add an item, or update it if this exact one was read before. Returns the stored item.
 function remember(p) {
   // Sockets aren't part of the key.
   const key = [p.slot, p.cls, p.lines.join(","), p.stats].join("|");
   if (p.equipped) for (const it of state.items) if (it.slot === p.slot) it.equipped = false;
-  // A cell holds one item: whatever was there before has moved or gone.
-  if (p.cell) for (const it of state.items) if (it.cell === p.cell && it.key !== key) it.cell = null;
   // Same item read before (older saves called Boss DMG / Ignore DEF / Damage just "Other"): match
   // on slot, class, stats and the lines on the list, then refresh its lines.
   const coreOf = (lines) => lines.filter(isTarget).join(",");
@@ -182,7 +122,6 @@ function remember(p) {
   }
   if (item) {
     item.equipped = p.equipped || item.equipped;
-    if (p.cell) item.cell = p.cell;
     if (p.sockets.length) item.sockets = p.sockets;
   }
   else {
@@ -197,13 +136,6 @@ function remember(p) {
 
 // extra: a copy beyond what the 18 need. Still +1 to that skill (they go to Lv. 8), just not best in slot.
 const chip = (k, extraCopy = false) => chipHtml(k, extraCopy && isTarget(k)); // filler is never an "extra"
-// Where an item sits in the inventory ("Row 2 · Col 4"). Clicking it lights the cell up on the map.
-function miniLoc(cell) {
-  if (!cell) return "";
-  const [c, r] = cell.split(",").map(Number);
-  return `<button class="loc" data-cell="${cell}" title="Show it on the Inventory map">Row ${r + 1} · Col ${c + 1}</button>`;
-}
-
 // Simple line icons for each slot, drawn in the text colour.
 const SLOT_PATHS = {
   Hat: '<path d="M2.5 13.5c1.8 3 5.4 4.4 9.5 4.4s7.7-1.4 9.5-4.4"/><path d="M7 15.6c0-4.4.7-8.3 2.2-9.2.9-.5 1.8.5 2.8.5s1.9-1 2.8-.5c1.5.9 2.2 4.8 2.2 9.2"/><path d="M7.2 12.6h9.6"/>',
@@ -246,11 +178,8 @@ const badge = (v) => `<span class="badge v-${v.verdict}" title="${v.why}">${VERD
 const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("") : `<span class="muted">no lines</span>`);
 
 function render() {
-  // Add a piece: an open panel at the top, aimed at the next map cell to fill in (if there's a map).
-  if (typeof draft !== "undefined") {
-    if (draft.cell === undefined) draft.cell = nextCellToEnter("-1,0");
-    $("add-panel").innerHTML = addForm();
-  }
+  // Add a piece: an open panel at the top.
+  if (typeof draft !== "undefined") $("add-panel").innerHTML = addForm();
   const { res, sockets, verdicts: v } = verdicts(state.items, state);
   const option = classOption(state.classId);
 
@@ -266,28 +195,10 @@ function render() {
   $("simple-toggle").setAttribute("aria-pressed", String(Boolean(state.simple)));
   $("simple-toggle").textContent = state.simple ? "Back to full page" : "Simpling Dumpling mode";
   // Start over wipes everything (items, equipped pieces, the map), so it lives with the page-wide settings.
-  $("clear").hidden = !state.items.length && !state.cells.length;
+  $("clear").hidden = !state.items.length;
   $("clear").textContent = confirmClear ? "Click again: clear everything" : "Start over";
   $("clear").classList.toggle("danger", confirmClear);
   document.documentElement.classList.toggle("cb", Boolean(state.cb));
-
-  // The inventory map: every cell, coloured by verdict once its piece is typed in.
-  const byCell = Object.fromEntries(state.items.filter((it) => it.cell).map((it) => [it.cell, it]));
-  const cells = state.cells.length ? state.cells : [];
-  const toAdd = cells.filter((k, i) => k === "lines" && !byCell[`${i % GRID.cols},${Math.floor(i / GRID.cols)}`]).length;
-  const added = cells.filter((k, i) => k === "lines" && byCell[`${i % GRID.cols},${Math.floor(i / GRID.cols)}`]).length;
-  const pick = selected && byCell[selected];
-  $("map").innerHTML = !cells.length
-    ? `<p class="muted">Open the Equip tab (expanded, 16 columns) with nothing hovered, press <b>PrtScn</b>, then <b>Ctrl+V</b> here.</p>`
-    : `<div class="row spread"><span class="muted">${added} added · ${toAdd} with lines still to add</span>
-        <span class="legend"><span class="mcell lines"></span>to add <span class="mcell item"></span>no lines (skip) <span class="mcell v-keep"></span>keep <span class="mcell v-trash"></span>trash</span></div>
-      <div class="map-wrap"><div class="map">${cells.map((k, i) => {
-        const id = `${i % GRID.cols},${Math.floor(i / GRID.cols)}`;
-        const it = byCell[id];
-        const cls = it ? `v-${v[it.id].verdict}` : k;
-        return `<button class="mcell ${cls}${selected === id ? " sel" : ""}${typeof draft !== "undefined" && draft.cell === id ? " target" : ""}" data-cell="${id}" title="${it ? VERDICT[v[it.id].verdict] : k === "lines" ? "Has hologram lines: click to add it" : k === "item" ? "An item with no hologram lines: skip it" : "Empty"}">${it ? (v[it.id].verdict === "keep" ? "✓" : "✕") : k === "item" ? "–" : ""}</button>`;
-      }).join("")}</div>
-      ${cellPane(pick, v)}</div>`;
 
   // What you're wearing now (from the "Currently Equipped" boxes), and how it compares.
   const worn = Object.fromEntries(SLOTS.map((s) => [s, state.items.find((it) => it.slot === s && it.equipped) ?? null]));
@@ -302,13 +213,8 @@ function render() {
   const head = early ? shown.lines : shown.score;
   const from = Object.fromEntries(TARGETS.map((t) => [t.k, []])); // line -> slots that supply it
   for (const s of SLOTS) shown.picks[s]?.lines.forEach((k, j) => shown.counted[s][j] && from[k].push(s));
-  const cell = (k, slot) => {
-    const at = slot && shown.picks[slot]?.cell;
-    // Just the slot's icon (its name on hover); an empty dashed box when the line is missing.
-    const inner = slot ? slotIcon(slot) : "";
-    const tip = slot ? `${slot}${at ? " (in your bag: click to show it on the Inventory map)" : ""}` : "Missing";
-    return at ? `<button class="cell on" data-cell="${at}" title="${tip}" aria-label="${tip}">${inner}</button>` : `<div class="cell ${slot ? "on" : ""}" title="${tip}" aria-label="${tip}">${inner}</div>`;
-  };
+  // Just the slot's icon (its name on hover); an empty dashed box when the line is missing.
+  const cell = (k, slot) => `<div class="cell ${slot ? "on" : ""}" title="${slot ?? "Missing"}" aria-label="${slot ?? "Missing"}">${slot ? slotIcon(slot) : ""}</div>`;
   // Still missing: the lines this set doesn't have yet, with how many of each.
   const gaps = early ? [] : missing(shown);
   const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
@@ -320,8 +226,6 @@ function render() {
   const swapNote = !seenAny ? "Show pieces" : swaps.length ? `Show pieces · ${swaps.length} to swap: ${swaps.join(", ")}` : "Show pieces · all of them are equipped";
   // Tabs over the left column: what you have on now, or the best combo you could make.
   $("side-tabs").innerHTML = `<button role="tab" data-view="equipped" aria-selected="${showNow}"${seenAny ? "" : ' disabled title="Mark what you wear with Equip first"'}>Equipped now</button><button role="tab" data-view="best" aria-selected="${!showNow}">Best combo</button>`;
-  // The tiny inventory map that lights up an item's cell on the big one.
-  const loc = (it) => miniLoc(it?.cell);
   $("lines").innerHTML = `
     <div class="row spread"><h2>${early ? "Hologram lines (any 3 per piece)" : "Hologram lines (18/18)"}</h2></div>
     <p class="muted small explain">${showNow
@@ -342,8 +246,8 @@ function render() {
           const best = res.picks[s];
           const wearing = state.items.find((x) => x.slot === s && x.equipped);
           const action = showNow
-            ? !it ? "" : best && best !== it ? `<span class="act swap" title="A better piece for this slot is in your bag">Better in bag</span>${loc(best)}` : `<span class="act on">Best ✓</span>`
-            : !it ? "" : it.equipped ? `<span class="act on">Equipped ✓</span>` : `<span class="act swap" title="${wearing ? "Equip this instead of what you have on" : "Nothing is marked equipped for this slot"}">${wearing ? "Swap" : "Equip"}</span>${loc(it)}`;
+            ? !it ? "" : best && best !== it ? `<span class="act swap" title="A better piece for this slot is in your bag">Better in bag</span>` : `<span class="act on">Best ✓</span>`
+            : !it ? "" : it.equipped ? `<span class="act on">Equipped ✓</span>` : `<span class="act swap" title="${wearing ? "Equip this instead of what you have on" : "Nothing is marked equipped for this slot"}">${wearing ? "Swap" : "Equip"}</span>`;
           if (!it) return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span><span class="none">${showNow ? "nothing equipped" : "nothing added yet"}</span></div>`;
           // On a swap, the piece you have on now, right under the one to swap in.
           const nowRow = !showNow && wearing && !it.equipped ? `<div class="piece-now"><span class="wearing-now">↳ Equipped:</span> ${linesOf(wearing)}</div>` : "";
@@ -356,7 +260,7 @@ function render() {
       </div>
       ${showNow ? "" : `<div class="fuse"><span class="label">Best pieces to fuse your lines onto</span>
         <span class="muted small">Goal: 4 with a prismatic, all others ${option.colours.join(" / ")}.</span>
-        <div class="fuse-list">${SLOTS.map((s) => { const it = sockets.picks[s]; const v4 = it && socketValue(it, state.classId); return `<span class="fuse-item">${slotIcon(s)}${it && v4.good ? `${socks(it.sockets)}${loc(it)}` : `<span class="none">none yet</span>`}</span>`; }).join("")}</div></div>`}
+        <div class="fuse-list">${SLOTS.map((s) => { const it = sockets.picks[s]; const v4 = it && socketValue(it, state.classId); return `<span class="fuse-item">${slotIcon(s)}${it && v4.good ? `${socks(it.sockets)}` : `<span class="none">none yet</span>`}</span>`; }).join("")}</div></div>`}
     </details>`;
 
   // Keep or trash: your bag only (equipped pieces are on the left), filtered by verdict.
@@ -365,12 +269,12 @@ function render() {
   const tab = state.gearTab ?? "trash";
   const list = bag
     .filter((it) => tab === "all" || v[it.id].verdict === tab)
-    .sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || (a.cell ?? "z").localeCompare(b.cell ?? "z"));
+    .sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
   const row = (it) => {
     const vv = v[it.id];
-    return `<div class="bag-row v-row-${vv.verdict}${it.cell && it.cell === selected ? " sel" : ""}" draggable="true" data-drag="${it.id}">
+    return `<div class="bag-row v-row-${vv.verdict}" draggable="true" data-drag="${it.id}">
       <div class="bag-top"><span class="badge v-${vv.verdict}" title="${vv.why}">${VERDICT[vv.verdict]}</span><span class="bag-why muted small">${vv.reason ? REASON[vv.reason] : vv.why}</span>
-        <span class="bag-act">${miniLoc(it.cell)}<button class="equip-btn" data-equip="${it.id}" title="You equipped this in game: mark it equipped">Equip</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
+        <span class="bag-act"><button class="equip-btn" data-equip="${it.id}" title="You equipped this in game: mark it equipped">Equip</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
       <div class="lines">${linesOf(it)}${!option.classes.includes(it.cls) ? `<span class="tag">${it.cls ?? "?"}</span>` : ""}</div>
       ${socks(it.sockets)}
     </div>`;
@@ -388,18 +292,13 @@ function render() {
 }
 
 // ---------- equipping in game ----------
-// After swapping in game: the new piece is equipped, and the old one goes back into the bag, in the
-// inventory cell the new one came from (that's where the game puts it).
+// After swapping in game: the new piece is equipped, and the old one goes back into the bag.
 function equipItem(id) {
   const it = state.items.find((x) => x.id === id);
   if (!it) return;
   const old = state.items.find((x) => x.slot === it.slot && x.equipped);
-  if (old) {
-    old.equipped = false;
-    old.cell = it.cell;
-  }
+  if (old) old.equipped = false;
   it.equipped = true;
-  it.cell = null;
   setStatus(`Marked your ${it.slot.toLowerCase()} as equipped ✓`);
 }
 
@@ -426,41 +325,11 @@ document.addEventListener("drop", (e) => {
   render();
 });
 
-// The pane beside the map: what's in the clicked cell, or a way to add it by hand.
-function cellPane(it, v) {
-  if (!selected) return `<div class="cell-pane muted small">Click a cell to see what's in it.</div>`;
-  const [c, r] = selected.split(",").map(Number);
-  const where = `Row ${r + 1} · Col ${c + 1}`;
-  if (!it) {
-    return `<div class="cell-pane"><span class="label">${where}</span>
-      <p class="muted small">Nothing added here yet: fill it in with Add a piece.</p></div>`;
-  }
-  const vv = v[it.id];
-  return `<div class="cell-pane"><span class="label">${where}</span>
-    <div class="row"><span class="badge v-${vv.verdict}">${VERDICT[vv.verdict]}</span><span class="muted small">${vv.reason ? REASON[vv.reason] : vv.why}</span></div>
-    <div class="row"><b>${slotIcon(it.slot)}${it.slot}</b></div>
-    <div class="lines">${linesOf(it)}</div>
-    <div>${socks(it.sockets)}</div>
-    <div class="row"><button class="equip-btn" data-equip="${it.id}">Equip</button><button class="equip-btn" data-del="${it.id}">Remove</button></div></div>`;
-}
-
 // ---------- add manually ----------
 // Tap a slot, up to 3 lines and up to 3 sockets, then Add. The slot stays picked for the next one.
-// cell: the map cell it's for; undefined means "the next one to fill in" (worked out when drawn).
-const freshDraft = (cell) => ({ slot: null, lines: [], sockets: [], cell });
+const freshDraft = () => ({ slot: null, lines: [], sockets: [] });
 let draft = freshDraft();
 let addMsg = ""; // "Added a hat ✓", shown in the panel after each piece
-const cellIndex = (cell) => { const [c, r] = cell.split(",").map(Number); return r * GRID.cols + c; };
-// The next inventory cell after `from` that has hologram lines and no item entered for it yet.
-function nextCellToEnter(from) {
-  const [c0, r0] = from.split(",").map(Number);
-  const taken = new Set(state.items.map((it) => it.cell).filter(Boolean));
-  for (let i = r0 * GRID.cols + c0 + 1; i < state.cells.length; i++) {
-    const cell = `${i % GRID.cols},${Math.floor(i / GRID.cols)}`;
-    if (state.cells[i] === "lines" && !taken.has(cell)) return cell;
-  }
-  return null;
-}
 // Add a piece: click the equipment, its jewels and its skills. The third skill adds the piece.
 function pick(kind, v) {
   if (kind === "slot") draft.slot = v;
@@ -494,14 +363,13 @@ function addForm() {
     const full = (kind === "sock" && draft.sockets.length >= 3) || (kind === "line" && draft.lines.length >= 3 && !on);
     return `<button class="keycap kind-${kind}${kind === "line" && !isTarget(v) ? " filler" : ""}${on ? " on" : ""}" data-pick-${kind}="${v}"${full ? " disabled" : ""}>${label}</button>`;
   };
-  const where = draft.cell ? `Row ${+draft.cell.split(",")[1] + 1} · Col ${+draft.cell.split(",")[0] + 1} <button class="loc" id="add-nocell" title="Don't tie it to a map cell">×</button>` : state.cells.length ? "not on the map" : "";
   // The piece as it's being built.
   const lineSlots = [0, 1, 2].map((i) => (draft.lines[i] ? `<button class="unpick" data-unline="${i}" title="Remove">${chip(draft.lines[i])}</button>` : `<span class="slot-empty">skill ${i + 1}</span>`)).join("");
   const sockSlots = [0, 1, 2].map((i) => (draft.sockets[i] ? `<button class="unpick" data-unsock="${i}" title="Remove">${jewel(draft.sockets[i])}<span>${SOCK_WORD[draft.sockets[i]]}</span></button>` : `<span class="slot-empty sock-empty"></span>`)).join("");
   return `<div class="add-manual" id="add-manual">
     <div class="row spread"><h2>Add a piece</h2><span class="muted small">Click its equipment, jewels and skills, then Add.</span></div>
     <div class="add-preview">
-      <div class="pv-slot">${draft.slot ? slotIcon(draft.slot) : ""}<div><b>${draft.slot ?? "Pick the equipment"}</b><span class="muted small">${where}</span></div></div>
+      <div class="pv-slot">${draft.slot ? slotIcon(draft.slot) : ""}<div><b>${draft.slot ?? "Pick the equipment"}</b></div></div>
       <div class="pv-socks">${sockSlots}</div>
       <div class="pv-lines">${lineSlots}</div>
     </div>
@@ -511,6 +379,7 @@ function addForm() {
     </section>${s2 === "line" ? `<section class="pick-step"><div class="step-head muted">Not counted</div><div class="picker minor">${["boss", "ied", "dmg", OTHER].map((v) => option("line", v)).join("")}</div></section>` : ""}`).join("")}
     <div class="add-row">
       <span class="add-msg muted small">${addMsg}</span>
+      <button id="add-worn" class="ghost wear-toggle" aria-pressed="${Boolean(draft.equipped)}" title="You're wearing this piece: it shows on the left as equipped">${draft.equipped ? "✓ " : ""}Wearing it</button>
       <button id="add" class="primary"${draft.slot ? "" : " disabled"}>Add</button></div>
   </div>`;
 }
@@ -522,15 +391,8 @@ document.addEventListener("click", (e) => {
   if (!t) return;
   if (t.id !== "clear") confirmClear = false;
   if (t.dataset.themePick) return setTheme(t.dataset.themePick);
-  if (t.id === "cam-start") return startCam();
-  if (t.id === "cam-stop") {
-    stopCam();
-    $("simple-status").textContent = "Stopped.";
-    return;
-  }
   if (t.id === "simple-toggle") {
     state.simple = !state.simple;
-    if (!state.simple) stopCam();
     save();
     render();
     return;
@@ -541,15 +403,6 @@ document.addEventListener("click", (e) => {
     render();
     return;
   }
-  if (t.id === "reset-map") {
-    state.cells = [];
-    state.mapPinned = false;
-    selected = null;
-    save();
-    render();
-    setStatus("Map cleared. Paste a screenshot of your inventory (Ctrl+V).");
-    return;
-  }
   if (t.dataset.gearTab) {
     state.gearTab = t.dataset.gearTab;
     save();
@@ -557,34 +410,19 @@ document.addEventListener("click", (e) => {
     return;
   }
   if (t.dataset.equip) equipItem(t.dataset.equip);
-  else if (t.dataset.cell && !t.closest(".map")) {
-    selected = t.dataset.cell;
-    save();
-    render();
-    document.querySelector(".map")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    return;
-  }
   else if (t.dataset.view) state.view = t.dataset.view;
-  else if (t.dataset.cell) {
-    selected = selected === t.dataset.cell ? null : t.dataset.cell;
-    // An empty cell with lines: aim the Add a piece panel at it.
-    if (selected && !state.items.some((it) => it.cell === selected) && state.cells[cellIndex(selected)] === "lines") draft.cell = selected;
-  }
   else if (t.dataset.mode) state.mode = t.dataset.mode;
   else if (t.dataset.stat) state.classId = `Pirate (${t.dataset.stat})`;
   else if (t.dataset.del) state.items = state.items.filter((it) => it.id !== t.dataset.del);
   else if (t.id === "clear") {
     if (confirmClear) {
       state.items = [];
-      state.cells = [];
-      state.mapPinned = false;
-      selected = null;
     }
     confirmClear = !confirmClear;
   } else if (t.dataset.pickSlot) return pick("slot", t.dataset.pickSlot);
   else if (t.dataset.pickSock) return pick("sock", t.dataset.pickSock);
   else if (t.dataset.pickLine) return pick("line", t.dataset.pickLine);
-  else if (t.id === "add-nocell") draft.cell = null;
+  else if (t.id === "add-worn") draft.equipped = !draft.equipped;
   else if (t.dataset.unline) draft.lines.splice(+t.dataset.unline, 1);
   else if (t.dataset.unsock) draft.sockets.splice(+t.dataset.unsock, 1);
   else if (t.id === "add") return addPiece();
@@ -593,17 +431,14 @@ document.addEventListener("click", (e) => {
   render();
 });
 
-// Save the piece being built and go straight on to the next one. Started from a map cell: jump to
-// the next cell with lines that has nothing entered yet, or close when there are none left.
+// Save the piece being built and start the next one.
 function addPiece() {
   if (!draft.slot) return;
-  remember({ slot: draft.slot, cls: classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: false, stats: `hand-${Date.now()}`, cell: draft.cell ?? null });
-  addMsg = `Added ${draft.slot === "Shoes" || draft.slot === "Gloves" ? "" : "a "}${draft.slot.toLowerCase()} ✓`;
+  remember({ slot: draft.slot, cls: classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: Boolean(draft.equipped), stats: `hand-${Date.now()}` });
+  addMsg = `Added ${draft.equipped ? "your equipped " : draft.slot === "Shoes" || draft.slot === "Gloves" ? "" : "a "}${draft.slot.toLowerCase()} ✓`;
   setStatus(addMsg);
-  const from = draft.cell;
-  draft = freshDraft(from ? nextCellToEnter(from) : null);
+  draft = freshDraft();
   save();
-  if (draft.cell) addMsg += `, now Row ${+draft.cell.split(",")[1] + 1} · Col ${+draft.cell.split(",")[0] + 1}`;
   render();
 }
 
@@ -645,18 +480,7 @@ document.addEventListener("paste", async (e) => {
       showSimple(img, { now: true });
       return;
     }
-    const g = findGrid(img);
-    if (!g) {
-      setStatus(findGrid(img, 4) ? "That's the small inventory view (4 columns). Expand it with the + at its top right, then take the screenshot again." : "Couldn't find the inventory in that screenshot. Open the Equip tab, expanded to 16 columns, with nothing hovered.");
-      return;
-    }
-    state.cells = readCells(img, g);
-    state.mapPinned = true;
-    draft.cell = undefined;
-    $("map-panel").open = true;
-    save();
-    render();
-    setStatus("Map filled in ✓ Add a piece now goes through the dashed items one by one.");
+    setStatus("Screenshots are read in Simpling Dumpling mode (button at the top).");
   } catch (err) {
     setStatus(`Couldn't read that image: ${err.message}`);
   }
@@ -733,5 +557,4 @@ showTheme();
 $("version").textContent = `Quandrea v${new URL(import.meta.url).searchParams.get("v") ?? "dev"}`;
 
 load();
-if (state.cells.length) $("map-panel").open = true;
 render();

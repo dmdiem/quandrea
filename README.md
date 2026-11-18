@@ -2,9 +2,8 @@
 
 **Let Quandrea tell you if your gear is trash.**
 
-A gear checker for MapleStory's Quanah world. Paste a screenshot of your inventory to draw its map,
-type in each piece's hologram lines and sockets with the keyboard, and it tells you what to **keep**
-and what to **trash**.
+A gear checker for MapleStory's Quanah world. Click in each piece's hologram lines and sockets, and it
+tells you what to **keep** and what to **trash**.
 
 Everything runs in your browser. Your items are saved only in that browser.
 
@@ -12,22 +11,14 @@ Everything runs in your browser. Your items are saved only in that browser.
 
 1. In **Add a piece**, click each item's **equipment**, **jewels** and **skills**, then **Add** (a
    third skill adds it by itself).
-2. Click **Equip** on the pieces you're wearing.
+2. For the pieces you're wearing, switch on **Wearing it** before Add (or click **Equip** later).
 3. Throw out what's marked **Trash**.
-
-Optional: the **Inventory map**. Open the Equip tab, **expanded** to 16 columns, with nothing hovered,
-press **PrtScn**, then **Ctrl+V** on the page. It shows which items have lines (dashed), Add a piece
-goes through them cell by cell, and once they're added it shows which to throw out (✕).
 
 **Simpling Dumpling mode** (button at the top) is a simple screen for colour-blind players: hover an
 item in the game, press PrtScn and paste the screenshot, and its socket colours show up as big words, with ✓ on the ones your class
 can use. There's also a **Colour-blind friendly** switch for the full page.
 
-To see the colours live, run **OBS** with a Game or Window Capture of MapleStory, click **Start
-Virtual Camera**, then **Use OBS camera** in Simpling Dumpling mode. OBS only copies pictures of the
-screen, as when streaming. To play looking at OBS, add a Window Capture of this page in OBS too.
-
-**Copy backup** puts a code of your items and map on the clipboard; paste it back on the
+**Copy backup** puts a code of your pieces on the clipboard; paste it back on the
 page (Ctrl+V, or **Load backup**) to restore it, in another browser or after clearing your data. A
 backup is checked before it's loaded: only known slots, classes, lines, sockets and cells are kept,
 and everything else in it is thrown away.
@@ -75,8 +66,8 @@ Every item in your bag gets one of two verdicts:
   least 2 usable ones, to fuse your lines onto).
 - **Trash**: none of those, or gear for another class.
 
-The right side of the page lists them under **Trash · Keep · All**, each with a little grid showing its spot on the
-Inventory map. The left side shows your sets: **Equipped now** and the **Best combo**.
+The right side of the page lists them under **Trash · Keep · All**. The left side shows your sets:
+**Equipped now** and the **Best combo**.
 
 The **best combo** is the best outfit you can make from everything you've added, worn or in your
 bag: one piece per slot, covering as many of the 18 lines as possible (ties go to more lines in
@@ -85,14 +76,8 @@ slot on a line another piece already covers. Thanks to the community's 3L Set So
 
 ## What it reads from a screenshot
 
-Only two things, both from screenshots you paste:
-
-- **Inventory map:** the Equip tab's grid (16 x 8 cells, 46px apart) is found by the bright gaps
-  between cells; the grey bar on top of an item marks one with hologram lines.
-- **Socket colours** (Simpling Dumpling mode): each droplet above the item picture is named by the
-  colour of its outline.
-
-Item lines are never read from the screen: you type them in.
+Only socket colours, in Simpling Dumpling mode: each droplet above the item picture is named by the
+colour of its outline. Everything else you click in.
 
 ## Development
 

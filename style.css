@@ -449,3 +449,4 @@ button .sock-word { border: 0; padding: 0; margin: 0; background: none; }
 .map-panel[open] > summary { margin-bottom: 8px; }
 .page-status:empty { display: none; }
 .page-status { margin: 0 0 -4px; }
+.wear-toggle[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); font-weight: 700; }
