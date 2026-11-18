@@ -591,3 +591,5 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 .tool-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .tool-data .ghost { font-size: 13px; }
 @media (max-width: 700px) { header { grid-template-columns: 1fr; } header .corner { justify-self: start; } }
+/* Empty sockets point up like the filled ones (sharp corner top-left before the 45° turn) */
+.mt-sock.empty::before { border-radius: 50%; border-top-left-radius: 1px; }

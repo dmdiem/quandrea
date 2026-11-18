@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=54";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=54";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=54";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=54";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=54";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=54";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=55";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=55";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=55";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=55";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=55";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=55";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
