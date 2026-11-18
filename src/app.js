@@ -1,10 +1,10 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=48";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=48";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=48";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=48";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=48";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=49";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=49";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=49";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=49";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=49";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -317,7 +317,8 @@ let addMsg = ""; // "Added a hat ✓", shown in the panel after each piece
 function pick(kind, v) {
   if (kind === "slot") draft.slot = v;
   else if (kind === "sock") {
-    if (draft.sockets.length < 3) draft.sockets = [...draft.sockets, v];
+    // A prismatic socket is always the leftmost one in the game.
+    if (draft.sockets.length < 3) draft.sockets = v === "prismatic" ? [v, ...draft.sockets] : [...draft.sockets, v];
   } else {
     // Picking a skill twice takes it back; Other can repeat (Boss + IED are both not BiS).
     if (v !== OTHER && draft.lines.includes(v)) draft.lines = draft.lines.filter((x) => x !== v);
@@ -378,7 +379,8 @@ function addForm() {
     <div class="add-row add-under">
       <span class="add-msg muted small">${addMsg}</span>
       <button id="add-worn" class="ghost wear-toggle" aria-pressed="${Boolean(draft.equipped)}" title="You're wearing this piece in game">${draft.equipped ? "✓ " : ""}Currently Equipped</button>
-      ${draft.editId ? `<button id="add-cancel" class="ghost">Cancel</button>` : ""}
+      ${draft.editId ? `<button id="add-cancel" class="ghost">Cancel</button>`
+        : draft.slot || draft.sockets.length || draft.lines.length || draft.equipped ? `<button id="add-cancel" class="ghost" title="Start this piece over without adding it">Clear</button>` : ""}
       <button id="add" class="primary"${draft.slot ? "" : " disabled"}>${draft.editId ? "Save" : "Add"}</button></div>
     </div></div>
   </div>`;
@@ -424,7 +426,10 @@ document.addEventListener("click", (e) => {
   else if (t.dataset.unline) draft.lines.splice(+t.dataset.unline, 1);
   else if (t.dataset.unsock) draft.sockets.splice(+t.dataset.unsock, 1);
   else if (t.id === "add") return addPiece();
-  else if (t.id === "add-cancel") draft = freshDraft();
+  else if (t.id === "add-cancel") {
+    draft = freshDraft(); // Cancel an edit, or Clear the piece you were about to add
+    addMsg = "";
+  }
   else if (t.dataset.edit) {
     const it = state.items.find((x) => x.id === t.dataset.edit);
     if (!it) return;

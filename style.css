@@ -557,3 +557,4 @@ button.act.swap:hover { filter: brightness(0.95); text-decoration: underline; }
 .mt-sockwords { text-align: center; font-size: 12.5px; font-weight: 800; margin-top: -4px; }
 .mt-sockwords { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; font-size: 12px; }
 .mt-sockwords span { text-align: center; white-space: nowrap; }
+.add-panel .add-row.add-under { grid-template-columns: 1fr 1fr; }
