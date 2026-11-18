@@ -1,10 +1,10 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=34";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=34";
-import { KEYS, KEY_TO } from "./keys.js?v=34";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=34";
-import { findTooltips, findIcon, findSockets, findGrid, readCells, GRID } from "./vision.js?v=34";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=35";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=35";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=35";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=35";
+import { findTooltips, findIcon, findSockets, findGrid, readCells, GRID } from "./vision.js?v=35";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -443,7 +443,8 @@ function cellPane(it, v) {
 
 // ---------- add manually ----------
 // Tap a slot, up to 3 lines and up to 3 sockets, then Add. The slot stays picked for the next one.
-let draft = { slot: "Hat", lines: [], sockets: [] };
+const freshDraft = (cell = null) => ({ slot: null, lines: [], sockets: [], cell });
+let draft = freshDraft();
 let addMsg = ""; // "Added a hat ✓", shown in the pop-up after each piece
 const addDialog = $("add-dialog");
 const addIsOpen = () => addDialog.open;
@@ -466,7 +467,7 @@ function closeAdd() {
   addDialog.close();
 }
 addDialog.addEventListener("close", () => {
-  draft = { ...draft, lines: [], sockets: [], cell: null };
+  draft = freshDraft();
   render();
 });
 // A click on the dimmed backdrop (outside the box) closes it.
@@ -474,91 +475,59 @@ addDialog.addEventListener("click", (e) => {
   if (e.target === addDialog) closeAdd();
 });
 
-// Fast entry: while the pop-up is open, keys pick for you (see keys.js). Enter adds the piece,
-// Backspace takes back the last pick, Esc closes.
-
-document.addEventListener("keydown", (e) => {
-  if (!addIsOpen() || e.ctrlKey || e.metaKey || e.altKey) return;
-  if (e.target.closest?.("input, select, textarea")) return;
-  const form = $("add-manual");
-  if (!form) return;
-  const click = (sel) => form.querySelector(sel)?.click();
-  if (e.key === "Escape") return; // the pop-up closes itself
-  if (e.key === "Enter" || e.key === " " || e.key === "Tab") click("#add"); // Space and Tab add too
-  else if (e.key === "Backspace") {
-    if (draft.sockets.length) draft.sockets.pop();
-    else draft.lines.pop();
-    render();
+// Add manually: click the equipment, its jewels and its skills. The third skill adds the piece.
+function pick(kind, v) {
+  if (kind === "slot") draft.slot = v;
+  else if (kind === "sock") {
+    if (draft.sockets.length < 3) draft.sockets = [...draft.sockets, v];
   } else {
-    const hit = KEY_TO[e.key.toLowerCase()];
-    if (!hit) return;
-    const [kind, v] = hit;
-    click(`[data-pick-${kind}="${v}"]:not([disabled])`);
-    // Light the key up, like a dance pad.
-    const cap = $("add-manual")?.querySelector(`[data-pick-${kind}="${v}"]`);
-    if (cap) {
-      cap.classList.add("hit");
-      setTimeout(() => cap.classList.remove("hit"), 180);
-    }
+    // Picking a skill twice takes it back; Other can repeat (Boss + IED are both "not counted").
+    if (v !== OTHER && draft.lines.includes(v)) draft.lines = draft.lines.filter((x) => x !== v);
+    else if (draft.lines.length < 3) draft.lines = [...draft.lines, v];
+    if (draft.lines.length >= 3) return addPiece();
   }
-  e.preventDefault();
-});
+  render();
+}
 
-// The form is drawn as keyboard rows, one per kind (equipment, jewels, skills, the rest), each key
-// where it sits on a real keyboard. Keys light up when pressed.
-const KEYBOARD = [
-  ["1", "2", "3", "4", "5", "6"],
-  ["Q", "W", "E", "R", "T", "Y"],
-  ["A", "S", "D", "F", "G", "H", "J", "K", "L", ";"],
-  ["Z", "X", "C", "V"],
-];
-const KEY_SHORT = { leap: "Leap", wh: "White Hole", reg: "Registry", atk: "ATT", crit: "Crit", warrior: "Warrior", mage: "Mage", archer: "Bowman", thief: "Thief", pirate: "Pirate", boss: "Boss", ied: "IED", dmg: "Damage", [OTHER]: "Other" };
+const KEY_SHORT = { leap: "Leap", wh: "White Hole", reg: "Registry", atk: "ATT & M.ATT", crit: "Crit DMG", warrior: "Warrior", mage: "Mage", archer: "Bowman", thief: "Thief", pirate: "Pirate", boss: "Boss DMG", ied: "Ignore DEF", dmg: "Damage", [OTHER]: "Other" };
 
 function addForm() {
-  const fullLines = draft.lines.length >= 3;
-  const fullSocks = draft.sockets.length >= 3;
   const count = (list, v) => list.filter((x) => x === v).length;
-  const keycap = (key) => {
-    // Keys that do nothing are drawn faintly, so the rows still look like your keyboard.
-    if (!KEY_TO[key.toLowerCase()]) return `<span class="keycap blank"><kbd>${key}</kbd></span>`;
-    const [kind, v] = KEY_TO[key.toLowerCase()];
-    let on, off, label, cls = `keycap kind-${kind}`;
+  const option = (kind, v) => {
+    let on, label;
     if (kind === "slot") {
       on = draft.slot === v;
       label = `${slotIcon(v)}<span>${v}</span>`;
-    } else if (kind === "line") {
-      on = draft.lines.includes(v);
-      // A piece can't have the same line twice; only unrecognised "Other" lines can repeat.
-      off = fullLines && !on;
-      label = `${classIcon(v)}<span>${KEY_SHORT[v]}${count(draft.lines, v) > 1 ? ` ×${count(draft.lines, v)}` : ""}</span>`;
-      cls += ` k-${v}${isTarget(v) ? "" : " filler"}`;
-    } else {
+    } else if (kind === "sock") {
       on = draft.sockets.includes(v);
-      off = fullSocks && !on;
       label = `<span class="sock ${v}"></span><span>${SOCK_WORD[v]}${count(draft.sockets, v) > 1 ? ` ×${count(draft.sockets, v)}` : ""}</span>`;
+    } else {
+      on = draft.lines.includes(v);
+      label = `${classIcon(v)}<span>${KEY_SHORT[v]}</span>`;
     }
-    return `<button class="${cls}${on ? " on" : ""}" data-pick-${kind}="${v}" data-key="${key}"${off ? " disabled" : ""} title="${key}"><kbd>${key}</kbd>${label}</button>`;
+    const full = (kind === "sock" && draft.sockets.length >= 3) || (kind === "line" && draft.lines.length >= 3 && !on);
+    return `<button class="keycap kind-${kind}${kind === "line" && !isTarget(v) ? " filler" : ""}${on ? " on" : ""}" data-pick-${kind}="${v}"${full ? " disabled" : ""}>${label}</button>`;
   };
   const where = draft.cell ? `Row ${+draft.cell.split(",")[1] + 1} · Col ${+draft.cell.split(",")[0] + 1} <button class="loc" id="add-nocell" title="Don't tie it to a map cell">×</button>` : "not on the map";
-  // The piece as it's being built: three line spaces and three socket spaces that fill in as you type.
-  const lineSlots = [0, 1, 2].map((i) => (draft.lines[i] ? `<button class="unpick" data-unline="${i}" title="Remove">${chip(draft.lines[i])}</button>` : `<span class="slot-empty">line ${i + 1}</span>`)).join("");
+  // The piece as it's being built.
+  const lineSlots = [0, 1, 2].map((i) => (draft.lines[i] ? `<button class="unpick" data-unline="${i}" title="Remove">${chip(draft.lines[i])}</button>` : `<span class="slot-empty">skill ${i + 1}</span>`)).join("");
   const sockSlots = [0, 1, 2].map((i) => (draft.sockets[i] ? `<button class="unpick" data-unsock="${i}" title="Remove">${jewel(draft.sockets[i])}<span>${SOCK_WORD[draft.sockets[i]]}</span></button>` : `<span class="slot-empty sock-empty"></span>`)).join("");
   return `<div class="add-manual" id="add-manual">
-    <div class="row spread"><h2>Add manually</h2><span class="muted small add-keys"><kbd>Enter</kbd> / <kbd>Space</kbd> / <kbd>Tab</kbd> adds and goes to the next · <kbd>Backspace</kbd> undoes · <kbd>Esc</kbd> closes</span><button class="ghost" id="add-close" aria-label="Close">×</button></div>
+    <div class="row spread"><h2>Add manually</h2><button class="ghost" id="add-close" aria-label="Close">×</button></div>
     <div class="add-preview">
-      <div class="pv-slot">${slotIcon(draft.slot)}<div><b>${draft.slot}</b><span class="muted small">${where}</span></div></div>
+      <div class="pv-slot">${draft.slot ? slotIcon(draft.slot) : ""}<div><b>${draft.slot ?? "Pick the equipment"}</b><span class="muted small">${where}</span></div></div>
       <div class="pv-socks">${sockSlots}</div>
       <div class="pv-lines">${lineSlots}</div>
     </div>
-    <div class="keyboard">${KEYBOARD.map((row, r) => `<div class="krow r${r}">${row.map(keycap).join("")}</div>`).join("")}</div>
+    ${STEPS.map((s2) => `<section class="pick-step">
+      <div class="step-head">${STEP_NAME[s2]}${s2 === "slot" ? "" : ` <span class="muted small">${(s2 === "sock" ? draft.sockets : draft.lines).length}/3</span>`}</div>
+      <div class="picker">${OPTIONS[s2].map((v) => option(s2, v)).join("")}</div>
+    </section>${s2 === "line" ? `<section class="pick-step"><div class="step-head muted">Not counted</div><div class="picker minor">${["boss", "ied", "dmg", OTHER].map((v) => option("line", v)).join("")}</div></section>` : ""}`).join("")}
     <div class="add-row">
       <span class="add-msg muted small">${addMsg}</span>
-      ${draft.lines.length || draft.sockets.length ? `<button id="add-clear" class="ghost">Start over</button>` : ""}
-      <button id="add" class="primary"${draft.sockets.length ? "" : " disabled"}>Add <kbd>Enter</kbd></button></div>
+      <button id="add" class="primary"${draft.slot ? "" : " disabled"}>Add</button></div>
   </div>`;
 }
-
-
 
 // ---------- events ----------
 
@@ -596,12 +565,12 @@ document.addEventListener("click", (e) => {
     return;
   }
   if (t.id === "add-open") {
-    draft = { ...draft, lines: [], sockets: [], cell: nextCellToEnter("-1,0") };
+    draft = freshDraft(nextCellToEnter("-1,0"));
     return openAdd();
   }
   if (t.id === "add-close") return closeAdd();
   if (t.dataset.cellAdd) {
-    draft = { ...draft, cell: t.dataset.cellAdd, lines: [], sockets: [] };
+    draft = freshDraft(t.dataset.cellAdd);
     openAdd();
     return;
   }
@@ -632,42 +601,32 @@ document.addEventListener("click", (e) => {
       selected = null;
     }
     confirmClear = !confirmClear;
-  } else if (t.dataset.pickSlot) draft.slot = t.dataset.pickSlot;
-  else if (t.dataset.pickLine) {
-    const k = t.dataset.pickLine;
-    // Tapping a picked line removes it; Other adds another copy (Boss + IED are both Other).
-    if (k !== OTHER && draft.lines.includes(k)) draft.lines = draft.lines.filter((x) => x !== k);
-    else if (draft.lines.length < 3) draft.lines = [...draft.lines, k];
-    else if (k === OTHER && draft.lines.includes(OTHER)) draft.lines.splice(draft.lines.lastIndexOf(OTHER), 1);
-  } else if (t.dataset.pickSock) {
-    const c = t.dataset.pickSock;
-    if (draft.sockets.length < 3) draft.sockets = [...draft.sockets, c];
-    else draft.sockets.splice(draft.sockets.lastIndexOf(c), 1);
-  } else if (t.dataset.unline) draft.lines.splice(+t.dataset.unline, 1);
+  } else if (t.dataset.pickSlot) return pick("slot", t.dataset.pickSlot);
+  else if (t.dataset.pickSock) return pick("sock", t.dataset.pickSock);
+  else if (t.dataset.pickLine) return pick("line", t.dataset.pickLine);
+  else if (t.id === "add-nocell") draft.cell = null;
+  else if (t.dataset.unline) draft.lines.splice(+t.dataset.unline, 1);
   else if (t.dataset.unsock) draft.sockets.splice(+t.dataset.unsock, 1);
-  else if (t.id === "add-clear") draft = { ...draft, lines: [], sockets: [] };
-  else if (t.id === "add") {
-    if (!draft.sockets.length) {
-      setStatus("Every piece has at least one socket. Tap its socket colours.");
-      return;
-    }
-    remember({ slot: draft.slot, cls: classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: false, stats: `hand-${Date.now()}`, cell: draft.cell ?? null });
-    addMsg = `Added ${draft.slot === "Shoes" || draft.slot === "Gloves" ? "" : "a "}${draft.slot.toLowerCase()} ✓`;
-    setStatus(addMsg);
-    // Straight on to the next one. Started from a map cell: jump to the next cell with lines that
-    // has nothing entered yet (left to right, top to bottom), or close when there are none left.
-    const from = draft.cell;
-    draft = { ...draft, lines: [], sockets: [], cell: from ? nextCellToEnter(from) : null };
-    if (from && !draft.cell) {
-      save();
-      closeAdd();
-      return;
-    }
-    if (draft.cell) addMsg += `, now Row ${+draft.cell.split(",")[1] + 1} · Col ${+draft.cell.split(",")[0] + 1}`;
-  } else return;
+  else if (t.id === "add") return addPiece();
+  else return;
   save();
   render();
 });
+
+// Save the piece being built and go straight on to the next one. Started from a map cell: jump to
+// the next cell with lines that has nothing entered yet, or close when there are none left.
+function addPiece() {
+  if (!draft.slot) return;
+  remember({ slot: draft.slot, cls: classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: false, stats: `hand-${Date.now()}`, cell: draft.cell ?? null });
+  addMsg = `Added ${draft.slot === "Shoes" || draft.slot === "Gloves" ? "" : "a "}${draft.slot.toLowerCase()} ✓`;
+  setStatus(addMsg);
+  const from = draft.cell;
+  draft = freshDraft(from ? nextCellToEnter(from) : null);
+  save();
+  if (from && !draft.cell) return closeAdd();
+  if (draft.cell) addMsg += `, now Row ${+draft.cell.split(",")[1] + 1} · Col ${+draft.cell.split(",")[0] + 1}`;
+  render();
+}
 
 $("class").addEventListener("change", (e) => {
   state.classId = e.target.value === "Pirate" ? "Pirate (STR)" : e.target.value;

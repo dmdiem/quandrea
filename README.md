@@ -13,10 +13,8 @@ Everything runs in your browser. Your items are saved only in that browser.
 1. Open your inventory's Equip tab, **expanded** so all 16 columns show, with nothing hovered. Press
    **PrtScn**, then **Ctrl+V** on the page: the **Inventory map** fills in, with dashed cells for
    items that have hologram lines. **Reset map** clears it.
-2. Click **Add manually** and type each dashed item in, one keyboard row per kind: 1–6 Hat / Top /
-   Bottom / Cape / Gloves / Shoes; Q W E R T Y Blue / Green / Purple / Red / Grey / Prismatic;
-   A S D F G Leap / White Hole / Registry / ATT / Crit and H J K L ; Warrior / Mage / Bowman /
-   Thief / Pirate. Enter (or Space, or Tab) adds it and moves on to the next dashed cell.
+2. Click **Add manually** and click each dashed item's **equipment**, **jewels** and **skills**, then
+   **Add** (a third skill adds it by itself). It moves on to the next dashed cell.
 3. Click **Equip** on the pieces you're wearing.
 4. Throw out what's marked **Trash**.
 
@@ -38,7 +36,7 @@ which socket colours you can use.
 
 ## What it's aiming for
 
-**First: 18/18 hologram lines.** Six pieces (hat, top, bottom, cape, gloves, shoes; weapons and
+**First: 18/18 hologram lines.** Six pieces (hat, top, bottom, shoes, gloves, cape; weapons and
 shoulders can't roll lines), three lines each:
 
 | Line | How many |

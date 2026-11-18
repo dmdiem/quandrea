@@ -216,15 +216,8 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .unpick:hover { opacity: 0.6; }
 .unpick .jewel { height: 20px; }
 
-/* Class lines take a faint tint of their jewel colour (red Warrior, blue Mage, green Bowman,
-   purple Thief, grey Pirate); the rest stay hologram cyan. Mixed with the theme's own colours,
-   so it works in light and dark. */
-.k-warrior { --tint: #d94848; } .k-mage { --tint: #3b7fe0; } .k-archer { --tint: #36a85a; } .k-thief { --tint: #9a52d6; } .k-pirate { --tint: #8a94a3; }
-.k-warrior, .k-mage, .k-archer, .k-thief, .k-pirate {
-  --holo: color-mix(in srgb, var(--tint) 75%, var(--fg) 0%);
-  --holo-hi: color-mix(in srgb, var(--tint) 22%, var(--surface));
-  --holo-ink: color-mix(in srgb, var(--tint) 55%, var(--fg));
-}
+/* Class lines use the same hologram cyan as every other line: tinting them made them look like jewels.
+   Their symbols (sword, wand, bow, shuriken, anchor) tell them apart. */
 
 /* One more piece finishes it */
 .hunt { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--holo); background: color-mix(in srgb, var(--holo) 7%, transparent); }
@@ -330,7 +323,6 @@ button.cell:hover { outline: 2px solid var(--accent); }
 .tips li { margin: 3px 0; }
 
 /* Colour-blind friendly: shapes and words instead of colour alone */
-.cb .chip.k-warrior, .cb .chip.k-mage, .cb .chip.k-archer, .cb .chip.k-thief, .cb .chip.k-pirate { --holo: inherit; --holo-hi: inherit; --holo-ink: inherit; }
 .cb .mcell.v-trash { background: repeating-linear-gradient(45deg, var(--trash) 0 3px, color-mix(in srgb, var(--trash) 60%, #000) 3px 6px); }
 #cb-toggle[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: transparent; }
 
@@ -414,3 +406,38 @@ button .sock-word { border: 0; padding: 0; margin: 0; background: none; }
 .add-dialog .add-keys { margin: 0 12px 0 auto; }
 .add-dialog .add-msg { margin-right: auto; }
 @media (max-width: 700px) { .add-preview { grid-template-columns: 1fr; } .pv-socks { flex-direction: row; } }
+/* Add manually, step by step: Equipment → Jewels → Skills, the current step's options as big keys */
+.steps { display: flex; align-items: center; gap: 6px; margin: 4px 0 10px; }
+.step { padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted); background: transparent; }
+.step.on { color: var(--fg); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+.step-arrow { color: var(--muted); }
+.picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.picker.minor { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.picker.minor .keycap { min-height: 0; padding: 4px 10px; flex-direction: row; font-size: 12px; border-bottom-width: 1px; }
+.picker .keycap { min-height: 64px; font-size: 12px; }
+.picker .keycap .slot-icon, .picker .keycap .class-icon { width: 20px; height: 20px; }
+.picker .keycap .sock { width: 16px; height: 16px; }
+/* All three sections show at once (click anything); the one the number keys type into is lit */
+.pick-step { margin-top: 10px; padding: 8px 10px 10px; border-radius: 12px; border: 1px solid transparent; }
+.pick-step.on { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.step-head { display: inline-flex; gap: 6px; align-items: baseline; margin-bottom: 6px; padding: 0; border: 0; background: none; font-weight: 700; font-size: 13px; color: var(--fg); }
+.step-head .typing { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); }
+.pick-step .picker .keycap { min-height: 52px; }
+.pick-step:not(.on) .picker .keycap { padding-top: 8px; }
+/* Compact Add manually: label on the left, small buttons with the icon beside the word, all close together */
+.add-dialog { width: min(640px, calc(100vw - 24px)); padding: 14px 16px; }
+.add-dialog .add-preview { grid-template-columns: 120px auto minmax(0, 1fr); gap: 10px; margin: 8px 0 6px; padding: 8px 10px; }
+.add-dialog .pv-slot .slot-icon { width: 26px; height: 26px; }
+.add-dialog .pv-slot b { font-size: 15px; }
+.add-dialog .pv-socks { min-width: 100px; gap: 4px; }
+.add-dialog .slot-empty { height: 24px; min-width: 70px; }
+.add-dialog .pick-step { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px; align-items: start; margin-top: 6px; padding: 0; border: 0; background: none; }
+.add-dialog .step-head { margin: 7px 0 0; font-size: 12px; flex-direction: column; gap: 0; }
+.add-dialog .picker { display: flex; flex-wrap: wrap; gap: 4px; }
+.add-dialog .picker .keycap, .add-dialog .pick-step .picker .keycap { flex-direction: row; min-height: 0; height: 30px; padding: 0 9px; gap: 5px; font-size: 12px; border-bottom-width: 2px; border-radius: 8px; }
+.add-dialog .picker .keycap .slot-icon, .add-dialog .picker .keycap .class-icon { width: 15px; height: 15px; }
+.add-dialog .picker .keycap .sock { width: 12px; height: 12px; }
+.add-dialog .picker.minor { grid-column: 2; margin-top: 4px; }
+.add-dialog .picker.minor .keycap { height: 26px; }
+.add-dialog .add-row { margin-top: 10px; }
+@media (max-width: 560px) { .add-dialog .pick-step { grid-template-columns: 1fr; } .add-dialog .add-preview { grid-template-columns: 1fr; } }

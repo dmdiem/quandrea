@@ -2,7 +2,7 @@
 // "Darnage", None as "Mone"), so every pattern here is loose on purpose.
 
 export const CLASSES = ["Magician", "Warrior", "Bowman", "Thief", "Pirate"];
-export const SLOTS = ["Hat", "Top", "Bottom", "Cape", "Gloves", "Shoes"];
+export const SLOTS = ["Hat", "Top", "Bottom", "Shoes", "Gloves", "Cape"];
 
 // The 18 lines a finished set wants: 3 each of four, and one of each class plus Crit DMG.
 export const TARGETS = [
