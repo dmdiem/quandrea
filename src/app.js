@@ -1,10 +1,10 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=49";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=49";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=49";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=49";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=49";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=50";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=50";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=50";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=50";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=50";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -208,7 +208,16 @@ function render() {
   for (const s of SLOTS) shown.picks[s]?.lines.forEach((k, j) => shown.counted[s][j] && from[k].push(s));
   // Just the slot's icon (its name on hover); an empty dashed box when the line is missing.
   // A filled spot shows the icon of the equipment that gives the line; a missing one is a faint dot.
-  const cell = (k, slot) => `<span class="pip ${slot ? "on" : ""}" title="${slot ?? "Missing"}" aria-label="${slot ?? "Missing"}">${slot ? slotIcon(slot) : ""}</span>`;
+  const cell = (k, slot, up = false) => `<span class="pip ${slot ? (up ? "up" : "on") : ""}" title="${slot ? (up ? `${slot}: swap in your best combo piece for this` : slot) : "Missing"}" aria-label="${slot ?? "Missing"}">${slot ? slotIcon(slot) : ""}</span>`;
+  // The board shows what you wear (solid), then what your best combo would add (faint), then dots.
+  const fromNow = Object.fromEntries(TARGETS.map((t) => [t.k, []]));
+  for (const s of SLOTS) nowRes.picks[s]?.lines.forEach((k, j) => nowRes.counted[s][j] && fromNow[k].push(s));
+  const spots = (t) => {
+    if (!seenAny) return from[t.k].map((sl) => [sl, false]);
+    const have = fromNow[t.k];
+    const gain = from[t.k].filter((sl) => !res.picks[sl]?.equipped).slice(0, Math.max(0, from[t.k].length - have.length));
+    return [...have.map((sl) => [sl, false]), ...gain.map((sl) => [sl, true])];
+  };
   // Still missing: the lines this set doesn't have yet, with how many of each.
   const gaps = missing(shown);
   const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
@@ -218,10 +227,12 @@ function render() {
   // Progress, beside Add a piece so it moves as you add: the score, what you wear now, the 18-line
   // board and what's still missing.
   $("progress").innerHTML = `<h2>Hologram lines</h2>
-    <div class="score"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with the best combo</span></div>
-    ${seenAny ? `<p class="muted small"><b>${nowScore}/${TOTAL}</b> equipped now</p>` : ""}
+    ${seenAny
+      ? `<div class="score"><span class="big">${nowScore}</span><span class="muted">/ ${TOTAL} equipped now</span></div>
+    <p class="muted small"><b>${res.score}/${TOTAL}</b> possible with your best combo${res.score > nowScore ? ` <span class="pip up legend"></span> faint icons = pieces to swap in` : ""}</p>`
+      : `<div class="score"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with the best combo</span></div>`}
     <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
-      <div class="cells">${Array.from({ length: 3 }, (_, j) => { const k2 = j - (3 - t.need); return k2 >= 0 ? cell(t.k, from[t.k][k2]) : ""; }).join("")}</div></div>`).join("")}</div>
+      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: t.need }, (_, j) => cell(t.k, sp[j]?.[0], sp[j]?.[1])).join(""); })()}</div></div>`).join("")}</div>
     ${gaps.length ? `<div class="hunt"><span class="label">Still missing · ${gaps.length}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}</div></div>` : `<p class="act on">All 18 ✓</p>`}`;
   if (typeof draft !== "undefined") $("add-panel").innerHTML = addForm();
   $("lines").innerHTML = `

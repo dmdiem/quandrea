@@ -558,3 +558,7 @@ button.act.swap:hover { filter: brightness(0.95); text-decoration: underline; }
 .mt-sockwords { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; font-size: 12px; }
 .mt-sockwords span { text-align: center; white-space: nowrap; }
 .add-panel .add-row.add-under { grid-template-columns: 1fr 1fr; }
+/* Board: faint outlined icons are what the best combo would add */
+.pip.up { border: 1px dashed var(--holo); background: transparent; }
+.pip.up .slot-icon { color: var(--holo-ink); opacity: 0.55; }
+.pip.legend { display: inline-block; width: 12px; height: 12px; vertical-align: -2px; margin-left: 4px; }
