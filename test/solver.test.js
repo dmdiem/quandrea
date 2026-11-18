@@ -145,3 +145,17 @@ test("verdicts: keep (best, spare, sockets) or trash, and other classes' gear", 
   assert.equal(v[junk.id].verdict, "trash");
   assert.deepEqual(v[warrior.id], { verdict: "trash", why: "Warrior gear" });
 });
+
+test("on a tie, the four big skills beat a spare class or Crit line", () => {
+  // Either hat gives 1 toward the 18 (the Thief spot, or a third White Hole), and both have 2 lines.
+  // The White Hole one should win, even though the Thief hat comes first.
+  const items = [
+    item("Hat", "thief crit", { id: "thief-hat" }),
+    item("Hat", "wh crit", { id: "wh-hat" }),
+    item("Top", "wh reg"),
+    item("Bottom", "wh crit"),
+  ];
+  const res = solve(items);
+  assert.equal(res.picks.Hat.id, "wh-hat");
+  assert.equal(res.counts[1], 3); // White Hole 3/3
+});

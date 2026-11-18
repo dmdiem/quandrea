@@ -1,19 +1,17 @@
 # Quandrea
 
-**Let Quandrea tell you if your gear is trash.**
+**Quandrea will help you get what's yours.**
 
 A gear checker for MapleStory's Quanah world. Click in each piece's hologram lines and sockets, and it
-tells you what to **keep** and what to **trash**.
+builds the best set: one piece per slot, as close to the 18 lines as you can get.
 
 Everything runs in your browser. Your items are saved only in that browser.
 
 ## Using it
 
-1. In **Add a piece**, click each item's **equipment**, **jewels** and **skills**, then **Add** (a
-   third skill adds it by itself). Or hover the item in the game, press **PrtScn**, then **Ctrl+V** on
+1. In **Add a piece**, click each item's **equipment**, **jewels** and **skills**, then **Add**. Or hover the item in the game, press **PrtScn**, then **Ctrl+V** on
    the page: it fills them in for you to check before you click Add.
 2. For the pieces you're wearing, switch on **Wearing it** before Add (or click **Equip** later).
-3. Throw out what's marked **Trash**.
 
 **Simpling Dumpling mode** (button at the top) is a simple screen for colour-blind players: hover an
 item in the game, press PrtScn and paste the screenshot, and its socket colours show up as big words, with ✓ on the ones your class
@@ -57,21 +55,14 @@ Magic ATT for blue). You can use any colour whose gems roll your stats:
 
 Gem colours by class: red = Warrior, green = Bowman, grey = Pirate, purple = Thief, blue = Magician.
 
-### Keep or trash
+### Your pieces
 
-Every item in your bag gets one of two verdicts:
-
-- **Keep**, with the reason: it's in your **best combo**, it's a **spare 3-line** piece (all three
-  lines on the list), or it has the best sockets for its slot (**for sockets**: a prismatic, or at
-  least 2 usable ones, to fuse your lines onto).
-- **Trash**: none of those, or gear for another class.
-
-The right side of the page lists them under **Trash · Keep · All**. The left side shows your sets:
-**Equipped now** and the **Best combo**.
+Everything you've added, by slot, each marked **Equipped**, **In best combo** or spare. The left
+side, **What to wear**, is the best combo piece by piece, with Equip / Swap buttons.
 
 The **best combo** is the best outfit you can make from everything you've added, worn or in your
-bag: one piece per slot, covering as many of the 18 lines as possible (ties go to more lines in
-total, then to what you already wear). It's worked out over every combination, so it never wastes a
+bag: one piece per slot, covering as many of the 18 lines as possible (ties go to more of Leap, White
+Hole, Registry and ATT, then to more lines in total, then to what you already wear). It's worked out over every combination, so it never wastes a
 slot on a line another piece already covers. Thanks to the community's 3L Set Solver for the idea.
 
 ## What it reads from a screenshot

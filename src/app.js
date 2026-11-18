@@ -1,18 +1,16 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=42";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=42";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=42";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=42";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=42";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=44";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=44";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=44";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=44";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=44";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
 const SHORT = { leap: "Leap", wh: "WH", reg: "Reg", atk: "ATT", crit: "Crit", warrior: "War", mage: "Mage", archer: "Bow", thief: "Thief", pirate: "Pir" };
 const NAME = Object.fromEntries([...TARGETS.map((t) => [t.k, t.name]), ...FILLERS.map((f) => [f.k, f.name]), [OTHER, "Other"]]);
 const SOCKETS = ["prismatic", "blue", "red", "green", "purple", "grey"];
-const VERDICT = { keep: "Keep", trash: "Trash" };
-const REASON = { best: "best combo", spare: "spare 3-line", sockets: "for sockets" };
 
 let state = { items: [], classId: "Magician", mode: "endgame" };
 let piecesOpen = false; // the "each piece" section; kept across redraws and remembered
@@ -30,7 +28,6 @@ function load() {
       cb: raw.cb === true,
       simple: raw.simple === true,
       view: ["equipped", "best"].includes(raw.view) ? raw.view : undefined,
-      gearTab: ["trash", "keep", "all"].includes(raw.gearTab) ? raw.gearTab : undefined,
       scale: typeof raw.scale === "number" && raw.scale > 0.3 && raw.scale < 3 ? raw.scale : undefined,
     };
     state = { ...state, ...ui, ...sanitize(raw) };
@@ -174,12 +171,9 @@ const jewel = (c) => (state.cb
 const socks = (list) => (list?.length ? `<span class="socks">${list.map(jewel).join("")}</span>`
   : state.cb ? `<span class="socks"><span class="sock-word not-read" title="Sockets not read yet: screenshot the item again">Not read</span></span>`
   : `<span class="socks unknown" title="Sockets not read yet: screenshot the item again">?</span>`);
-const badge = (v) => `<span class="badge v-${v.verdict}" title="${v.why}">${VERDICT[v.verdict]}</span>`;
 const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("") : `<span class="muted">no lines</span>`);
 
 function render() {
-  // Add a piece: an open panel at the top.
-  if (typeof draft !== "undefined") $("add-panel").innerHTML = addForm();
   // Always aims for the real 18 (an older "any 3 lines" setting in a save is ignored).
   const { res, sockets, verdicts: v } = verdicts(state.items, { ...state, mode: "endgame" });
   const option = classOption(state.classId);
@@ -217,28 +211,21 @@ function render() {
   // Still missing: the lines this set doesn't have yet, with how many of each.
   const gaps = missing(shown);
   const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
-  const huntBox = !gaps.length ? ""
-    : `<div class="hunt"><span class="label">Still missing · ${gaps.length} line${gaps.length === 1 ? "" : "s"}</span>
-      <div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}</div></div>`;
   // What the collapsed piece list says, so a swap is never hidden.
   const swaps = SLOTS.filter((s) => res.picks[s] && !res.picks[s].equipped);
-  const swapNote = !seenAny ? "Show pieces" : swaps.length ? `Show pieces · ${swaps.length} to swap: ${swaps.join(", ")}` : "Show pieces · all of them are equipped";
+  const swapNote = !seenAny ? "" : swaps.length ? `${swaps.length} to swap: ${swaps.join(", ")}` : "all of them are equipped";
   // Tabs over the left column: what you have on now, or the best combo you could make.
   $("side-tabs").innerHTML = `<button role="tab" data-view="equipped" aria-selected="${showNow}"${seenAny ? "" : ' disabled title="Mark what you wear with Equip first"'}>Equipped now</button><button role="tab" data-view="best" aria-selected="${!showNow}">Best combo</button>`;
+  // Progress, shown at the top of Add a piece so it moves as you add: the score, what you wear now,
+  // and what's still missing. The 18-line board sits on the left under what to wear.
+  progressHtml = `<div class="add-progress"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with the best combo${seenAny ? ` · <b>${nowScore}/${TOTAL}</b> equipped now` : ""}</span>
+    ${gaps.length ? `<span class="label">Still missing</span><span class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}</span>` : `<span class="act on">All 18 ✓</span>`}</div>`;
+  if (typeof draft !== "undefined") $("add-panel").innerHTML = addForm();
   $("lines").innerHTML = `
-    <div class="row spread"><h2>Hologram lines (18/18)</h2></div>
-    <p class="muted small explain">${showNow
-      ? "What you're wearing now."
-      : "The best set you can make from everything you've added."}</p>
-    <div class="score"><span class="big">${head}</span><span class="muted">of ${TOTAL} lines ${showNow ? "equipped now" : "with the best combo"}</span>
-      ${seenAny ? `<span class="compare">· ${showNow ? `best combo: <b>${res.score}/${TOTAL}</b>` : `<b>${nowScore}/${TOTAL}</b> equipped now`}</span>` : ""}</div>
-    ${seenAny ? "" : `<p class="muted small">Click <b>Equip</b> on what you're wearing to compare.</p>`}
-    <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
-      <div class="cells">${Array.from({ length: 3 }, (_, j) => { const k2 = j - (3 - t.need); return k2 >= 0 ? cell(t.k, from[t.k][k2]) : `<div class="cell-gap"></div>`; }).join("")}</div></div>`).join("")}</div>
-    ${huntBox}
-    <details class="set pieces" id="pieces"${piecesOpen ? " open" : ""}>
-      <summary><span class="label">Lines per piece</span>
-        <span class="muted small">${swapNote}</span></summary>
+    <div class="row spread"><h2>What to wear</h2></div>
+    <section class="set pieces always-open" id="pieces">
+      <div class="pieces-head"><span class="label">${showNow ? "Equipped now" : "Best combo"}</span>
+        <span class="muted small">${swapNote}</span></div>
       <p class="muted small">Faded <b>extra</b> = a line you already have 3 (or 1) of.</p>
       <div class="pieces-list">${SLOTS.map((s) => {
           const it = shown.picks[s];
@@ -260,40 +247,29 @@ function render() {
       ${showNow ? "" : `<div class="fuse"><span class="label">Best pieces to fuse your lines onto</span>
         <span class="muted small">Goal: 4 with a prismatic, all others ${option.colours.join(" / ")}.</span>
         <div class="fuse-list">${SLOTS.map((s) => { const it = sockets.picks[s]; const v4 = it && socketValue(it, state.classId); return `<span class="fuse-item">${slotIcon(s)}${it && v4.good ? `${socks(it.sockets)}` : `<span class="none">none yet</span>`}</span>`; }).join("")}</div></div>`}
-    </details>`;
+    </section>
+    <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
+      <div class="cells">${Array.from({ length: 3 }, (_, j) => { const k2 = j - (3 - t.need); return k2 >= 0 ? cell(t.k, from[t.k][k2]) : `<div class="cell-gap"></div>`; }).join("")}</div></div>`).join("")}</div>
+`;
 
-  // Keep or trash: your bag, filtered by verdict. "All" also shows what you have equipped, first in
-  // each slot (it's never trash: you're wearing it).
-  const bag = state.items.filter((it) => !it.equipped);
-  const worn2 = state.items.filter((it) => it.equipped);
-  const count = { trash: bag.filter((it) => v[it.id].verdict === "trash").length, keep: bag.filter((it) => v[it.id].verdict === "keep").length, all: bag.length + worn2.length };
-  const tab = state.gearTab ?? "trash";
-  const list = (tab === "all" ? [...worn2, ...bag] : bag.filter((it) => v[it.id].verdict === tab))
-    .sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || b.equipped - a.equipped);
-  const row = (it) => {
-    const vv = v[it.id];
-    if (it.equipped) return `<div class="bag-row worn-row">
-      <div class="bag-top"><span class="act on">Equipped ✓</span><span class="bag-why muted small">${vv.reason === "best" ? "in your best combo" : "you're wearing it"}</span>
-        <span class="bag-act"><button class="equip-btn" data-unequip="${it.id}" title="Not wearing this any more: move it to your bag">Unequip</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
-      <div class="lines">${linesOf(it)}</div>
-      ${socks(it.sockets)}
-    </div>`;
-    return `<div class="bag-row v-row-${vv.verdict}" draggable="true" data-drag="${it.id}">
-      <div class="bag-top"><span class="badge v-${vv.verdict}" title="${vv.why}">${VERDICT[vv.verdict]}</span><span class="bag-why muted small">${vv.reason ? REASON[vv.reason] : vv.why}</span>
-        <span class="bag-act"><button class="equip-btn" data-equip="${it.id}" title="You equipped this in game: mark it equipped">Equip</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
+  // Your pieces: everything you've added, by slot, what you wear first. Each one says whether it's
+  // equipped or in your best combo.
+  const inBest = new Set(Object.values(res.picks).filter(Boolean).map((it) => it.id));
+  const list = [...state.items].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || b.equipped - a.equipped || inBest.has(b.id) - inBest.has(a.id));
+  const row = (it) => `<div class="bag-row${it.equipped ? " worn-row" : ""}" draggable="true" data-drag="${it.id}">
+      <div class="bag-top">${it.equipped ? `<span class="act on">Equipped ✓</span>` : inBest.has(it.id) ? `<span class="act swap">In best combo</span>` : `<span class="muted small">spare</span>`}
+        <span class="bag-act">${it.equipped
+          ? `<button class="equip-btn" data-unequip="${it.id}" title="Not wearing this any more">Unequip</button>`
+          : `<button class="equip-btn" data-equip="${it.id}" title="You put this on in game">Equip</button>`}<button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
       <div class="lines">${linesOf(it)}${!option.classes.includes(it.cls) ? `<span class="tag">${it.cls ?? "?"}</span>` : ""}</div>
       ${socks(it.sockets)}
     </div>`;
-  };
   $("items").innerHTML = `
-    <h2>Keep or trash</h2>
-    <div class="gear-tabs" role="tablist">${[["trash", "Trash"], ["keep", "Keep"], ["all", "All"]].map(([k, label]) => `<button role="tab" data-gear-tab="${k}" aria-selected="${tab === k}" class="gt-${k}">${label} <span class="n">${count[k]}</span></button>`).join("")}</div>
-    <p class="muted small">${tab === "trash" ? "Safe to throw away." : tab === "keep" ? "Best combo, spare 3-line pieces and the best sockets." : "Everything you've added: what you wear, then your bag."}</p>
+    <h2>Your pieces</h2>
     ${state.items.length ? `<div class="slots">${SLOTS.map((sl) => {
-      const mineHere = list.filter((it) => it.slot === sl);
-      const allHere = (tab === "all" ? state.items : bag).filter((it) => it.slot === sl).length;
-      return `<div class="slot" data-drop-slot="${sl}"><div class="slot-head"><h3>${slotIcon(sl)}${sl}</h3><span class="tag">${mineHere.length}${tab === "all" ? "" : ` of ${allHere}`}</span></div>
-        ${mineHere.length ? mineHere.map(row).join("") : `<div class="none">${allHere ? "Nothing here" : "Nothing added yet"}</div>`}</div>`;
+      const here = list.filter((it) => it.slot === sl);
+      return `<div class="slot" data-drop-slot="${sl}"><div class="slot-head"><h3>${slotIcon(sl)}${sl}</h3><span class="tag">${here.length}</span></div>
+        ${here.length ? here.map(row).join("") : `<div class="none">Nothing added yet</div>`}</div>`;
     }).join("")}</div>` : `<p class="none">Nothing added yet: fill pieces in with <b>Add a piece</b>.</p>`}`;
 }
 
@@ -333,19 +309,19 @@ document.addEventListener("drop", (e) => {
 
 // ---------- add manually ----------
 // Tap a slot, up to 3 lines and up to 3 sockets, then Add. The slot stays picked for the next one.
+let progressHtml = "";
 const freshDraft = () => ({ slot: null, lines: [], sockets: [] });
 let draft = freshDraft();
 let addMsg = ""; // "Added a hat ✓", shown in the panel after each piece
-// Add a piece: click the equipment, its jewels and its skills. The third skill adds the piece.
+// Add a piece: click the equipment, its jewels and its skills, then Add.
 function pick(kind, v) {
   if (kind === "slot") draft.slot = v;
   else if (kind === "sock") {
     if (draft.sockets.length < 3) draft.sockets = [...draft.sockets, v];
   } else {
-    // Picking a skill twice takes it back; Other can repeat (Boss + IED are both "not counted").
+    // Picking a skill twice takes it back; Other can repeat (Boss + IED are both not BiS).
     if (v !== OTHER && draft.lines.includes(v)) draft.lines = draft.lines.filter((x) => x !== v);
     else if (draft.lines.length < 3) draft.lines = [...draft.lines, v];
-    if (draft.lines.length >= 3) return addPiece();
   }
   render();
 }
@@ -374,15 +350,11 @@ function addForm() {
   const sockSlots = [0, 1, 2].map((i) => (draft.sockets[i] ? `<button class="unpick" data-unsock="${i}" title="Remove">${jewel(draft.sockets[i])}<span>${SOCK_WORD[draft.sockets[i]]}</span></button>` : `<span class="slot-empty sock-empty"></span>`)).join("");
   return `<div class="add-manual" id="add-manual">
     <div class="row spread"><h2>Add a piece</h2><span class="muted small">Click its equipment, jewels and skills, then Add. Or paste a screenshot of the item (PrtScn, Ctrl+V) to fill it in.</span></div>
-    <div class="add-preview">
-      <div class="pv-slot">${draft.slot ? slotIcon(draft.slot) : ""}<div><b>${draft.slot ?? "Pick the equipment"}</b></div></div>
-      <div class="pv-socks">${sockSlots}</div>
-      <div class="pv-lines">${lineSlots}</div>
-    </div>
+    ${progressHtml}
     ${STEPS.map((s2) => `<section class="pick-step">
-      <div class="step-head">${STEP_NAME[s2]}${s2 === "slot" ? "" : ` <span class="muted small">${(s2 === "sock" ? draft.sockets : draft.lines).length}/3</span>`}</div>
+      <div class="step-head">${STEP_NAME[s2]}${s2 === "slot" ? "" : ` <span class="muted small">${(s2 === "sock" ? draft.sockets : draft.lines).length}/3${(s2 === "sock" ? draft.sockets : draft.lines).length ? ` · <button class="linkish" data-clear="${s2}">clear</button>` : ""}</span>`}</div>
       <div class="picker${s2 === "line" ? " picker-grid" : ""}">${OPTIONS[s2].map((v) => option(s2, v)).join("")}</div>
-    </section>${s2 === "line" ? `<section class="pick-step"><div class="step-head muted">Not counted</div><div class="picker minor">${["boss", "ied", "dmg", OTHER].map((v) => option("line", v)).join("")}</div></section>` : ""}`).join("")}
+    </section>${s2 === "line" ? `<section class="pick-step"><div class="step-head muted">Not BiS</div><div class="picker minor">${["boss", "ied", "dmg", OTHER].map((v) => option("line", v)).join("")}</div></section>` : ""}`).join("")}
     <div class="add-row">
       <span class="add-msg muted small">${addMsg}</span>
       <button id="add-worn" class="ghost wear-toggle" aria-pressed="${Boolean(draft.equipped)}" title="You're wearing this piece: it shows on the left as equipped">${draft.equipped ? "✓ " : ""}Wearing it</button>
@@ -409,12 +381,6 @@ document.addEventListener("click", (e) => {
     render();
     return;
   }
-  if (t.dataset.gearTab) {
-    state.gearTab = t.dataset.gearTab;
-    save();
-    render();
-    return;
-  }
   if (t.dataset.equip) equipItem(t.dataset.equip);
   else if (t.dataset.unequip) {
     const it = state.items.find((x) => x.id === t.dataset.unequip);
@@ -431,6 +397,8 @@ document.addEventListener("click", (e) => {
   } else if (t.dataset.pickSlot) return pick("slot", t.dataset.pickSlot);
   else if (t.dataset.pickSock) return pick("sock", t.dataset.pickSock);
   else if (t.dataset.pickLine) return pick("line", t.dataset.pickLine);
+  else if (t.dataset.clear === "sock") draft.sockets = [];
+  else if (t.dataset.clear === "line") draft.lines = [];
   else if (t.id === "add-worn") draft.equipped = !draft.equipped;
   else if (t.dataset.unline) draft.lines.splice(+t.dataset.unline, 1);
   else if (t.dataset.unsock) draft.sockets.splice(+t.dataset.unsock, 1);

@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS, OTHER } from "./parse.js?v=42";
+import { SLOTS, TARGETS, OTHER } from "./parse.js?v=44";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const NEED = TARGETS.map((t) => t.need);
@@ -18,6 +18,9 @@ export const TOTAL = NEED.reduce((a, b) => a + b, 0); // 18
 const digit = (st, i) => Math.floor(st / MUL[i]) % BASE[i];
 export const counts = (st) => NEED.map((_, i) => digit(st, i));
 const tally = (st) => counts(st).reduce((a, b) => a + b, 0);
+// How many of the four big skills (3 each) a tally has.
+const CORE = ["leap", "wh", "reg", "atk"].map((k) => IDX[k]);
+const core = (st) => CORE.reduce((n, i) => n + digit(st, i), 0);
 
 function add(st, lines) {
   for (const k of lines) {
@@ -51,7 +54,9 @@ export function solve(items, mode = "endgame") {
     layers.push(next);
     layer = next;
   }
-  const value = (st, e) => (mode === "early" ? e.extra * 100 + tally(st) * 10 : tally(st) * 1000 + e.extra);
+  // The 18 first; on a tie, more of the four big skills (Leap, White Hole, Registry, ATT & M.ATT),
+  // so a third White Hole beats a spare Thief or Crit line; then more lines in total, then what you wear.
+  const value = (st, e) => (mode === "early" ? e.extra * 100 + tally(st) * 10 : tally(st) * 100000 + core(st) * 1000 + e.extra);
   let bestSt = 0;
   let best = null;
   for (const [st, e] of layer) if (!best || value(st, e) > value(bestSt, best)) [bestSt, best] = [st, e];

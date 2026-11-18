@@ -462,3 +462,11 @@ button .sock-word { border: 0; padding: 0; margin: 0; background: none; }
 /* Equip / Swap on the left are buttons */
 button.act { cursor: pointer; font: inherit; font-size: 11px; }
 button.act.swap:hover { filter: brightness(0.95); text-decoration: underline; }
+/* Lines per piece is always shown */
+.pieces.always-open .pieces-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+/* Progress strip at the top of Add a piece */
+.add-progress { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: 8px 0 6px; padding: 8px 12px; border-radius: 12px; background: var(--sunk); }
+.add-progress .big { font-size: 28px; font-weight: 800; line-height: 1; }
+.add-progress .label { margin-left: 8px; }
+.add-progress .lines { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.linkish { border: 0; padding: 0; background: none; color: var(--accent); font: inherit; font-size: 11px; cursor: pointer; text-decoration: underline; }
