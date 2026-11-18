@@ -1,10 +1,10 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=50";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=50";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=50";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=50";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=50";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=51";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=51";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=51";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=51";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=51";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -338,6 +338,11 @@ function pick(kind, v) {
   render();
 }
 
+// Equipment and jewels sit side by side, three across, in this order.
+const GRID_ORDER = {
+  slot: ["Hat", "Top", "Cape", "Bottom", "Shoes", "Gloves"],
+  sock: ["prismatic", "blue", "red", "green", "purple", "grey"],
+};
 const KEY_SHORT = { leap: "Leap", wh: "White Hole", reg: "Registry", atk: "ATT & M.ATT", crit: "Crit DMG", warrior: "Warrior", mage: "Mage", archer: "Bowman", thief: "Thief", pirate: "Pirate", boss: "Boss DMG", ied: "Ignore DEF", dmg: "Damage", [OTHER]: "Other" };
 
 function addForm() {
@@ -382,10 +387,15 @@ function addForm() {
       <input type="file" id="scan-file" accept="image/*" hidden>
     </div>
     <div class="add-body"><div class="add-picks">
-    ${STEPS.map((s2) => `<section class="pick-step">
+    <div class="pick-pair">${STEPS.slice(0, 2).map((s2) => `<section class="pick-step">
       <div class="step-head">${STEP_NAME[s2]}${s2 === "slot" ? "" : ` <span class="muted small">${(s2 === "sock" ? draft.sockets : draft.lines).length}/3${(s2 === "sock" ? draft.sockets : draft.lines).length ? ` · <button class="linkish" data-clear="${s2}">clear</button>` : ""}</span>`}</div>
-      <div class="picker${s2 === "line" ? " picker-grid" : ""}">${OPTIONS[s2].map((v) => option(s2, v)).join("")}</div>
-    </section>${s2 === "line" ? `<section class="pick-step"><div class="step-head muted">Not BiS</div><div class="picker minor">${["boss", "ied", "dmg", OTHER].map((v) => option("line", v)).join("")}</div></section>` : ""}`).join("")}
+      <div class="picker picker-3">${GRID_ORDER[s2].map((v) => option(s2, v)).join("")}</div>
+    </section>`).join("")}</div>
+    <section class="pick-step">
+      <div class="step-head">${STEP_NAME.line} <span class="muted small">${draft.lines.length}/3${draft.lines.length ? ` · <button class="linkish" data-clear="line">clear</button>` : ""}</span></div>
+      <div class="picker picker-grid">${OPTIONS.line.map((v) => option("line", v)).join("")}</div>
+    </section>
+    <section class="pick-step"><div class="step-head muted">Not BiS</div><div class="picker minor">${["boss", "ied", "dmg", OTHER].map((v) => option("line", v)).join("")}</div></section>
     </div><div class="add-side">${mock}
     <div class="add-row add-under">
       <span class="add-msg muted small">${addMsg}</span>
