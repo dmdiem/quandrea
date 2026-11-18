@@ -1,10 +1,10 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=51";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=51";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=51";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=51";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=51";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=52";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=52";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=52";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=52";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=52";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -92,7 +92,7 @@ function showSimple(img, { now = false } = {}) {
   const card = (label, list) => `<div class="simple-card"><span class="label">${label}</span>
         <div class="simple-words">${[0, 1, 2].map((k) => {
           const c = list?.[k];
-          if (!c) return `<span class="simple-word empty">${k === 0 ? (list ? (list.length ? "" : "Hold still…") : "–") : ""}</span>`;
+          if (!c) return `<span class="simple-word empty">${k === 0 ? (list ? (list.length ? "" : "Couldn't see its jewels") : "–") : ""}</span>`;
           return `<span class="simple-word"><span class="sock ${c}"></span>${SIMPLE_WORD[c] ?? c}${c === "prismatic" || colours.includes(c) ? ' <b title="Your class can use this colour">✓</b>' : ""}</span>`;
         }).join("")}</div></div>`;
   const html = card("Hovered item", read[0]) + card("Equipped", read[1]);
