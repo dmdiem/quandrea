@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS, OTHER } from "./parse.js?v=47";
+import { SLOTS, TARGETS, OTHER } from "./parse.js?v=48";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const NEED = TARGETS.map((t) => t.need);

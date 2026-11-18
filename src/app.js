@@ -1,10 +1,10 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=47";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=47";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=47";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=47";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=47";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=48";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=48";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=48";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=48";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=48";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -207,7 +207,8 @@ function render() {
   const from = Object.fromEntries(TARGETS.map((t) => [t.k, []])); // line -> slots that supply it
   for (const s of SLOTS) shown.picks[s]?.lines.forEach((k, j) => shown.counted[s][j] && from[k].push(s));
   // Just the slot's icon (its name on hover); an empty dashed box when the line is missing.
-  const cell = (k, slot) => `<div class="cell ${slot ? "on" : ""}" title="${slot ?? "Missing"}" aria-label="${slot ?? "Missing"}">${slot ? slotIcon(slot) : ""}</div>`;
+  // A filled spot shows the icon of the equipment that gives the line; a missing one is a faint dot.
+  const cell = (k, slot) => `<span class="pip ${slot ? "on" : ""}" title="${slot ?? "Missing"}" aria-label="${slot ?? "Missing"}">${slot ? slotIcon(slot) : ""}</span>`;
   // Still missing: the lines this set doesn't have yet, with how many of each.
   const gaps = missing(shown);
   const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
@@ -220,7 +221,7 @@ function render() {
     <div class="score"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with the best combo</span></div>
     ${seenAny ? `<p class="muted small"><b>${nowScore}/${TOTAL}</b> equipped now</p>` : ""}
     <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
-      <div class="cells">${Array.from({ length: 3 }, (_, j) => { const k2 = j - (3 - t.need); return k2 >= 0 ? cell(t.k, from[t.k][k2]) : `<div class="cell-gap"></div>`; }).join("")}</div></div>`).join("")}</div>
+      <div class="cells">${Array.from({ length: 3 }, (_, j) => { const k2 = j - (3 - t.need); return k2 >= 0 ? cell(t.k, from[t.k][k2]) : ""; }).join("")}</div></div>`).join("")}</div>
     ${gaps.length ? `<div class="hunt"><span class="label">Still missing · ${gaps.length}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}</div></div>` : `<p class="act on">All 18 ✓</p>`}`;
   if (typeof draft !== "undefined") $("add-panel").innerHTML = addForm();
   $("lines").innerHTML = `
@@ -344,9 +345,23 @@ function addForm() {
     const full = (kind === "sock" && draft.sockets.length >= 3) || (kind === "line" && draft.lines.length >= 3 && !on);
     return `<button class="keycap kind-${kind}${kind === "line" && !isTarget(v) ? " filler" : ""}${on ? " on" : ""}" data-pick-${kind}="${v}"${full ? " disabled" : ""}>${label}</button>`;
   };
-  // The piece as it's being built.
-  const lineSlots = [0, 1, 2].map((i) => (draft.lines[i] ? `<button class="unpick" data-unline="${i}" title="Remove">${chip(draft.lines[i])}</button>` : `<span class="slot-empty">skill ${i + 1}</span>`)).join("");
-  const sockSlots = [0, 1, 2].map((i) => (draft.sockets[i] ? `<button class="unpick" data-unsock="${i}" title="Remove">${jewel(draft.sockets[i])}<span>${SOCK_WORD[draft.sockets[i]]}</span></button>` : `<span class="slot-empty sock-empty"></span>`)).join("");
+  // A mock of the game's tooltip, built as you click: the three jewel sockets on top, the equipment
+  // in the middle, the three skill lines under it. Click a jewel or a line to take it off.
+  const mockSocks = [0, 1, 2].map((i) => (draft.sockets[i]
+    ? `<button class="mt-sock" data-unsock="${i}" title="${SOCK_WORD[draft.sockets[i]]} (click to remove)"><span class="sock ${draft.sockets[i]}"></span></button>`
+    : `<span class="mt-sock empty" title="No jewel"></span>`)).join("");
+  const mockLines = [0, 1, 2].map((i) => (draft.lines[i]
+    ? `<button class="mt-line${isTarget(draft.lines[i]) ? "" : " filler"}" data-unline="${i}" title="Click to remove">${classIcon(draft.lines[i])}[Hologram] ${KEY_SHORT[draft.lines[i]]} Lv. +1</button>`
+    : `<span class="mt-line empty">skill line ${i + 1}</span>`)).join("");
+  const mock = `<div class="mock-tip" aria-label="The piece so far">
+      <div class="mt-name">${draft.slot ? `${draft.slot}` : "Pick the equipment"}${draft.equipped ? ` <span class="mt-worn">Equipped</span>` : ""}</div>
+      <div class="mt-frame">
+        <div class="mt-socks">${mockSocks}</div>
+        <div class="mt-pic">${draft.slot ? slotIcon(draft.slot) : `<span class="mt-q">?</span>`}</div>
+      </div>
+      ${state.cb && draft.sockets.length ? `<div class="mt-sockwords">${[0, 1, 2].map((i) => `<span>${draft.sockets[i] ? SOCK_WORD[draft.sockets[i]] : "–"}</span>`).join("")}</div>` : ""}
+      <div class="mt-lines">${mockLines}</div>
+    </div>`;
   return `<div class="add-manual" id="add-manual">
     <h2>${draft.editId ? "Edit a piece" : "Add a piece"}</h2>
     <div class="scan-zone${scan.busy ? " busy" : ""}" id="scan-zone" title="Paste (Ctrl+V), drop an image here, or click to pick one">
@@ -354,15 +369,18 @@ function addForm() {
       <div class="scan-bar"><div class="scan-fill" id="scan-fill" style="width:${scan.pct}%"></div></div>
       <input type="file" id="scan-file" accept="image/*" hidden>
     </div>
+    <div class="add-body"><div class="add-picks">
     ${STEPS.map((s2) => `<section class="pick-step">
       <div class="step-head">${STEP_NAME[s2]}${s2 === "slot" ? "" : ` <span class="muted small">${(s2 === "sock" ? draft.sockets : draft.lines).length}/3${(s2 === "sock" ? draft.sockets : draft.lines).length ? ` · <button class="linkish" data-clear="${s2}">clear</button>` : ""}</span>`}</div>
       <div class="picker${s2 === "line" ? " picker-grid" : ""}">${OPTIONS[s2].map((v) => option(s2, v)).join("")}</div>
     </section>${s2 === "line" ? `<section class="pick-step"><div class="step-head muted">Not BiS</div><div class="picker minor">${["boss", "ied", "dmg", OTHER].map((v) => option("line", v)).join("")}</div></section>` : ""}`).join("")}
-    <div class="add-row">
+    </div><div class="add-side">${mock}
+    <div class="add-row add-under">
       <span class="add-msg muted small">${addMsg}</span>
-      <button id="add-worn" class="ghost wear-toggle" aria-pressed="${Boolean(draft.equipped)}" title="You're wearing this piece: it shows on the left as equipped">${draft.equipped ? "✓ " : ""}Wearing it</button>
+      <button id="add-worn" class="ghost wear-toggle" aria-pressed="${Boolean(draft.equipped)}" title="You're wearing this piece in game">${draft.equipped ? "✓ " : ""}Currently Equipped</button>
       ${draft.editId ? `<button id="add-cancel" class="ghost">Cancel</button>` : ""}
       <button id="add" class="primary"${draft.slot ? "" : " disabled"}>${draft.editId ? "Save" : "Add"}</button></div>
+    </div></div>
   </div>`;
 }
 

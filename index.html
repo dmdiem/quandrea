@@ -7,8 +7,8 @@
 <meta name="description" content="Add your MapleStory Quanah gear and it builds your best set for 18/18 hologram lines and the best sockets.">
 <link rel="icon" href="logo.webp">
 <script>try { const t = localStorage.getItem("quandrea.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
-<link rel="stylesheet" href="style.css?v=47">
-<script type="module" src="src/app.js?v=47"></script>
+<link rel="stylesheet" href="style.css?v=48">
+<script type="module" src="src/app.js?v=48"></script>
 </head>
 <body>
 <div class="wrap">
@@ -52,10 +52,7 @@
   <div class="main-col">
   <p id="status" class="status page-status"></p>
 
-  <section class="panel top-row">
-    <div class="progress" id="progress"></div>
-    <div class="add-panel" id="add-panel"></div>
-  </section>
+  <section class="panel add-panel" id="add-panel"></section>
 
   <section class="panel" id="items"></section>
 
@@ -63,6 +60,7 @@
 
   <!-- Hologram lines (with sockets) stays pinned on the left while the rest scrolls (see .side-col in style.css). -->
   <aside class="side-col">
+    <section class="panel progress" id="progress"></section>
     <section class="panel" id="lines"></section>
   </aside>
   </div>

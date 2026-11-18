@@ -11,7 +11,7 @@ Everything runs in your browser. Your items are saved only in that browser.
 
 1. In **Add a piece**, click each item's **equipment**, **jewels** and **skills**, then **Add**. Or hover the item in the game, press **PrtScn**, then **Ctrl+V** on
    the page: it fills them in for you to check before you click Add.
-2. For the pieces you're wearing, switch on **Wearing it** before Add (or click **Equip** later).
+2. For the pieces you're wearing, switch on **Currently Equipped** before Add (or click **Equip** later).
 
 **Simpling Dumpling mode** (button at the top) is a simple screen for colour-blind players: hover an
 item in the game, press PrtScn and paste the screenshot, and its socket colours show up as big words, with ✓ on the ones your class
