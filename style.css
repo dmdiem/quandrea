@@ -569,3 +569,7 @@ button.act.swap:hover { filter: brightness(0.95); text-decoration: underline; }
 .add-panel .picker.picker-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
 .add-panel .picker.picker-3 .keycap { justify-content: flex-start; }
 @media (max-width: 700px) { .pick-pair { grid-template-columns: 1fr; } }
+/* "−" on a picked jewel takes one off */
+.keycap { position: relative; }
+.keycap .minus { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; background: var(--surface); border: 1px solid var(--accent); color: var(--accent); font-weight: 800; font-size: 13px; line-height: 1; cursor: pointer; }
+.keycap .minus:hover { background: var(--accent); color: var(--on-accent); }

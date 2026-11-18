@@ -185,10 +185,26 @@ function hueName({ h, s, v }) {
 export function findSockets(img, icon) {
   if (!icon) return [];
   const { width: w, data: d } = img;
-  const y0 = icon.y + Math.round(icon.size * 0.05);
-  const y1 = icon.y + Math.round(icon.size * 0.17);
   const x0 = icon.x + 4;
   const x1 = icon.x + icon.size - 4;
+  // Where the picture frame really starts. Its top edge is a light line, normally one pixel below
+  // icon.y; some screenshots have a dark band of a few pixels above the frame, which pushes it
+  // down. The sockets sit a fixed distance below that edge.
+  const rowLight = (y) => {
+    const v = [];
+    for (let x = x0; x < x1; x += 2) v.push(lum(img.data, (y * img.width + x) * 4));
+    v.sort((a, b) => a - b);
+    return v[Math.floor(v.length / 2)];
+  };
+  let top = icon.y;
+  for (let y = icon.y; y < icon.y + Math.round(icon.size * 0.15); y++) {
+    if (rowLight(y) > rowLight(y + 1) + 12 && rowLight(y) > 100) {
+      top = y - 1;
+      break;
+    }
+  }
+  const y0 = top + Math.round(icon.size * 0.05);
+  const y1 = top + Math.round(icon.size * 0.17);
   // The frame's top is a smooth grey. Mark anything clearly coloured or clearly darker.
   const bg = [];
   for (let x = x0; x < x1; x++) bg.push(lum(d, (y0 * w + x) * 4));

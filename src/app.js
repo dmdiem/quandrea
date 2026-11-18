@@ -1,10 +1,10 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=52";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=52";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=52";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=52";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=52";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=53";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=53";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=53";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=53";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=53";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -326,7 +326,7 @@ let draft = freshDraft();
 let addMsg = ""; // "Added a hat ✓", shown in the panel after each piece
 // Add a piece: click the equipment, its jewels and its skills, then Add.
 function pick(kind, v) {
-  if (kind === "slot") draft.slot = v;
+  if (kind === "slot") draft.slot = draft.slot === v ? null : v; // click it again to unpick
   else if (kind === "sock") {
     // A prismatic socket is always the leftmost one in the game.
     if (draft.sockets.length < 3) draft.sockets = v === "prismatic" ? [v, ...draft.sockets] : [...draft.sockets, v];
@@ -360,7 +360,9 @@ function addForm() {
       label = `${classIcon(v)}<span>${KEY_SHORT[v]}</span>`;
     }
     const full = (kind === "sock" && draft.sockets.length >= 3) || (kind === "line" && draft.lines.length >= 3 && !on);
-    return `<button class="keycap kind-${kind}${kind === "line" && !isTarget(v) ? " filler" : ""}${on ? " on" : ""}" data-pick-${kind}="${v}"${full ? " disabled" : ""}>${label}</button>`;
+    // A picked jewel gets a small "−" to take one off (clicking the jewel itself adds another).
+    const minus = kind === "sock" && on ? `<span class="minus" data-unpick-sock="${v}" title="Take one ${SOCK_WORD[v]} off">−</span>` : "";
+    return `<button class="keycap kind-${kind}${kind === "line" && !isTarget(v) ? " filler" : ""}${on ? " on" : ""}" data-pick-${kind}="${v}"${full && !(kind === "sock" && on) ? " disabled" : ""}>${label}${minus}</button>`;
   };
   // A mock of the game's tooltip, built as you click: the three jewel sockets on top, the equipment
   // in the middle, the three skill lines under it. Click a jewel or a line to take it off.
@@ -438,6 +440,9 @@ document.addEventListener("click", (e) => {
       state.items = [];
     }
     confirmClear = !confirmClear;
+  } else if (e.target.closest("[data-unpick-sock]")) {
+    const c = e.target.closest("[data-unpick-sock]").dataset.unpickSock;
+    draft.sockets.splice(draft.sockets.lastIndexOf(c), 1);
   } else if (t.dataset.pickSlot) return pick("slot", t.dataset.pickSlot);
   else if (t.dataset.pickSock) return pick("sock", t.dataset.pickSock);
   else if (t.dataset.pickLine) return pick("line", t.dataset.pickLine);

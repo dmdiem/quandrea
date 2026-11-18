@@ -231,3 +231,18 @@ test("a socket touching the item's picture is still read", () => {
   const icon = findIcon(img, { x: t.x, y: t.y, width: t.w, height: t.h });
   assert.deepEqual(findSockets(img, icon), ["grey", "red"]);
 });
+
+test("sockets are still found when a dark band sits above the item picture", () => {
+  // Some screenshots show a few dark rows above the picture frame, pushing everything down.
+  const img = screen();
+  const t = tooltip(img, 100, 100, 320, 560, ["prismatic", "red", "purple"]);
+  const ix = t.x + 15, iy = t.y + 120, s = 78, shift = 5;
+  const w = img.width;
+  for (let y = iy + s - 1; y >= iy + shift; y--) img.data.copyWithin(((y) * w + ix) * 4, ((y - shift) * w + ix) * 4, ((y - shift) * w + ix + s) * 4);
+  fill(img, ix, iy, s, shift, [24, 26, 32]);
+  // the frame's light top edge, like the game's
+  fill(img, ix, iy + shift, s, 1, [130, 134, 140]);
+  const icon = findIcon(img, { x: t.x, y: t.y, width: t.w, height: t.h });
+  assert.ok(icon, "found the picture");
+  assert.deepEqual(findSockets(img, icon), ["prismatic", "red", "purple"]);
+});
