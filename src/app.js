@@ -1,10 +1,10 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=41";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=41";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=41";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=41";
-import { findTooltips, findIcon, findSockets } from "./vision.js?v=41";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=42";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=42";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=42";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=42";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=42";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -373,7 +373,7 @@ function addForm() {
   const lineSlots = [0, 1, 2].map((i) => (draft.lines[i] ? `<button class="unpick" data-unline="${i}" title="Remove">${chip(draft.lines[i])}</button>` : `<span class="slot-empty">skill ${i + 1}</span>`)).join("");
   const sockSlots = [0, 1, 2].map((i) => (draft.sockets[i] ? `<button class="unpick" data-unsock="${i}" title="Remove">${jewel(draft.sockets[i])}<span>${SOCK_WORD[draft.sockets[i]]}</span></button>` : `<span class="slot-empty sock-empty"></span>`)).join("");
   return `<div class="add-manual" id="add-manual">
-    <div class="row spread"><h2>Add a piece</h2><span class="muted small">Click its equipment, jewels and skills, then Add.</span></div>
+    <div class="row spread"><h2>Add a piece</h2><span class="muted small">Click its equipment, jewels and skills, then Add. Or paste a screenshot of the item (PrtScn, Ctrl+V) to fill it in.</span></div>
     <div class="add-preview">
       <div class="pv-slot">${draft.slot ? slotIcon(draft.slot) : ""}<div><b>${draft.slot ?? "Pick the equipment"}</b></div></div>
       <div class="pv-socks">${sockSlots}</div>
@@ -489,11 +489,116 @@ document.addEventListener("paste", async (e) => {
       showSimple(img, { now: true });
       return;
     }
-    setStatus("Screenshots are read in Simpling Dumpling mode (button at the top).");
+    await fillFromScreenshot(img);
   } catch (err) {
     setStatus(`Couldn't read that image: ${err.message}`);
   }
 });
+
+// ---------- filling Add a piece from a screenshot ----------
+// Paste a screenshot of a hovered item (PrtScn, then Ctrl+V) and Add a piece fills in its equipment,
+// jewels and skills. Nothing is saved until you check it and click Add, so a misread is one click to
+// fix. The text reader (Tesseract) only loads the first time you paste.
+const TIP_W = 321; // a tooltip's width at normal game size
+let reader = null;
+let reading = false;
+
+function cropImage(img, a) {
+  const out = new Uint8ClampedArray(a.width * a.height * 4);
+  for (let y = 0; y < a.height; y++) {
+    const from = ((a.y + y) * img.width + a.x) * 4;
+    out.set(img.data.subarray(from, from + a.width * 4), y * a.width * 4);
+  }
+  return { width: a.width, height: a.height, data: out };
+}
+
+function loadScript(src) {
+  return new Promise((ok, fail) => {
+    const el = document.createElement("script");
+    el.src = src;
+    el.onload = ok;
+    el.onerror = () => fail(new Error("couldn't load the text reader"));
+    document.head.append(el);
+  });
+}
+
+async function getReader() {
+  if (reader) return reader;
+  setStatus("Loading the text reader (first time only)…");
+  if (!window.Tesseract) await loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");
+  reader = await Tesseract.createWorker("eng");
+  return reader;
+}
+
+// The hovered item's tooltip in a screenshot, and the size the game is drawn at.
+function findPieceTooltip(img) {
+  // A tooltip found by its border has its real width, which gives the size (321px at normal size).
+  const sizes = [];
+  for (const sz of SIMPLE_SIZES)
+    for (const b of findTooltips(img, sz)) {
+      const k = b.width / TIP_W;
+      if (b.width !== Math.round(TIP_W * sz) && k > 0.55 && k < 2.2 && b.height > b.width) sizes.push(k);
+    }
+  sizes.sort((x, y) => x - y);
+  for (const sz of [sizes[Math.floor(sizes.length / 2)], 1, ...SIMPLE_SIZES].filter(Boolean)) {
+    const boxes = findTooltips(img, sz).filter((b) => iconFits(b, findIcon(img, b)));
+    // The hovered item is the left tooltip when "Currently Equipped" shows beside it.
+    if (boxes.length) return { box: boxes.sort((a, b) => a.x - b.x)[0], sc: sz };
+  }
+  // Just the tooltip snipped, edges and all.
+  if (img.width < img.height && img.width > 150) {
+    const box = { x: 0, y: 0, width: img.width, height: img.height };
+    if (findIcon(img, box)) return { box, sc: img.width / TIP_W };
+  }
+  return null;
+}
+
+async function fillFromScreenshot(img) {
+  if (reading) return;
+  const found = findPieceTooltip(img);
+  if (!found) {
+    setStatus("Couldn't find an item tooltip in that screenshot. Hover the item in the game, press PrtScn, then Ctrl+V here.");
+    return;
+  }
+  reading = true;
+  try {
+    const { box, sc } = found;
+    const top = Math.max(0, box.y - Math.round(40 * sc)); // the title can sit just above the border
+    const area = { x: box.x, y: top, width: box.width, height: box.y + box.height - top };
+    const icon = findIcon(img, box);
+    const sockets = findSockets(img, icon).slice(0, 3);
+    // Read the text enlarged to 3x normal size, smoothly, before the black-and-white cut.
+    const big = resizeImage(cropImage(img, area), 3 / sc);
+    const prepared = prepareForOcr(big, { x: 0, y: 0, width: big.width, height: big.height }, { scale: 1 });
+    const c = document.createElement("canvas");
+    c.width = prepared.width;
+    c.height = prepared.height;
+    c.getContext("2d").putImageData(new ImageData(prepared.data, prepared.width, prepared.height), 0, 0);
+    const worker = await getReader();
+    setStatus("Reading your screenshot…");
+    const parsed = parseTooltip((await worker.recognize(c)).data.text);
+    if (!parsed.slot && parsed.skip) {
+      setStatus(`That's a ${parsed.skip.toLowerCase()}: it can't roll hologram lines.`);
+      return;
+    }
+    const known = new Set([...OPTIONS.line, ...FILLERS.map((f) => f.k), OTHER]);
+    draft = {
+      ...freshDraft(),
+      slot: parsed.slot ?? null,
+      sockets,
+      lines: (parsed.lines ?? []).filter((k) => known.has(k)).slice(0, 3),
+      equipped: Boolean(parsed.equipped),
+    };
+    addMsg = "";
+    render();
+    setStatus(parsed.slot
+      ? "Filled in from your screenshot. Check it, fix anything with a click, then Add."
+      : "Read the jewels and skills, but not the equipment type: click it, then Add.");
+    $("add-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } finally {
+    reading = false;
+  }
+}
 
 // ---------- backups ----------
 // "Copy backup" puts a code on the clipboard; paste it back here (Ctrl+V or "Load backup") to restore.

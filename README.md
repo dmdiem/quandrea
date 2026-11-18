@@ -10,7 +10,8 @@ Everything runs in your browser. Your items are saved only in that browser.
 ## Using it
 
 1. In **Add a piece**, click each item's **equipment**, **jewels** and **skills**, then **Add** (a
-   third skill adds it by itself).
+   third skill adds it by itself). Or hover the item in the game, press **PrtScn**, then **Ctrl+V** on
+   the page: it fills them in for you to check before you click Add.
 2. For the pieces you're wearing, switch on **Wearing it** before Add (or click **Equip** later).
 3. Throw out what's marked **Trash**.
 
@@ -75,8 +76,13 @@ slot on a line another piece already covers. Thanks to the community's 3L Set So
 
 ## What it reads from a screenshot
 
-Only socket colours, in Simpling Dumpling mode: each droplet above the item picture is named by the
-colour of its outline. Everything else you click in.
+Only screenshots you paste, and nothing is saved until you click Add:
+
+- **Tooltip:** found by its 1px border (or its title block), wherever it is in the screenshot.
+- **Text:** read with [Tesseract.js](https://github.com/naptha/tesseract.js), loaded the first time you
+  paste, after enlarging and keeping only bright pixels.
+- **Sockets:** each droplet above the item picture is named by the colour of its outline (also what
+  Simpling Dumpling mode shows).
 
 ## Development
 
