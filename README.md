@@ -67,7 +67,7 @@ The **best combo** is the best outfit you can make from everything you've added,
 bag: one piece per slot. **Leap, White Hole and Registry come first** (their damage is why 3 of each is
 BiS), then as many of the 18 lines as possible, then ATT & M.ATT, then more lines in total, then what
 you already wear. It's worked out over every combination, so it never wastes a
-slot on a line another piece already covers. Thanks to the community's 3L Set Solver for the idea.
+slot on a line another piece already covers. The idea comes from the community's 3L Set Solver (see Credits).
 
 ## What it reads from a screenshot
 
@@ -78,6 +78,19 @@ Only screenshots you paste, and nothing is saved until you click Add:
   paste, after enlarging and keeping only bright pixels.
 - **Sockets:** each droplet above the item picture is named by the colour of its outline (also what
   Simpling Dumpling mode shows).
+
+## Credits
+
+- **[3L Set Solver](https://freehtmlhost.com/3l-set-solver/)**: the community tool that first worked out
+  the best one-piece-per-slot combo for the 18 lines; Quandrea's solver follows the same idea.
+- **The MapleStory community's Quanah guides**: the Event FAQ and the jewel / socket guides that
+  explain the 18 lines, the socket colours per class and the prismatic + stat goal.
+- **[Tesseract.js](https://github.com/naptha/tesseract.js)** (Apache 2.0): reads the text in pasted
+  screenshots.
+- **Logo**: a Bubu (Bubu & Dudu) sticker; the character belongs to its creator.
+
+MapleStory, Quanah and everything in them belong to NEXON. Quandrea is a fan-made tool, not made by or
+affiliated with NEXON, and it uses none of the game's files or art.
 
 ## Development
 
