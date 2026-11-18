@@ -1,10 +1,10 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=35";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=35";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=35";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=35";
-import { findTooltips, findIcon, findSockets, findGrid, readCells, GRID } from "./vision.js?v=35";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=36";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=36";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=36";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=36";
+import { findTooltips, findIcon, findSockets, findGrid, readCells, GRID } from "./vision.js?v=36";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -246,7 +246,11 @@ const badge = (v) => `<span class="badge v-${v.verdict}" title="${v.why}">${VERD
 const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("") : `<span class="muted">no lines</span>`);
 
 function render() {
-  if (typeof addDialog !== "undefined" && addDialog.open) addDialog.innerHTML = addForm();
+  // Add a piece: an open panel at the top, aimed at the next map cell to fill in (if there's a map).
+  if (typeof draft !== "undefined") {
+    if (draft.cell === undefined) draft.cell = nextCellToEnter("-1,0");
+    $("add-panel").innerHTML = addForm();
+  }
   const { res, sockets, verdicts: v } = verdicts(state.items, state);
   const option = classOption(state.classId);
 
@@ -281,7 +285,7 @@ function render() {
         const id = `${i % GRID.cols},${Math.floor(i / GRID.cols)}`;
         const it = byCell[id];
         const cls = it ? `v-${v[it.id].verdict}` : k;
-        return `<button class="mcell ${cls}${selected === id ? " sel" : ""}" data-cell="${id}" title="${it ? VERDICT[v[it.id].verdict] : k === "lines" ? "Has hologram lines: click to add it" : k === "item" ? "An item with no hologram lines: skip it" : "Empty"}">${it ? (v[it.id].verdict === "keep" ? "✓" : "✕") : k === "item" ? "–" : ""}</button>`;
+        return `<button class="mcell ${cls}${selected === id ? " sel" : ""}${typeof draft !== "undefined" && draft.cell === id ? " target" : ""}" data-cell="${id}" title="${it ? VERDICT[v[it.id].verdict] : k === "lines" ? "Has hologram lines: click to add it" : k === "item" ? "An item with no hologram lines: skip it" : "Empty"}">${it ? (v[it.id].verdict === "keep" ? "✓" : "✕") : k === "item" ? "–" : ""}</button>`;
       }).join("")}</div>
       ${cellPane(pick, v)}</div>`;
 
@@ -372,7 +376,7 @@ function render() {
     </div>`;
   };
   $("items").innerHTML = `
-    <div class="row spread"><h2>Keep or trash</h2><button id="add-open" class="ghost" title="Type in your pieces">Add manually</button></div>
+    <h2>Keep or trash</h2>
     <div class="gear-tabs" role="tablist">${[["trash", "Trash"], ["keep", "Keep"], ["all", "All"]].map(([k, label]) => `<button role="tab" data-gear-tab="${k}" aria-selected="${tab === k}" class="gt-${k}">${label} <span class="n">${count[k]}</span></button>`).join("")}</div>
     <p class="muted small">${tab === "trash" ? "Safe to throw away." : tab === "keep" ? "Best combo, spare 3-line pieces and the best sockets." : "Everything in your bag."}</p>
     ${bag.length ? `<div class="slots">${SLOTS.map((sl) => {
@@ -380,7 +384,7 @@ function render() {
       const allHere = bag.filter((it) => it.slot === sl).length;
       return `<div class="slot" data-drop-slot="${sl}"><div class="slot-head"><h3>${slotIcon(sl)}${sl}</h3><span class="tag">${mineHere.length}${tab === "all" ? "" : ` of ${allHere}`}</span></div>
         ${mineHere.length ? mineHere.map(row).join("") : `<div class="none">${allHere ? "Nothing here" : "Nothing added yet"}</div>`}</div>`;
-    }).join("")}</div>` : `<p class="none">Nothing added yet: click <b>Add manually</b>.</p>`}`;
+    }).join("")}</div>` : `<p class="none">Nothing added yet: fill pieces in with <b>Add a piece</b>.</p>`}`;
 }
 
 // ---------- equipping in game ----------
@@ -429,8 +433,7 @@ function cellPane(it, v) {
   const where = `Row ${r + 1} · Col ${c + 1}`;
   if (!it) {
     return `<div class="cell-pane"><span class="label">${where}</span>
-      <p class="muted small">Nothing added here yet.</p>
-      <button id="add-here" data-cell-add="${selected}">Add this item manually</button></div>`;
+      <p class="muted small">Nothing added here yet: fill it in with Add a piece.</p></div>`;
   }
   const vv = v[it.id];
   return `<div class="cell-pane"><span class="label">${where}</span>
@@ -443,11 +446,11 @@ function cellPane(it, v) {
 
 // ---------- add manually ----------
 // Tap a slot, up to 3 lines and up to 3 sockets, then Add. The slot stays picked for the next one.
-const freshDraft = (cell = null) => ({ slot: null, lines: [], sockets: [], cell });
+// cell: the map cell it's for; undefined means "the next one to fill in" (worked out when drawn).
+const freshDraft = (cell) => ({ slot: null, lines: [], sockets: [], cell });
 let draft = freshDraft();
-let addMsg = ""; // "Added a hat ✓", shown in the pop-up after each piece
-const addDialog = $("add-dialog");
-const addIsOpen = () => addDialog.open;
+let addMsg = ""; // "Added a hat ✓", shown in the panel after each piece
+const cellIndex = (cell) => { const [c, r] = cell.split(",").map(Number); return r * GRID.cols + c; };
 // The next inventory cell after `from` that has hologram lines and no item entered for it yet.
 function nextCellToEnter(from) {
   const [c0, r0] = from.split(",").map(Number);
@@ -458,24 +461,7 @@ function nextCellToEnter(from) {
   }
   return null;
 }
-function openAdd() {
-  addMsg = "";
-  addDialog.innerHTML = addForm();
-  addDialog.showModal();
-}
-function closeAdd() {
-  addDialog.close();
-}
-addDialog.addEventListener("close", () => {
-  draft = freshDraft();
-  render();
-});
-// A click on the dimmed backdrop (outside the box) closes it.
-addDialog.addEventListener("click", (e) => {
-  if (e.target === addDialog) closeAdd();
-});
-
-// Add manually: click the equipment, its jewels and its skills. The third skill adds the piece.
+// Add a piece: click the equipment, its jewels and its skills. The third skill adds the piece.
 function pick(kind, v) {
   if (kind === "slot") draft.slot = v;
   else if (kind === "sock") {
@@ -508,12 +494,12 @@ function addForm() {
     const full = (kind === "sock" && draft.sockets.length >= 3) || (kind === "line" && draft.lines.length >= 3 && !on);
     return `<button class="keycap kind-${kind}${kind === "line" && !isTarget(v) ? " filler" : ""}${on ? " on" : ""}" data-pick-${kind}="${v}"${full ? " disabled" : ""}>${label}</button>`;
   };
-  const where = draft.cell ? `Row ${+draft.cell.split(",")[1] + 1} · Col ${+draft.cell.split(",")[0] + 1} <button class="loc" id="add-nocell" title="Don't tie it to a map cell">×</button>` : "not on the map";
+  const where = draft.cell ? `Row ${+draft.cell.split(",")[1] + 1} · Col ${+draft.cell.split(",")[0] + 1} <button class="loc" id="add-nocell" title="Don't tie it to a map cell">×</button>` : state.cells.length ? "not on the map" : "";
   // The piece as it's being built.
   const lineSlots = [0, 1, 2].map((i) => (draft.lines[i] ? `<button class="unpick" data-unline="${i}" title="Remove">${chip(draft.lines[i])}</button>` : `<span class="slot-empty">skill ${i + 1}</span>`)).join("");
   const sockSlots = [0, 1, 2].map((i) => (draft.sockets[i] ? `<button class="unpick" data-unsock="${i}" title="Remove">${jewel(draft.sockets[i])}<span>${SOCK_WORD[draft.sockets[i]]}</span></button>` : `<span class="slot-empty sock-empty"></span>`)).join("");
   return `<div class="add-manual" id="add-manual">
-    <div class="row spread"><h2>Add manually</h2><button class="ghost" id="add-close" aria-label="Close">×</button></div>
+    <div class="row spread"><h2>Add a piece</h2><span class="muted small">Click its equipment, jewels and skills, then Add.</span></div>
     <div class="add-preview">
       <div class="pv-slot">${draft.slot ? slotIcon(draft.slot) : ""}<div><b>${draft.slot ?? "Pick the equipment"}</b><span class="muted small">${where}</span></div></div>
       <div class="pv-socks">${sockSlots}</div>
@@ -564,16 +550,6 @@ document.addEventListener("click", (e) => {
     setStatus("Map cleared. Paste a screenshot of your inventory (Ctrl+V).");
     return;
   }
-  if (t.id === "add-open") {
-    draft = freshDraft(nextCellToEnter("-1,0"));
-    return openAdd();
-  }
-  if (t.id === "add-close") return closeAdd();
-  if (t.dataset.cellAdd) {
-    draft = freshDraft(t.dataset.cellAdd);
-    openAdd();
-    return;
-  }
   if (t.dataset.gearTab) {
     state.gearTab = t.dataset.gearTab;
     save();
@@ -589,7 +565,11 @@ document.addEventListener("click", (e) => {
     return;
   }
   else if (t.dataset.view) state.view = t.dataset.view;
-  else if (t.dataset.cell) selected = selected === t.dataset.cell ? null : t.dataset.cell;
+  else if (t.dataset.cell) {
+    selected = selected === t.dataset.cell ? null : t.dataset.cell;
+    // An empty cell with lines: aim the Add a piece panel at it.
+    if (selected && !state.items.some((it) => it.cell === selected) && state.cells[cellIndex(selected)] === "lines") draft.cell = selected;
+  }
   else if (t.dataset.mode) state.mode = t.dataset.mode;
   else if (t.dataset.stat) state.classId = `Pirate (${t.dataset.stat})`;
   else if (t.dataset.del) state.items = state.items.filter((it) => it.id !== t.dataset.del);
@@ -623,7 +603,6 @@ function addPiece() {
   const from = draft.cell;
   draft = freshDraft(from ? nextCellToEnter(from) : null);
   save();
-  if (from && !draft.cell) return closeAdd();
   if (draft.cell) addMsg += `, now Row ${+draft.cell.split(",")[1] + 1} · Col ${+draft.cell.split(",")[0] + 1}`;
   render();
 }
@@ -673,9 +652,11 @@ document.addEventListener("paste", async (e) => {
     }
     state.cells = readCells(img, g);
     state.mapPinned = true;
+    draft.cell = undefined;
+    $("map-panel").open = true;
     save();
     render();
-    setStatus("Map filled in ✓ Click Add manually to type in each dashed item.");
+    setStatus("Map filled in ✓ Add a piece now goes through the dashed items one by one.");
   } catch (err) {
     setStatus(`Couldn't read that image: ${err.message}`);
   }
@@ -752,4 +733,5 @@ showTheme();
 $("version").textContent = `Quandrea v${new URL(import.meta.url).searchParams.get("v") ?? "dev"}`;
 
 load();
+if (state.cells.length) $("map-panel").open = true;
 render();

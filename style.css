@@ -195,12 +195,10 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .wearing-now { font-size: 12px; color: var(--muted); margin-right: 4px; }
 
 /* Add manually: tap buttons instead of dropdowns. */
-.add-dialog { width: min(820px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--fg); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35); }
-.add-dialog::backdrop { background: rgba(10, 14, 22, 0.55); }
-.add-dialog h2 { margin: 0; display: flex; gap: 8px; align-items: baseline; }
-.add-dialog .add-row { justify-content: flex-end; gap: 8px; margin-top: 12px; }
-.add-dialog .draft { margin-right: auto; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.add-dialog #add kbd { margin-left: 6px; font: 600 10px/1 ui-monospace, monospace; opacity: 0.8; }
+.add-panel h2 { margin: 0; display: flex; gap: 8px; align-items: baseline; }
+.add-panel .add-row { justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.add-panel .draft { margin-right: auto; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.add-panel #add kbd { margin-left: 6px; font: 600 10px/1 ui-monospace, monospace; opacity: 0.8; }
 .add-manual summary { cursor: pointer; display: flex; gap: 10px; align-items: baseline; list-style: none; }
 .add-manual summary::-webkit-details-marker { display: none; }
 .add-manual summary::before { content: "▸"; color: var(--muted); }
@@ -402,9 +400,9 @@ button .sock-word { border: 0; padding: 0; margin: 0; background: none; }
 .krow { grid-template-columns: repeat(10, minmax(0, 1fr)) !important; }
 .keycap.blank { opacity: 0.35; border-style: dashed; background: transparent; min-height: 58px; visibility: visible; }
 .keycap.blank kbd { color: var(--muted); }
-.add-dialog .add-row { align-items: center; }
-.add-dialog .add-keys { margin: 0 12px 0 auto; }
-.add-dialog .add-msg { margin-right: auto; }
+.add-panel .add-row { align-items: center; }
+.add-panel .add-keys { margin: 0 12px 0 auto; }
+.add-panel .add-msg { margin-right: auto; }
 @media (max-width: 700px) { .add-preview { grid-template-columns: 1fr; } .pv-socks { flex-direction: row; } }
 /* Add manually, step by step: Equipment → Jewels → Skills, the current step's options as big keys */
 .steps { display: flex; align-items: center; gap: 6px; margin: 4px 0 10px; }
@@ -425,19 +423,29 @@ button .sock-word { border: 0; padding: 0; margin: 0; background: none; }
 .pick-step .picker .keycap { min-height: 52px; }
 .pick-step:not(.on) .picker .keycap { padding-top: 8px; }
 /* Compact Add manually: label on the left, small buttons with the icon beside the word, all close together */
-.add-dialog { width: min(640px, calc(100vw - 24px)); padding: 14px 16px; }
-.add-dialog .add-preview { grid-template-columns: 120px auto minmax(0, 1fr); gap: 10px; margin: 8px 0 6px; padding: 8px 10px; }
-.add-dialog .pv-slot .slot-icon { width: 26px; height: 26px; }
-.add-dialog .pv-slot b { font-size: 15px; }
-.add-dialog .pv-socks { min-width: 100px; gap: 4px; }
-.add-dialog .slot-empty { height: 24px; min-width: 70px; }
-.add-dialog .pick-step { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px; align-items: start; margin-top: 6px; padding: 0; border: 0; background: none; }
-.add-dialog .step-head { margin: 7px 0 0; font-size: 12px; flex-direction: column; gap: 0; }
-.add-dialog .picker { display: flex; flex-wrap: wrap; gap: 4px; }
-.add-dialog .picker .keycap, .add-dialog .pick-step .picker .keycap { flex-direction: row; min-height: 0; height: 30px; padding: 0 9px; gap: 5px; font-size: 12px; border-bottom-width: 2px; border-radius: 8px; }
-.add-dialog .picker .keycap .slot-icon, .add-dialog .picker .keycap .class-icon { width: 15px; height: 15px; }
-.add-dialog .picker .keycap .sock { width: 12px; height: 12px; }
-.add-dialog .picker.minor { grid-column: 2; margin-top: 4px; }
-.add-dialog .picker.minor .keycap { height: 26px; }
-.add-dialog .add-row { margin-top: 10px; }
-@media (max-width: 560px) { .add-dialog .pick-step { grid-template-columns: 1fr; } .add-dialog .add-preview { grid-template-columns: 1fr; } }
+.add-panel .add-preview { grid-template-columns: 120px auto minmax(0, 1fr); gap: 10px; margin: 8px 0 6px; padding: 8px 10px; }
+.add-panel .pv-slot .slot-icon { width: 26px; height: 26px; }
+.add-panel .pv-slot b { font-size: 15px; }
+.add-panel .pv-socks { min-width: 100px; gap: 4px; }
+.add-panel .slot-empty { height: 24px; min-width: 70px; }
+.add-panel .pick-step { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px; align-items: start; margin-top: 6px; padding: 0; border: 0; background: none; }
+.add-panel .step-head { margin: 7px 0 0; font-size: 12px; flex-direction: column; gap: 0; }
+.add-panel .picker { display: flex; flex-wrap: wrap; gap: 4px; }
+.add-panel .picker .keycap, .add-panel .pick-step .picker .keycap { flex-direction: row; min-height: 0; height: 30px; padding: 0 9px; gap: 5px; font-size: 12px; border-bottom-width: 2px; border-radius: 8px; }
+.add-panel .picker .keycap .slot-icon, .add-panel .picker .keycap .class-icon { width: 15px; height: 15px; }
+.add-panel .picker .keycap .sock { width: 12px; height: 12px; }
+.add-panel .picker.minor { grid-column: 2; margin-top: 4px; }
+.add-panel .picker.minor .keycap { height: 26px; }
+.add-panel .add-row { margin-top: 10px; }
+@media (max-width: 560px) { .add-panel .pick-step { grid-template-columns: 1fr; } .add-panel .add-preview { grid-template-columns: 1fr; } }
+/* The map cell Add a piece is filling in */
+.mcell.target { outline: 2px solid var(--accent); outline-offset: 1px; box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent); }
+/* The optional inventory map, collapsed at the bottom */
+.map-panel > summary { cursor: pointer; list-style: none; }
+.map-panel > summary::-webkit-details-marker { display: none; }
+.map-panel > summary h2 { display: inline-flex; gap: 8px; align-items: baseline; margin: 0; }
+.map-panel > summary h2::before { content: "▸"; color: var(--muted); }
+.map-panel[open] > summary h2::before { content: "▾"; }
+.map-panel[open] > summary { margin-bottom: 8px; }
+.page-status:empty { display: none; }
+.page-status { margin: 0 0 -4px; }

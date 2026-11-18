@@ -10,13 +10,14 @@ Everything runs in your browser. Your items are saved only in that browser.
 
 ## Using it
 
-1. Open your inventory's Equip tab, **expanded** so all 16 columns show, with nothing hovered. Press
-   **PrtScn**, then **Ctrl+V** on the page: the **Inventory map** fills in, with dashed cells for
-   items that have hologram lines. **Reset map** clears it.
-2. Click **Add manually** and click each dashed item's **equipment**, **jewels** and **skills**, then
-   **Add** (a third skill adds it by itself). It moves on to the next dashed cell.
-3. Click **Equip** on the pieces you're wearing.
-4. Throw out what's marked **Trash**.
+1. In **Add a piece**, click each item's **equipment**, **jewels** and **skills**, then **Add** (a
+   third skill adds it by itself).
+2. Click **Equip** on the pieces you're wearing.
+3. Throw out what's marked **Trash**.
+
+Optional: the **Inventory map**. Open the Equip tab, **expanded** to 16 columns, with nothing hovered,
+press **PrtScn**, then **Ctrl+V** on the page. It shows which items have lines (dashed), Add a piece
+goes through them cell by cell, and once they're added it shows which to throw out (✕).
 
 **Simpling Dumpling mode** (button at the top) is a simple screen for colour-blind players: hover an
 item in the game, press PrtScn and paste the screenshot, and its socket colours show up as big words, with ✓ on the ones your class

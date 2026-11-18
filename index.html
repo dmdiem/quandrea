@@ -7,8 +7,8 @@
 <meta name="description" content="Type in your MapleStory Quanah gear and it tells you what to keep for 18/18 hologram lines and the best sockets.">
 <link rel="icon" href="logo.webp">
 <script>try { const t = localStorage.getItem("quandrea.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
-<link rel="stylesheet" href="style.css?v=35">
-<script type="module" src="src/app.js?v=35"></script>
+<link rel="stylesheet" href="style.css?v=36">
+<script type="module" src="src/app.js?v=36"></script>
 </head>
 <body>
 <div class="wrap">
@@ -64,21 +64,19 @@
 
   <div class="layout">
   <div class="main-col">
-  <section class="panel">
-    <div class="row spread"><h2>Inventory map</h2><button id="reset-map" class="ghost" title="Clear the map">Reset map</button></div>
-    <p id="status" class="status"></p>
-    <details class="help">
-      <summary>How to use it</summary>
-      <ol>
-        <li>Open the Equip tab, <b>expanded</b> to 16 columns, nothing hovered. Press <b>PrtScn</b>, then <b>Ctrl+V</b> here: the map fills in.</li>
-        <li>Click <b>Add manually</b> and type each dashed item in. <kbd>Enter</kbd> moves to the next one.</li>
-        <li>Click <b>Equip</b> on what you're wearing. Throw out what says <b>Trash</b>.</li>
-      </ol>
-    </details>
-    <div id="map"></div>
-  </section>
+  <p id="status" class="status page-status"></p>
+
+  <section class="panel add-panel" id="add-panel"></section>
 
   <section class="panel" id="items"></section>
+
+  <!-- Optional: paste a screenshot of the inventory to see which items to add and where the trash is. -->
+  <details class="panel map-panel" id="map-panel">
+    <summary><h2>Inventory map <span class="muted small">optional</span></h2></summary>
+    <p class="muted small">Open the Equip tab, <b>expanded</b> to 16 columns, with nothing hovered. Press <b>PrtScn</b>, then <b>Ctrl+V</b> on this page: the map shows which items have lines (dashed) and, once added, which to throw out (✕). Add a piece then goes cell by cell.</p>
+    <div class="row"><button id="reset-map" class="ghost" title="Clear the map">Reset map</button></div>
+    <div id="map"></div>
+  </details>
   </div>
 
   <!-- Hologram lines (with sockets) stays pinned on the left while the rest scrolls (see .side-col in style.css). -->
@@ -90,7 +88,6 @@
 
   <footer class="foot muted"><span id="version"></span> · Everything stays in your browser · <a href="https://github.com/dmdiem/quandrea">Source</a></footer>
 </div>
-<dialog id="add-dialog" class="add-dialog" aria-label="Add manually"></dialog>
 <video id="cam" muted playsinline hidden></video>
 </body>
 </html>
