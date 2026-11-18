@@ -470,3 +470,28 @@ button.act.swap:hover { filter: brightness(0.95); text-decoration: underline; }
 .add-progress .label { margin-left: 8px; }
 .add-progress .lines { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .linkish { border: 0; padding: 0; background: none; color: var(--accent); font: inherit; font-size: 11px; cursor: pointer; text-decoration: underline; }
+/* Progress on the left, Add a piece on the right */
+.top-row { display: grid; grid-template-columns: minmax(250px, 300px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.progress h2 { margin: 0 0 4px; }
+.progress .score .big { font-size: 34px; }
+.progress .board-row { padding: 1px 0; }
+.progress .hunt { margin-top: 10px; }
+@media (max-width: 1100px) { .top-row { grid-template-columns: 1fr; } }
+/* One panel: progress on the left, Add a piece on the right, a line between */
+.top-row { display: grid; grid-template-columns: minmax(230px, 280px) minmax(0, 1fr); gap: 0; align-items: start; }
+.top-row > .progress { padding-right: 18px; border-right: 1px solid var(--line); }
+.top-row > .add-panel { padding-left: 18px; }
+.add-panel .picker.picker-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); width: 100%; }
+.add-panel .picker .keycap span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.add-panel .pick-step { grid-template-columns: 64px minmax(0, 1fr); }
+.add-panel .add-row { padding-left: 72px; }
+@media (max-width: 1100px) { .top-row { grid-template-columns: 1fr; } .top-row > .progress { padding-right: 0; border-right: 0; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 12px; } .top-row > .add-panel { padding-left: 0; } }
+/* Scan area at the top of Add a piece */
+.scan-zone { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 10px; padding: 10px 12px; border: 1.5px dashed color-mix(in srgb, var(--accent) 45%, var(--line)); border-radius: 12px; background: color-mix(in srgb, var(--accent) 5%, transparent); cursor: pointer; font-size: 12.5px; }
+.scan-zone:hover { border-color: var(--accent); }
+.scan-bar { height: 6px; border-radius: 999px; background: var(--sunk); overflow: hidden; }
+.scan-fill { height: 100%; width: 0; border-radius: 999px; background: var(--accent); transition: width 200ms; }
+.scan-zone.busy .scan-fill { background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 50%, var(--holo))); }
+.socks.none-yet { font-size: 11px; white-space: nowrap; }
+/* Skills: as many per row as fit, never cut off */
+.add-panel .picker.picker-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }

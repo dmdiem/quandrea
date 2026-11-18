@@ -1,10 +1,10 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=45";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=45";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=45";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=45";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=45";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=47";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=47";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=47";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=47";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=47";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -169,8 +169,7 @@ const jewel = (c) => (state.cb
   ? `<span class="sock-word" title="${c} socket"><span class="sock ${c}"></span>${SOCK_WORD[c] ?? c}</span>`
   : `<span class="sock ${c}" title="${c} socket"></span>`);
 const socks = (list) => (list?.length ? `<span class="socks">${list.map(jewel).join("")}</span>`
-  : state.cb ? `<span class="socks"><span class="sock-word not-read" title="Sockets not read yet: screenshot the item again">Not read</span></span>`
-  : `<span class="socks unknown" title="Sockets not read yet: screenshot the item again">?</span>`);
+  : `<span class="socks none-yet muted small" title="No jewels entered for this piece">no jewels</span>`);
 const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("") : `<span class="muted">no lines</span>`);
 
 function render() {
@@ -215,10 +214,14 @@ function render() {
   // What the collapsed piece list says, so a swap is never hidden.
   const swaps = SLOTS.filter((s) => res.picks[s] && !res.picks[s].equipped);
   const swapNote = !seenAny ? "" : swaps.length ? `${swaps.length} to swap: ${swaps.join(", ")}` : "all of them are equipped";
-  // Progress, shown at the top of Add a piece so it moves as you add: the score, what you wear now,
-  // and what's still missing. The 18-line board sits on the left under what to wear.
-  progressHtml = `<div class="add-progress"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with the best combo${seenAny ? ` · <b>${nowScore}/${TOTAL}</b> equipped now` : ""}</span>
-    ${gaps.length ? `<span class="label">Still missing</span><span class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}</span>` : `<span class="act on">All 18 ✓</span>`}</div>`;
+  // Progress, beside Add a piece so it moves as you add: the score, what you wear now, the 18-line
+  // board and what's still missing.
+  $("progress").innerHTML = `<h2>Hologram lines</h2>
+    <div class="score"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with the best combo</span></div>
+    ${seenAny ? `<p class="muted small"><b>${nowScore}/${TOTAL}</b> equipped now</p>` : ""}
+    <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
+      <div class="cells">${Array.from({ length: 3 }, (_, j) => { const k2 = j - (3 - t.need); return k2 >= 0 ? cell(t.k, from[t.k][k2]) : `<div class="cell-gap"></div>`; }).join("")}</div></div>`).join("")}</div>
+    ${gaps.length ? `<div class="hunt"><span class="label">Still missing · ${gaps.length}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}</div></div>` : `<p class="act on">All 18 ✓</p>`}`;
   if (typeof draft !== "undefined") $("add-panel").innerHTML = addForm();
   $("lines").innerHTML = `
     <div class="row spread"><h2>What to wear</h2></div>
@@ -247,8 +250,6 @@ function render() {
         <span class="muted small">Goal: 4 with a prismatic, all others ${option.colours.join(" / ")}.</span>
         <div class="fuse-list">${SLOTS.map((s) => { const it = sockets.picks[s]; const v4 = it && socketValue(it, state.classId); return `<span class="fuse-item">${slotIcon(s)}${it && v4.good ? `${socks(it.sockets)}` : `<span class="none">none yet</span>`}</span>`; }).join("")}</div></div>`}
     </section>
-    <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
-      <div class="cells">${Array.from({ length: 3 }, (_, j) => { const k2 = j - (3 - t.need); return k2 >= 0 ? cell(t.k, from[t.k][k2]) : `<div class="cell-gap"></div>`; }).join("")}</div></div>`).join("")}</div>
 `;
 
   // Your pieces: everything you've added, by slot, what you wear first. Each one says whether it's
@@ -259,7 +260,7 @@ function render() {
       <div class="bag-top">${it.equipped ? `<span class="act on">Equipped ✓</span>` : inBest.has(it.id) ? `<span class="act swap">In best combo</span>` : `<span class="muted small">spare</span>`}
         <span class="bag-act">${it.equipped
           ? `<button class="equip-btn" data-unequip="${it.id}" title="Not wearing this any more">Unequip</button>`
-          : `<button class="equip-btn" data-equip="${it.id}" title="You put this on in game">Equip</button>`}<button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
+          : `<button class="equip-btn" data-equip="${it.id}" title="You put this on in game">Equip</button>`}<button class="equip-btn" data-edit="${it.id}" title="Change its jewels, skills or slot">Edit</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
       <div class="lines">${linesOf(it)}${!option.classes.includes(it.cls) ? `<span class="tag">${it.cls ?? "?"}</span>` : ""}</div>
       ${socks(it.sockets)}
     </div>`;
@@ -308,7 +309,6 @@ document.addEventListener("drop", (e) => {
 
 // ---------- add manually ----------
 // Tap a slot, up to 3 lines and up to 3 sockets, then Add. The slot stays picked for the next one.
-let progressHtml = "";
 const freshDraft = () => ({ slot: null, lines: [], sockets: [] });
 let draft = freshDraft();
 let addMsg = ""; // "Added a hat ✓", shown in the panel after each piece
@@ -348,8 +348,12 @@ function addForm() {
   const lineSlots = [0, 1, 2].map((i) => (draft.lines[i] ? `<button class="unpick" data-unline="${i}" title="Remove">${chip(draft.lines[i])}</button>` : `<span class="slot-empty">skill ${i + 1}</span>`)).join("");
   const sockSlots = [0, 1, 2].map((i) => (draft.sockets[i] ? `<button class="unpick" data-unsock="${i}" title="Remove">${jewel(draft.sockets[i])}<span>${SOCK_WORD[draft.sockets[i]]}</span></button>` : `<span class="slot-empty sock-empty"></span>`)).join("");
   return `<div class="add-manual" id="add-manual">
-    <div class="row spread"><h2>Add a piece</h2><span class="muted small">Click its equipment, jewels and skills, then Add. Or paste a screenshot of the item (PrtScn, Ctrl+V) to fill it in.</span></div>
-    ${progressHtml}
+    <h2>${draft.editId ? "Edit a piece" : "Add a piece"}</h2>
+    <div class="scan-zone${scan.busy ? " busy" : ""}" id="scan-zone" title="Paste (Ctrl+V), drop an image here, or click to pick one">
+      <span class="scan-text" id="scan-text">${scan.text}</span>
+      <div class="scan-bar"><div class="scan-fill" id="scan-fill" style="width:${scan.pct}%"></div></div>
+      <input type="file" id="scan-file" accept="image/*" hidden>
+    </div>
     ${STEPS.map((s2) => `<section class="pick-step">
       <div class="step-head">${STEP_NAME[s2]}${s2 === "slot" ? "" : ` <span class="muted small">${(s2 === "sock" ? draft.sockets : draft.lines).length}/3${(s2 === "sock" ? draft.sockets : draft.lines).length ? ` · <button class="linkish" data-clear="${s2}">clear</button>` : ""}</span>`}</div>
       <div class="picker${s2 === "line" ? " picker-grid" : ""}">${OPTIONS[s2].map((v) => option(s2, v)).join("")}</div>
@@ -357,7 +361,8 @@ function addForm() {
     <div class="add-row">
       <span class="add-msg muted small">${addMsg}</span>
       <button id="add-worn" class="ghost wear-toggle" aria-pressed="${Boolean(draft.equipped)}" title="You're wearing this piece: it shows on the left as equipped">${draft.equipped ? "✓ " : ""}Wearing it</button>
-      <button id="add" class="primary"${draft.slot ? "" : " disabled"}>Add</button></div>
+      ${draft.editId ? `<button id="add-cancel" class="ghost">Cancel</button>` : ""}
+      <button id="add" class="primary"${draft.slot ? "" : " disabled"}>${draft.editId ? "Save" : "Add"}</button></div>
   </div>`;
 }
 
@@ -401,6 +406,16 @@ document.addEventListener("click", (e) => {
   else if (t.dataset.unline) draft.lines.splice(+t.dataset.unline, 1);
   else if (t.dataset.unsock) draft.sockets.splice(+t.dataset.unsock, 1);
   else if (t.id === "add") return addPiece();
+  else if (t.id === "add-cancel") draft = freshDraft();
+  else if (t.dataset.edit) {
+    const it = state.items.find((x) => x.id === t.dataset.edit);
+    if (!it) return;
+    draft = { ...freshDraft(), slot: it.slot, sockets: [...it.sockets], lines: [...it.lines], equipped: it.equipped, editId: it.id };
+    addMsg = "";
+    render();
+    $("add-panel").scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
   else return;
   save();
   render();
@@ -409,6 +424,18 @@ document.addEventListener("click", (e) => {
 // Save the piece being built and start the next one.
 function addPiece() {
   if (!draft.slot) return;
+  // Editing a piece you added: change it in place.
+  const old = draft.editId && state.items.find((it) => it.id === draft.editId);
+  if (old) {
+    if (draft.equipped) for (const it of state.items) if (it.slot === draft.slot && it !== old) it.equipped = false;
+    Object.assign(old, { slot: draft.slot, lines: [...draft.lines], sockets: [...draft.sockets], equipped: Boolean(draft.equipped) });
+    old.key = [old.slot, old.cls, old.lines.join(","), String(old.key ?? "").split("|").at(-1)].join("|");
+    addMsg = `Saved your ${old.slot.toLowerCase()} ✓`;
+    draft = freshDraft();
+    save();
+    render();
+    return;
+  }
   remember({ slot: draft.slot, cls: classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: Boolean(draft.equipped), stats: `hand-${Date.now()}` });
   addMsg = `Added ${draft.equipped ? "your equipped " : draft.slot === "Shoes" || draft.slot === "Gloves" ? "" : "a "}${draft.slot.toLowerCase()} ✓`;
   setStatus(addMsg);
@@ -433,6 +460,41 @@ document.addEventListener("toggle", (e) => {
 
 // Paste a screenshot (PrtScn or Win+Shift+S, then Ctrl+V here): the inventory window fills in the
 // map. In Simpling Dumpling mode, a hovered item's socket colours are named instead.
+async function imageFromFile(file) {
+  const bmp = await createImageBitmap(file);
+  const c = document.createElement("canvas");
+  c.width = bmp.width;
+  c.height = bmp.height;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(bmp, 0, 0);
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+async function scanFile(file) {
+  if (!file?.type.startsWith("image/")) return;
+  try {
+    await fillFromScreenshot(await imageFromFile(file));
+  } catch (err) {
+    setScan(`Couldn't read that image: ${err.message}`, 0, false);
+  }
+}
+// The scan area also takes a dropped image, or a click to pick one.
+document.addEventListener("dragover", (e) => {
+  if (e.target.closest?.("#scan-zone")) e.preventDefault();
+});
+document.addEventListener("drop", (e) => {
+  if (!e.target.closest?.("#scan-zone")) return;
+  e.preventDefault();
+  scanFile(e.dataTransfer?.files?.[0]);
+});
+document.addEventListener("click", (e) => {
+  if (e.target.closest?.("#scan-zone") && !e.target.closest("input")) $("scan-file")?.click();
+});
+document.addEventListener("change", (e) => {
+  if (e.target.id !== "scan-file") return;
+  scanFile(e.target.files?.[0]);
+  e.target.value = "";
+});
+
 document.addEventListener("paste", async (e) => {
   const text = e.clipboardData?.getData("text/plain");
   if (looksLikeBackup(text)) {
@@ -444,13 +506,7 @@ document.addEventListener("paste", async (e) => {
   if (!file) return;
   e.preventDefault();
   try {
-    const bmp = await createImageBitmap(file);
-    const c = document.createElement("canvas");
-    c.width = bmp.width;
-    c.height = bmp.height;
-    const ctx = c.getContext("2d", { willReadFrequently: true });
-    ctx.drawImage(bmp, 0, 0);
-    const img = ctx.getImageData(0, 0, c.width, c.height);
+    const img = await imageFromFile(file);
     if (state.simple) {
       showSimple(img, { now: true });
       return;
@@ -490,9 +546,16 @@ function loadScript(src) {
 
 async function getReader() {
   if (reader) return reader;
-  setStatus("Loading the text reader (first time only)…");
+  setScan("Loading the text reader (first time only)…", 20, true);
   if (!window.Tesseract) await loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");
-  reader = await Tesseract.createWorker("eng");
+  // The reader reports how far along it is: loading fills the bar to half, reading the rest.
+  reader = await Tesseract.createWorker("eng", 1, {
+    logger: (m) => {
+      if (!scan.busy) return;
+      if (m.status === "recognizing text") setScan("Reading the skills…", 50 + Math.round(50 * (m.progress ?? 0)), true);
+      else setScan("Loading the text reader (first time only)…", 20 + Math.round(30 * (m.progress ?? 0)), true);
+    },
+  });
   return reader;
 }
 
@@ -519,11 +582,22 @@ function findPieceTooltip(img) {
   return null;
 }
 
+// The scan area at the top of Add a piece: what to do, and a bar that fills while it reads.
+const SCAN_HINT = "Hover an item in the game, press <b>PrtScn</b>, then <b>Ctrl+V</b> here (or drop / click to pick a screenshot). It fills in the piece below; check it and click Add.";
+const scan = { text: SCAN_HINT, pct: 0, busy: false };
+function setScan(text, pct, busy = scan.busy) {
+  Object.assign(scan, { text, pct, busy });
+  if ($("scan-text")) $("scan-text").innerHTML = text;
+  if ($("scan-fill")) $("scan-fill").style.width = `${pct}%`;
+  $("scan-zone")?.classList.toggle("busy", busy);
+}
+
 async function fillFromScreenshot(img) {
   if (reading) return;
+  setScan("Finding the item…", 8, true);
   const found = findPieceTooltip(img);
   if (!found) {
-    setStatus("Couldn't find an item tooltip in that screenshot. Hover the item in the game, press PrtScn, then Ctrl+V here.");
+    setScan("Couldn't find an item tooltip in that screenshot. Hover the item in the game, then press PrtScn and Ctrl+V here.", 0, false);
     return;
   }
   reading = true;
@@ -533,6 +607,7 @@ async function fillFromScreenshot(img) {
     const area = { x: box.x, y: top, width: box.width, height: box.y + box.height - top };
     const icon = findIcon(img, box);
     const sockets = findSockets(img, icon).slice(0, 3);
+    setScan("Reading the jewels…", 15, true);
     // Read the text enlarged to 3x normal size, smoothly, before the black-and-white cut.
     const big = resizeImage(cropImage(img, area), 3 / sc);
     const prepared = prepareForOcr(big, { x: 0, y: 0, width: big.width, height: big.height }, { scale: 1 });
@@ -541,10 +616,10 @@ async function fillFromScreenshot(img) {
     c.height = prepared.height;
     c.getContext("2d").putImageData(new ImageData(prepared.data, prepared.width, prepared.height), 0, 0);
     const worker = await getReader();
-    setStatus("Reading your screenshot…");
+    setScan("Reading the skills…", 50, true);
     const parsed = parseTooltip((await worker.recognize(c)).data.text);
     if (!parsed.slot && parsed.skip) {
-      setStatus(`That's a ${parsed.skip.toLowerCase()}: it can't roll hologram lines.`);
+      setScan(`That's a ${parsed.skip.toLowerCase()}: it can't roll hologram lines.`, 0, false);
       return;
     }
     const known = new Set([...OPTIONS.line, ...FILLERS.map((f) => f.k), OTHER]);
@@ -556,11 +631,14 @@ async function fillFromScreenshot(img) {
       equipped: Boolean(parsed.equipped),
     };
     addMsg = "";
+    scan.text = parsed.slot
+      ? "Filled in ✓ Check it below, fix anything with a click, then Add. Paste the next one any time."
+      : "Read the jewels and skills, but not the equipment type: click it below, then Add.";
+    scan.pct = 100;
+    scan.busy = false;
     render();
-    setStatus(parsed.slot
-      ? "Filled in from your screenshot. Check it, fix anything with a click, then Add."
-      : "Read the jewels and skills, but not the equipment type: click it, then Add.");
-    $("add-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (err) {
+    setScan(`Couldn't read that screenshot: ${err.message}`, 0, false);
   } finally {
     reading = false;
   }
