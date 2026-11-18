@@ -159,3 +159,15 @@ test("on a tie, the four big skills beat a spare class or Crit line", () => {
   assert.equal(res.picks.Hat.id, "wh-hat");
   assert.equal(res.counts[1], 3); // White Hole 3/3
 });
+
+test("Leap, White Hole and Registry come before the rest of the 18", () => {
+  // A White Hole hat (2nd WH) vs a hat with two class lines: the class hat makes 1 more of the 18,
+  // but White Hole wins.
+  const items = [
+    item("Hat", "wh", { id: "wh-hat" }),
+    item("Hat", "warrior thief", { id: "class-hat" }),
+    item("Top", "wh reg"),
+  ];
+  const res = solve(items);
+  assert.equal(res.picks.Hat.id, "wh-hat");
+});

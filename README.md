@@ -61,8 +61,9 @@ Everything you've added, by slot, each marked **Equipped**, **In best combo** or
 side, **What to wear**, is the best combo piece by piece, with Equip / Swap buttons.
 
 The **best combo** is the best outfit you can make from everything you've added, worn or in your
-bag: one piece per slot, covering as many of the 18 lines as possible (ties go to more of Leap, White
-Hole, Registry and ATT, then to more lines in total, then to what you already wear). It's worked out over every combination, so it never wastes a
+bag: one piece per slot. **Leap, White Hole and Registry come first** (their damage is why 3 of each is
+BiS), then as many of the 18 lines as possible, then ATT & M.ATT, then more lines in total, then what
+you already wear. It's worked out over every combination, so it never wastes a
 slot on a line another piece already covers. Thanks to the community's 3L Set Solver for the idea.
 
 ## What it reads from a screenshot

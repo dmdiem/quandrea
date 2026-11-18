@@ -1,10 +1,10 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=44";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=44";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=44";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=44";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=44";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=45";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=45";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=45";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=45";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=45";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -201,8 +201,9 @@ function render() {
   const seenAny = Object.values(worn).some(Boolean);
 
   // The hologram lines panel: the best combo you could make, or (switch) what you have equipped now.
-  const showNow = state.view === "equipped" && seenAny;
-  const shown = showNow ? nowRes : res;
+  // One view: the best combo (what you wear now shows on each piece, with Swap).
+  const showNow = false;
+  const shown = res;
   const head = shown.score;
   const from = Object.fromEntries(TARGETS.map((t) => [t.k, []])); // line -> slots that supply it
   for (const s of SLOTS) shown.picks[s]?.lines.forEach((k, j) => shown.counted[s][j] && from[k].push(s));
@@ -214,8 +215,6 @@ function render() {
   // What the collapsed piece list says, so a swap is never hidden.
   const swaps = SLOTS.filter((s) => res.picks[s] && !res.picks[s].equipped);
   const swapNote = !seenAny ? "" : swaps.length ? `${swaps.length} to swap: ${swaps.join(", ")}` : "all of them are equipped";
-  // Tabs over the left column: what you have on now, or the best combo you could make.
-  $("side-tabs").innerHTML = `<button role="tab" data-view="equipped" aria-selected="${showNow}"${seenAny ? "" : ' disabled title="Mark what you wear with Equip first"'}>Equipped now</button><button role="tab" data-view="best" aria-selected="${!showNow}">Best combo</button>`;
   // Progress, shown at the top of Add a piece so it moves as you add: the score, what you wear now,
   // and what's still missing. The 18-line board sits on the left under what to wear.
   progressHtml = `<div class="add-progress"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with the best combo${seenAny ? ` · <b>${nowScore}/${TOTAL}</b> equipped now` : ""}</span>
@@ -386,7 +385,6 @@ document.addEventListener("click", (e) => {
     const it = state.items.find((x) => x.id === t.dataset.unequip);
     if (it) it.equipped = false;
   }
-  else if (t.dataset.view) state.view = t.dataset.view;
   else if (t.dataset.stat) state.classId = `Pirate (${t.dataset.stat})`;
   else if (t.dataset.del) state.items = state.items.filter((it) => it.id !== t.dataset.del);
   else if (t.id === "clear") {
