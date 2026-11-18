@@ -37,8 +37,7 @@ shoulders can't roll lines), three lines each:
 | Critical Damage, Warrior, Magician, Bowman, Thief, Pirate attack | 1 each |
 
 Boss Damage, Ignore Defense and Damage Enhancement lines don't count, and neither do extra copies.
-**Any 3 lines** mode is for the very start: fill every slot with 3 lines of anything, preferring
-the right ones.
+When it's a tie, the piece with more lines wins, so early on it still fills every slot.
 
 **Then: jewel sockets.** A second set with good sockets: 4 pieces with prismatic + stat + stat and 2 with
 stat + stat + stat. Orbs move your 18 lines onto them.

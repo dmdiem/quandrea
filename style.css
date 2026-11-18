@@ -459,3 +459,6 @@ button .sock-word { border: 0; padding: 0; margin: 0; background: none; }
 .add-panel .add-row { justify-content: flex-start; padding-left: 82px; }
 .add-panel .add-msg { order: 3; margin: 0 0 0 8px; }
 @media (max-width: 560px) { .add-panel .add-row { padding-left: 0; } .add-panel .picker.picker-grid { grid-template-columns: repeat(2, max-content); } }
+/* Equip / Swap on the left are buttons */
+button.act { cursor: pointer; font: inherit; font-size: 11px; }
+button.act.swap:hover { filter: brightness(0.95); text-decoration: underline; }

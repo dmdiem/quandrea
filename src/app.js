@@ -1,10 +1,10 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=40";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=40";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=40";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=40";
-import { findTooltips, findIcon, findSockets } from "./vision.js?v=40";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=41";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=41";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=41";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=41";
+import { findTooltips, findIcon, findSockets } from "./vision.js?v=41";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -180,14 +180,14 @@ const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("")
 function render() {
   // Add a piece: an open panel at the top.
   if (typeof draft !== "undefined") $("add-panel").innerHTML = addForm();
-  const { res, sockets, verdicts: v } = verdicts(state.items, state);
+  // Always aims for the real 18 (an older "any 3 lines" setting in a save is ignored).
+  const { res, sockets, verdicts: v } = verdicts(state.items, { ...state, mode: "endgame" });
   const option = classOption(state.classId);
 
   $("class").innerHTML = CLASSES.map((c) => `<option ${c === option.cls ? "selected" : ""}>${c}</option>`).join("");
   // Pirates pick STR or DEX (a DEX pirate can also use purple sockets).
   $("pirate-stat").hidden = option.cls !== "Pirate";
   for (const st of ["STR", "DEX"]) $(`pirate-${st}`).setAttribute("aria-pressed", String(option.stat === st));
-  for (const m of ["endgame", "early"]) $(`mode-${m}`).setAttribute("aria-pressed", String(state.mode === m));
   $("cb-toggle").setAttribute("aria-pressed", String(Boolean(state.cb)));
   // Simple mode hides everything but the jewel colour readout.
   $("simple").hidden = !state.simple;
@@ -202,21 +202,20 @@ function render() {
 
   // What you're wearing now (from the "Currently Equipped" boxes), and how it compares.
   const worn = Object.fromEntries(SLOTS.map((s) => [s, state.items.find((it) => it.slot === s && it.equipped) ?? null]));
-  const nowRes = solve(Object.values(worn).filter(Boolean), state.mode);
-  const nowScore = state.mode === "early" ? nowRes.lines : nowRes.score;
+  const nowRes = solve(Object.values(worn).filter(Boolean));
+  const nowScore = nowRes.score;
   const seenAny = Object.values(worn).some(Boolean);
 
   // The hologram lines panel: the best combo you could make, or (switch) what you have equipped now.
-  const early = state.mode === "early";
   const showNow = state.view === "equipped" && seenAny;
   const shown = showNow ? nowRes : res;
-  const head = early ? shown.lines : shown.score;
+  const head = shown.score;
   const from = Object.fromEntries(TARGETS.map((t) => [t.k, []])); // line -> slots that supply it
   for (const s of SLOTS) shown.picks[s]?.lines.forEach((k, j) => shown.counted[s][j] && from[k].push(s));
   // Just the slot's icon (its name on hover); an empty dashed box when the line is missing.
   const cell = (k, slot) => `<div class="cell ${slot ? "on" : ""}" title="${slot ?? "Missing"}" aria-label="${slot ?? "Missing"}">${slot ? slotIcon(slot) : ""}</div>`;
   // Still missing: the lines this set doesn't have yet, with how many of each.
-  const gaps = early ? [] : missing(shown);
+  const gaps = missing(shown);
   const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
   const huntBox = !gaps.length ? ""
     : `<div class="hunt"><span class="label">Still missing · ${gaps.length} line${gaps.length === 1 ? "" : "s"}</span>
@@ -227,12 +226,12 @@ function render() {
   // Tabs over the left column: what you have on now, or the best combo you could make.
   $("side-tabs").innerHTML = `<button role="tab" data-view="equipped" aria-selected="${showNow}"${seenAny ? "" : ' disabled title="Mark what you wear with Equip first"'}>Equipped now</button><button role="tab" data-view="best" aria-selected="${!showNow}">Best combo</button>`;
   $("lines").innerHTML = `
-    <div class="row spread"><h2>${early ? "Hologram lines (any 3 per piece)" : "Hologram lines (18/18)"}</h2></div>
+    <div class="row spread"><h2>Hologram lines (18/18)</h2></div>
     <p class="muted small explain">${showNow
       ? "What you're wearing now."
       : "The best set you can make from everything you've added."}</p>
-    <div class="score"><span class="big">${head}</span><span class="muted">of ${TOTAL} lines ${showNow ? "equipped now" : "with the best combo"}${early ? ` · ${shown.score} on the list` : ""}</span>
-      ${seenAny ? `<span class="compare">· ${showNow ? `best combo: <b>${early ? res.lines : res.score}/${TOTAL}</b>` : `<b>${nowScore}/${TOTAL}</b> equipped now`}</span>` : ""}</div>
+    <div class="score"><span class="big">${head}</span><span class="muted">of ${TOTAL} lines ${showNow ? "equipped now" : "with the best combo"}</span>
+      ${seenAny ? `<span class="compare">· ${showNow ? `best combo: <b>${res.score}/${TOTAL}</b>` : `<b>${nowScore}/${TOTAL}</b> equipped now`}</span>` : ""}</div>
     ${seenAny ? "" : `<p class="muted small">Click <b>Equip</b> on what you're wearing to compare.</p>`}
     <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
       <div class="cells">${Array.from({ length: 3 }, (_, j) => { const k2 = j - (3 - t.need); return k2 >= 0 ? cell(t.k, from[t.k][k2]) : `<div class="cell-gap"></div>`; }).join("")}</div></div>`).join("")}</div>
@@ -246,8 +245,8 @@ function render() {
           const best = res.picks[s];
           const wearing = state.items.find((x) => x.slot === s && x.equipped);
           const action = showNow
-            ? !it ? "" : best && best !== it ? `<span class="act swap" title="A better piece for this slot is in your bag">Better in bag</span>` : `<span class="act on">Best ✓</span>`
-            : !it ? "" : it.equipped ? `<span class="act on">Equipped ✓</span>` : `<span class="act swap" title="${wearing ? "Equip this instead of what you have on" : "Nothing is marked equipped for this slot"}">${wearing ? "Swap" : "Equip"}</span>`;
+            ? !it ? "" : best && best !== it ? `<button class="act swap" data-equip="${best.id}" title="A better piece for this slot is in your bag: click once you've put it on">Better in bag · Swap</button>` : `<span class="act on">Best ✓</span>`
+            : !it ? "" : it.equipped ? `<span class="act on">Equipped ✓</span>` : `<button class="act swap" data-equip="${it.id}" title="${wearing ? "Click once you've put this on instead of what you wear now" : "Click once you've put this on"}">${wearing ? "Swap" : "Equip"}</button>`;
           if (!it) return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span><span class="none">${showNow ? "nothing equipped" : "nothing added yet"}</span></div>`;
           // On a swap, the piece you have on now, right under the one to swap in.
           const nowRow = !showNow && wearing && !it.equipped ? `<div class="piece-now"><span class="wearing-now">↳ Equipped:</span> ${linesOf(wearing)}</div>` : "";
@@ -422,7 +421,6 @@ document.addEventListener("click", (e) => {
     if (it) it.equipped = false;
   }
   else if (t.dataset.view) state.view = t.dataset.view;
-  else if (t.dataset.mode) state.mode = t.dataset.mode;
   else if (t.dataset.stat) state.classId = `Pirate (${t.dataset.stat})`;
   else if (t.dataset.del) state.items = state.items.filter((it) => it.id !== t.dataset.del);
   else if (t.id === "clear") {
