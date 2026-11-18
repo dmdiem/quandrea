@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=55";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=55";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=55";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=55";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=55";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=55";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=56";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=56";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=56";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=56";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=56";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=56";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -40,8 +40,15 @@ function save() {
   } catch {}
 }
 
+// Messages ("Added a hat ✓", "Saved to preset 1") pop up at the bottom of the screen and fade out,
+// floating over the page so nothing moves.
+let statusTimer = null;
 function setStatus(text) {
-  $("status").textContent = text;
+  const el = $("status");
+  el.textContent = text;
+  el.classList.toggle("show", Boolean(text));
+  clearTimeout(statusTimer);
+  if (text) statusTimer = setTimeout(() => el.classList.remove("show"), 3500);
 }
 
 // Simple mode's readout: for each tooltip in a pasted screenshot (left = the hovered item, right = equipped),

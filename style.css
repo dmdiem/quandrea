@@ -593,3 +593,8 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 @media (max-width: 700px) { header { grid-template-columns: 1fr; } header .corner { justify-self: start; } }
 /* Empty sockets point up like the filled ones (sharp corner top-left before the 45° turn) */
 .mt-sock.empty::before { border-radius: 50%; border-top-left-radius: 1px; }
+/* The page message is a toast: fixed at the bottom, never moves the layout */
+.page-status, .page-status:empty { display: block; position: fixed; left: 50%; bottom: 20px; z-index: 50; margin: 0; max-width: min(560px, calc(100vw - 32px));
+  transform: translate(-50%, 12px); opacity: 0; pointer-events: none; padding: 9px 16px; border-radius: 999px;
+  background: var(--fg); color: var(--bg); font-size: 13px; font-weight: 600; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); transition: opacity 200ms, transform 200ms; }
+.page-status.show { opacity: 1; transform: translate(-50%, 0); }
