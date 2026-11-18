@@ -1,10 +1,10 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=38";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=38";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=38";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=38";
-import { findTooltips, findIcon, findSockets } from "./vision.js?v=38";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget } from "./parse.js?v=40";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=40";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=40";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=40";
+import { findTooltips, findIcon, findSockets } from "./vision.js?v=40";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -263,15 +263,22 @@ function render() {
         <div class="fuse-list">${SLOTS.map((s) => { const it = sockets.picks[s]; const v4 = it && socketValue(it, state.classId); return `<span class="fuse-item">${slotIcon(s)}${it && v4.good ? `${socks(it.sockets)}` : `<span class="none">none yet</span>`}</span>`; }).join("")}</div></div>`}
     </details>`;
 
-  // Keep or trash: your bag only (equipped pieces are on the left), filtered by verdict.
+  // Keep or trash: your bag, filtered by verdict. "All" also shows what you have equipped, first in
+  // each slot (it's never trash: you're wearing it).
   const bag = state.items.filter((it) => !it.equipped);
-  const count = { trash: bag.filter((it) => v[it.id].verdict === "trash").length, keep: bag.filter((it) => v[it.id].verdict === "keep").length, all: bag.length };
+  const worn2 = state.items.filter((it) => it.equipped);
+  const count = { trash: bag.filter((it) => v[it.id].verdict === "trash").length, keep: bag.filter((it) => v[it.id].verdict === "keep").length, all: bag.length + worn2.length };
   const tab = state.gearTab ?? "trash";
-  const list = bag
-    .filter((it) => tab === "all" || v[it.id].verdict === tab)
-    .sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
+  const list = (tab === "all" ? [...worn2, ...bag] : bag.filter((it) => v[it.id].verdict === tab))
+    .sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || b.equipped - a.equipped);
   const row = (it) => {
     const vv = v[it.id];
+    if (it.equipped) return `<div class="bag-row worn-row">
+      <div class="bag-top"><span class="act on">Equipped ✓</span><span class="bag-why muted small">${vv.reason === "best" ? "in your best combo" : "you're wearing it"}</span>
+        <span class="bag-act"><button class="equip-btn" data-unequip="${it.id}" title="Not wearing this any more: move it to your bag">Unequip</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
+      <div class="lines">${linesOf(it)}</div>
+      ${socks(it.sockets)}
+    </div>`;
     return `<div class="bag-row v-row-${vv.verdict}" draggable="true" data-drag="${it.id}">
       <div class="bag-top"><span class="badge v-${vv.verdict}" title="${vv.why}">${VERDICT[vv.verdict]}</span><span class="bag-why muted small">${vv.reason ? REASON[vv.reason] : vv.why}</span>
         <span class="bag-act"><button class="equip-btn" data-equip="${it.id}" title="You equipped this in game: mark it equipped">Equip</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
@@ -282,10 +289,10 @@ function render() {
   $("items").innerHTML = `
     <h2>Keep or trash</h2>
     <div class="gear-tabs" role="tablist">${[["trash", "Trash"], ["keep", "Keep"], ["all", "All"]].map(([k, label]) => `<button role="tab" data-gear-tab="${k}" aria-selected="${tab === k}" class="gt-${k}">${label} <span class="n">${count[k]}</span></button>`).join("")}</div>
-    <p class="muted small">${tab === "trash" ? "Safe to throw away." : tab === "keep" ? "Best combo, spare 3-line pieces and the best sockets." : "Everything in your bag."}</p>
-    ${bag.length ? `<div class="slots">${SLOTS.map((sl) => {
+    <p class="muted small">${tab === "trash" ? "Safe to throw away." : tab === "keep" ? "Best combo, spare 3-line pieces and the best sockets." : "Everything you've added: what you wear, then your bag."}</p>
+    ${state.items.length ? `<div class="slots">${SLOTS.map((sl) => {
       const mineHere = list.filter((it) => it.slot === sl);
-      const allHere = bag.filter((it) => it.slot === sl).length;
+      const allHere = (tab === "all" ? state.items : bag).filter((it) => it.slot === sl).length;
       return `<div class="slot" data-drop-slot="${sl}"><div class="slot-head"><h3>${slotIcon(sl)}${sl}</h3><span class="tag">${mineHere.length}${tab === "all" ? "" : ` of ${allHere}`}</span></div>
         ${mineHere.length ? mineHere.map(row).join("") : `<div class="none">${allHere ? "Nothing here" : "Nothing added yet"}</div>`}</div>`;
     }).join("")}</div>` : `<p class="none">Nothing added yet: fill pieces in with <b>Add a piece</b>.</p>`}`;
@@ -375,7 +382,7 @@ function addForm() {
     </div>
     ${STEPS.map((s2) => `<section class="pick-step">
       <div class="step-head">${STEP_NAME[s2]}${s2 === "slot" ? "" : ` <span class="muted small">${(s2 === "sock" ? draft.sockets : draft.lines).length}/3</span>`}</div>
-      <div class="picker">${OPTIONS[s2].map((v) => option(s2, v)).join("")}</div>
+      <div class="picker${s2 === "line" ? " picker-grid" : ""}">${OPTIONS[s2].map((v) => option(s2, v)).join("")}</div>
     </section>${s2 === "line" ? `<section class="pick-step"><div class="step-head muted">Not counted</div><div class="picker minor">${["boss", "ied", "dmg", OTHER].map((v) => option("line", v)).join("")}</div></section>` : ""}`).join("")}
     <div class="add-row">
       <span class="add-msg muted small">${addMsg}</span>
@@ -410,6 +417,10 @@ document.addEventListener("click", (e) => {
     return;
   }
   if (t.dataset.equip) equipItem(t.dataset.equip);
+  else if (t.dataset.unequip) {
+    const it = state.items.find((x) => x.id === t.dataset.unequip);
+    if (it) it.equipped = false;
+  }
   else if (t.dataset.view) state.view = t.dataset.view;
   else if (t.dataset.mode) state.mode = t.dataset.mode;
   else if (t.dataset.stat) state.classId = `Pirate (${t.dataset.stat})`;

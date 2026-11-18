@@ -450,3 +450,12 @@ button .sock-word { border: 0; padding: 0; margin: 0; background: none; }
 .page-status:empty { display: none; }
 .page-status { margin: 0 0 -4px; }
 .wear-toggle[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); font-weight: 700; }
+/* An equipped piece in the All tab */
+.bag-row.worn-row { background: color-mix(in srgb, var(--holo) 8%, transparent); border-radius: 8px; padding-left: 6px; padding-right: 6px; }
+/* Skills wrap into two short rows of five (the big lines, then the classes), lined up in columns,
+   and Add sits right under the buttons, so the mouse never has far to go. */
+.add-panel .picker.picker-grid { display: grid; grid-template-columns: repeat(5, max-content); gap: 4px; }
+.add-panel .picker.picker-grid .keycap { justify-content: flex-start; }
+.add-panel .add-row { justify-content: flex-start; padding-left: 82px; }
+.add-panel .add-msg { order: 3; margin: 0 0 0 8px; }
+@media (max-width: 560px) { .add-panel .add-row { padding-left: 0; } .add-panel .picker.picker-grid { grid-template-columns: repeat(2, max-content); } }
