@@ -115,12 +115,14 @@ function isDarkInside(img, x0, x1, y0, y1) {
 // ---- The item picture ----
 // The picture sits in a square frame that fades to near-white at the bottom. Its bottom rows are
 // the first long bright runs in the left part of the tooltip, which gives us the square.
-export function findIcon(img, box = { x: 0, y: 0, width: img.width, height: img.height }) {
+// In a tooltip, the picture sits in the left part. `anywhere` drops those limits, for a screenshot
+// of just the item picture (a frame 40 to 240px wide, anywhere in the image).
+export function findIcon(img, box = { x: 0, y: 0, width: img.width, height: img.height }, { anywhere = false } = {}) {
   const { width: w, data: d } = img;
-  const minRun = Math.max(40, Math.round(box.width * 0.17));
-  const maxRun = Math.round(box.width * 0.34);
-  const xEnd = box.x + Math.round(box.width * 0.45);
-  const yEnd = Math.min(img.height, box.y + Math.round(box.height * 0.6));
+  const minRun = anywhere ? 40 : Math.max(40, Math.round(box.width * 0.17));
+  const maxRun = anywhere ? Math.min(240, box.width) : Math.round(box.width * 0.34);
+  const xEnd = anywhere ? box.x + box.width : box.x + Math.round(box.width * 0.45);
+  const yEnd = anywhere ? Math.min(img.height, box.y + box.height) : Math.min(img.height, box.y + Math.round(box.height * 0.6));
   let found = null;
   // A finished block of bright rows is the frame's bottom if the square above it fits in the box.
   const frame = () => {

@@ -573,3 +573,21 @@ button.act.swap:hover { filter: brightness(0.95); text-decoration: underline; }
 .keycap { position: relative; }
 .keycap .minus { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; background: var(--surface); border: 1px solid var(--accent); color: var(--accent); font-weight: 800; font-size: 13px; line-height: 1; cursor: pointer; }
 .keycap .minus:hover { background: var(--accent); color: var(--on-accent); }
+/* Presets: a small drop-down of 5 named slots */
+.presets { position: relative; }
+.presets > summary { list-style: none; cursor: pointer; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 13px; }
+.presets > summary::-webkit-details-marker { display: none; }
+.presets[open] > summary { border-color: var(--accent); }
+.preset-pop { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; width: 420px; max-width: calc(100vw - 32px); padding: 8px; display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); }
+.preset-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) 62px auto auto 24px; gap: 6px; align-items: center; padding: 3px 4px; border-radius: 8px; }
+.preset-row.on { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.preset-n { font-weight: 800; color: var(--muted); text-align: center; }
+.preset-row input { min-width: 0; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; font-size: 13px; }
+.preset-info { white-space: nowrap; }
+/* Header: title left, display settings top right, one toolbar row underneath */
+header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 24px; align-items: start; }
+header .corner { display: flex; gap: 8px; align-items: center; justify-self: end; }
+header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; align-items: center; }
+.tool-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tool-data .ghost { font-size: 13px; }
+@media (max-width: 700px) { header { grid-template-columns: 1fr; } header .corner { justify-self: start; } }

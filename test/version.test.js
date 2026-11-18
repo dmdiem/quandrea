@@ -9,9 +9,9 @@ test("every file link has the same version", () => {
   const html = read("index.html");
   const versions = [
     ...html.matchAll(/(?:href|src)="(?:style\.css|src\/app\.js)\?v=(\w+)"/g),
-    ...["src/app.js", "src/solver.js", "src/backup.js", "src/options.js"].flatMap((f) => [...read(f).matchAll(/from "\.\/\w+\.js\?v=(\w+)"/g)]),
+    ...["src/app.js", "src/solver.js", "src/backup.js", "src/options.js", "src/presets.js"].flatMap((f) => [...read(f).matchAll(/from "\.\/\w+\.js\?v=(\w+)"/g)]),
   ].map((m) => m[1]);
-  assert.equal(versions.length, 11);
+  assert.equal(versions.length, 13);
   assert.equal(new Set(versions).size, 1, `versions differ: ${versions.join(", ")}`);
-  for (const f of ["src/app.js", "src/solver.js", "src/backup.js", "src/options.js"]) assert.doesNotMatch(read(f), /from "\.\/\w+\.js"/, `${f} has an unversioned import`);
+  for (const f of ["src/app.js", "src/solver.js", "src/backup.js", "src/options.js", "src/presets.js"]) assert.doesNotMatch(read(f), /from "\.\/\w+\.js"/, `${f} has an unversioned import`);
 });

@@ -17,6 +17,9 @@ Everything runs in your browser. Your items are saved only in that browser.
 item in the game, press PrtScn and paste the screenshot, and its socket colours show up as big words, with ✓ on the ones your class
 can use. There's also a **Colour-blind friendly** switch for the full page.
 
+**Presets** keep up to 5 named sets of pieces in this browser: open the list, type a name, **Save**,
+and **Load** it back later.
+
 **Copy backup** puts a code of your pieces on the clipboard; paste it back on the
 page (Ctrl+V, or **Load backup**) to restore it, in another browser or after clearing your data. A
 backup is checked before it's loaded: only known slots, classes, lines, sockets and cells are kept,

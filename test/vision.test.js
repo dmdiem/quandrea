@@ -246,3 +246,19 @@ test("sockets are still found when a dark band sits above the item picture", () 
   assert.ok(icon, "found the picture");
   assert.deepEqual(findSockets(img, icon), ["prismatic", "red", "purple"]);
 });
+
+test("a snip of just the item picture: its sockets are found anywhere in the image", () => {
+  // Only the picture (no tooltip around it), in the middle of a small image.
+  const img = screen(160, 200);
+  fill(img, 0, 0, 160, 200, [46, 53, 62]);
+  const t = tooltip(screen(), 100, 100, 320, 560, ["purple", "red", "green"]);
+  const src = screen();
+  tooltip(src, 100, 100, 320, 560, ["purple", "red", "green"]);
+  // copy the 78px picture (at 115,220 in the tooltip) to (40, 60)
+  for (let y = 0; y < 78; y++) img.data.set(src.data.subarray(((220 + y) * src.width + 115) * 4, ((220 + y) * src.width + 115 + 78) * 4), ((60 + y) * img.width + 40) * 4);
+  assert.equal(findIcon(img), null); // not inside a tooltip's left part
+  const icon = findIcon(img, undefined, { anywhere: true });
+  assert.deepEqual(icon, { x: 40, y: 60, size: 78 });
+  assert.deepEqual(findSockets(img, icon), ["purple", "red", "green"]);
+  void t;
+});

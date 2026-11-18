@@ -7,8 +7,8 @@
 <meta name="description" content="Add your MapleStory Quanah gear and it builds your best set for 18/18 hologram lines and the best sockets.">
 <link rel="icon" href="logo.webp">
 <script>try { const t = localStorage.getItem("quandrea.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
-<link rel="stylesheet" href="style.css?v=53">
-<script type="module" src="src/app.js?v=53"></script>
+<link rel="stylesheet" href="style.css?v=54">
+<script type="module" src="src/app.js?v=54"></script>
 </head>
 <body>
 <div class="wrap">
@@ -21,21 +21,30 @@
       <p class="muted">Add your 3-line Quanah gear; it builds your best set. Nothing leaves your computer.</p>
       </div>
     </div>
-    <div class="settings">
-      <label>Class <select id="class"></select></label>
-      <div class="seg" id="pirate-stat" role="group" aria-label="Pirate main stat" hidden>
-        <button id="pirate-STR" data-stat="STR">STR</button>
-        <button id="pirate-DEX" data-stat="DEX">DEX</button>
-      </div>
-      <button id="clear" class="ghost" hidden title="Clears every piece you added">Start over</button>
-      <button id="backup-copy" class="ghost" title="Copies a backup code of your pieces to the clipboard">Copy backup</button>
-      <button id="backup-load" class="ghost" title="Restore from a backup code: copy it, then click here or press Ctrl+V on the page">Load backup</button>
-      <button id="simple-toggle" class="ghost" title="Simpling Dumpling mode: a simple screen for colour-blind players that names the socket colours of whatever you hover">Simpling Dumpling mode</button>
+    <!-- Display settings, top right -->
+    <div class="corner">
+      <button id="simple-toggle" class="ghost" title="Simpling Dumpling mode: a simple screen for colour-blind players that names the socket colours of an item">Simpling Dumpling mode</button>
       <button id="cb-toggle" class="ghost" title="Names socket colours in words so nothing depends on colour">Colour-blind friendly</button>
       <div class="seg" role="group" aria-label="Theme">
         <button data-theme-pick="auto" title="Follow your computer's setting">Auto</button>
         <button data-theme-pick="light">Light</button>
         <button data-theme-pick="dark">Dark</button>
+      </div>
+    </div>
+    <!-- What you're working with on the left, your saved data on the right -->
+    <div class="settings toolbar">
+      <div class="tool-group">
+        <label>Class <select id="class"></select></label>
+        <div class="seg" id="pirate-stat" role="group" aria-label="Pirate main stat" hidden>
+          <button id="pirate-STR" data-stat="STR">STR</button>
+          <button id="pirate-DEX" data-stat="DEX">DEX</button>
+        </div>
+        <details class="presets" id="presets"><summary class="ghost-btn"><span id="presets-label">Presets</span></summary><div class="preset-pop" id="preset-list"></div></details>
+      </div>
+      <div class="tool-group tool-data">
+        <button id="backup-copy" class="ghost" title="Copies a backup code of your pieces to the clipboard">Copy backup</button>
+        <button id="backup-load" class="ghost" title="Restore from a backup code: copy it, then click here or press Ctrl+V on the page">Load backup</button>
+        <button id="clear" class="ghost" hidden title="Clears every piece you added">Start over</button>
       </div>
     </div>
   </header>

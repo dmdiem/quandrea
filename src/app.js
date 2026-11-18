@@ -1,10 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=53";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=53";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=53";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=53";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=53";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=54";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=54";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=54";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=54";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=54";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=54";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -30,7 +31,7 @@ function load() {
       view: ["equipped", "best"].includes(raw.view) ? raw.view : undefined,
       scale: typeof raw.scale === "number" && raw.scale > 0.3 && raw.scale < 3 ? raw.scale : undefined,
     };
-    state = { ...state, ...ui, ...sanitize(raw) };
+    state = { ...state, ...ui, ...sanitize(raw), presets: cleanPresets(raw.presets), activePreset: Number.isInteger(raw.activePreset) ? raw.activePreset : null };
   } catch {}
 }
 function save() {
@@ -74,7 +75,11 @@ function readSimple(img) {
     if (r.n === 2) break;
   }
   if (best.n) simpleSize = best.s;
-  return best.reads;
+  if (best.n) return best.reads;
+  // No tooltip: maybe it's a snip of just the item picture. Read its sockets on their own.
+  const icon = findIcon(img, undefined, { anywhere: true });
+  const alone = icon ? findSockets(img, icon) : [];
+  return alone.length ? [alone] : best.reads;
 }
 // Change the words only when two frames in a row agree, so a tooltip fading in can't flash
 // the wrong colours.
@@ -173,6 +178,7 @@ const socks = (list) => (list?.length ? `<span class="socks">${list.map(jewel).j
 const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("") : `<span class="muted">no lines</span>`);
 
 function render() {
+  renderPresets();
   // Always aims for the real 18 (an older "any 3 lines" setting in a save is ignored).
   const { res, sockets, verdicts: v } = verdicts(state.items, { ...state, mode: "endgame" });
   const option = classOption(state.classId);
@@ -416,6 +422,7 @@ document.addEventListener("click", (e) => {
   if (!t) return;
   if (t.id !== "clear") confirmClear = false;
   if (t.dataset.themePick) return setTheme(t.dataset.themePick);
+  if (presetAction(t)) return;
   if (t.id === "simple-toggle") {
     state.simple = !state.simple;
     save();
@@ -646,7 +653,18 @@ async function fillFromScreenshot(img) {
   setScan("Finding the item…", 8, true);
   const found = findPieceTooltip(img);
   if (!found) {
-    setScan("Couldn't find an item tooltip in that screenshot. Hover the item in the game, then press PrtScn and Ctrl+V here.", 0, false);
+    // A snip of just the item picture: fill in its jewels, the rest is up to you.
+    const icon = findIcon(img, undefined, { anywhere: true });
+    const sockets = icon ? findSockets(img, icon).slice(0, 3) : [];
+    if (sockets.length) {
+      draft = { ...draft, sockets };
+      scan.text = "Read the jewels from the item picture ✓ Pick its equipment and skills, then Add.";
+      scan.pct = 100;
+      scan.busy = false;
+      render();
+      return;
+    }
+    setScan("Couldn't find an item in that screenshot. Hover the item in the game, then press PrtScn and Ctrl+V here.", 0, false);
     return;
   }
   reading = true;
@@ -692,6 +710,62 @@ async function fillFromScreenshot(img) {
     reading = false;
   }
 }
+
+// ---------- presets ----------
+// Five named slots in this browser: Save puts your current pieces and class in one, Load swaps them in.
+const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function renderPresets() {
+  const list = state.presets ?? cleanPresets();
+  const active = state.activePreset;
+  $("presets-label").textContent = Number.isInteger(active) && list[active] ? `Preset: ${list[active].name}` : "Presets";
+  $("preset-list").innerHTML = list.map((p, i) => `<div class="preset-row${i === active ? " on" : ""}">
+      <span class="preset-n">${i + 1}</span>
+      <input data-preset-name="${i}" maxlength="${NAME_MAX}" value="${esc(p?.name ?? "")}" placeholder="Preset ${i + 1}" aria-label="Name for preset ${i + 1}">
+      <span class="muted small preset-info">${p ? `${p.items.length} piece${p.items.length === 1 ? "" : "s"}` : "empty"}</span>
+      <button class="ghost" data-preset-save="${i}" title="Save your current pieces here">Save</button>
+      <button class="ghost" data-preset-load="${i}"${p ? "" : " disabled"} title="Swap these pieces in">Load</button>
+      <button class="x" data-preset-del="${i}"${p ? "" : " disabled"} aria-label="Clear preset ${i + 1}">×</button>
+    </div>`).join("");
+}
+function presetAction(t) {
+  const list = (state.presets = state.presets ?? cleanPresets());
+  const nameOf = (i) => document.querySelector(`[data-preset-name="${i}"]`)?.value;
+  if (t.dataset.presetSave) {
+    const i = +t.dataset.presetSave;
+    if (list[i] && !confirm(`Replace "${list[i].name}" with your current ${state.items.length} pieces?`)) return true;
+    list[i] = makePreset(state, i, nameOf(i) || list[i]?.name);
+    state.activePreset = i;
+    setStatus(`Saved to preset ${i + 1}: ${list[i].name} ✓`);
+  } else if (t.dataset.presetLoad) {
+    const i = +t.dataset.presetLoad;
+    const p = list[i];
+    if (!p) return true;
+    if (state.items.length && state.activePreset !== i && !confirm(`Load "${p.name}"? It replaces the ${state.items.length} pieces on the page (save them to a preset first if you want to keep them).`)) return true;
+    state.items = p.items.map((it) => ({ ...it, lines: [...it.lines], sockets: [...it.sockets] }));
+    state.classId = p.classId;
+    state.activePreset = i;
+    draft = freshDraft();
+    setStatus(`Loaded preset ${i + 1}: ${p.name} ✓`);
+  } else if (t.dataset.presetDel) {
+    const i = +t.dataset.presetDel;
+    if (!list[i] || !confirm(`Clear preset ${i + 1} ("${list[i].name}")? Your pieces on the page stay.`)) return true;
+    list[i] = null;
+    if (state.activePreset === i) state.activePreset = null;
+  } else return false;
+  save();
+  render();
+  return true;
+}
+document.addEventListener("change", (e) => {
+  const i = e.target.dataset?.presetName;
+  if (i === undefined) return;
+  const list = (state.presets = state.presets ?? cleanPresets());
+  if (list[+i]) {
+    list[+i].name = cleanName(e.target.value, +i);
+    save();
+    renderPresets();
+  }
+});
 
 // ---------- backups ----------
 // "Copy backup" puts a code on the clipboard; paste it back here (Ctrl+V or "Load backup") to restore.
