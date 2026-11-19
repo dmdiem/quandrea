@@ -1,18 +1,18 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=59";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf } from "./solver.js?v=59";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=59";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=59";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=59";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=59";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=60";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf } from "./solver.js?v=60";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=60";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=60";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=60";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=60";
 
 const KEY = "quandrea.v1";
-// Two builds (Original, EU): the optimizer solves all of them, the progress panel shows
+// Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
 // the one you pick, and each piece says which builds' best combos it's in.
 const $ = (id) => document.getElementById(id);
 const SHORT = { leap: "Leap", wh: "WH", reg: "Reg", atk: "ATT", crit: "Crit", dmg: "DMG", warrior: "War", mage: "Mage", archer: "Bow", thief: "Thief", pirate: "Pir" };
-const NAME = Object.fromEntries([...TARGETS.map((t) => [t.k, t.name]), ...FILLERS.map((f) => [f.k, f.name]), [OTHER, "Other"]]);
+const NAME = Object.fromEntries([...TARGETS.map((t) => [t.k, t.name]), ...FILLERS.map((f) => [f.k, f.name])]);
 const SOCKETS = ["prismatic", "blue", "red", "green", "purple", "grey"];
 
 let state = { items: [], classId: "Magician", mode: "endgame" };
@@ -243,7 +243,7 @@ function render() {
   };
   // Still missing: the lines this set doesn't have yet, with how many of each.
   const gaps = missing(shown);
-  // A line this build doesn't count at all (a class line in EU, Damage in Original) is drawn like
+  // A line this build doesn't count at all (a class line in Bossing, Damage in General) is drawn like
   // Boss DMG, not as an "extra".
   const inBuild = (k) => build.need[TARGETS.findIndex((t) => t.k === k)] > 0;
   const offChip = (k) => `<span class="chip k-${k} off" title="Not part of ${build.name}">${icon(k)}${NAME[k]}</span>`;
@@ -252,7 +252,7 @@ function render() {
   const boardRow = ({ t, n }) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
       <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j]?.[0], sp[j]?.[1])).join("") + extras[t.k].map(extraPip).join(""); })()}</div></div>`;
   // One button per build with its best score, so you can see which suits your gear.
-  const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}</div>`;
+  const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}</div>${build.note ? `<p class="muted small build-note">${build.note}</p>` : ""}`;
   const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
   // What the collapsed piece list says, so a swap is never hidden.
   const swaps = SLOTS.filter((s) => res.picks[s] && !res.picks[s].equipped);
@@ -373,7 +373,7 @@ function pick(kind, v) {
     if (draft.sockets.length < 3) draft.sockets = v === "prismatic" ? [v, ...draft.sockets] : [...draft.sockets, v];
   } else {
     // Picking a skill twice takes it back; Other can repeat (Boss + IED are both not BiS).
-    if (v !== OTHER && draft.lines.includes(v)) draft.lines = draft.lines.filter((x) => x !== v);
+    if (draft.lines.includes(v)) draft.lines = draft.lines.filter((x) => x !== v);
     else if (draft.lines.length < 3) draft.lines = [...draft.lines, v];
   }
   render();
@@ -384,7 +384,7 @@ const GRID_ORDER = {
   slot: ["Hat", "Top", "Cape", "Bottom", "Shoes", "Gloves"],
   sock: ["prismatic", "blue", "red", "green", "purple", "grey"],
 };
-const KEY_SHORT = { leap: "Leap", wh: "White Hole", reg: "Registry", atk: "ATT & M.ATT", crit: "Crit DMG", warrior: "Warrior", mage: "Mage", archer: "Bowman", thief: "Thief", pirate: "Pirate", boss: "Boss DMG", ied: "Ignore DEF", dmg: "Damage", [OTHER]: "Other" };
+const KEY_SHORT = { leap: "Leap", wh: "White Hole", reg: "Registry", atk: "ATT & M.ATT", crit: "Crit DMG", warrior: "Warrior", mage: "Mage", archer: "Bowman", thief: "Thief", pirate: "Pirate", boss: "Boss DMG", ied: "Ignore DEF", dmg: "Damage" };
 
 function addForm() {
   const count = (list, v) => list.filter((x) => x === v).length;
@@ -438,7 +438,7 @@ function addForm() {
       <div class="step-head">${STEP_NAME.line} <span class="muted small">${draft.lines.length}/3${draft.lines.length ? ` · <button class="linkish" data-clear="line">clear</button>` : ""}</span></div>
       <div class="picker picker-grid">${OPTIONS.line.map((v) => option("line", v)).join("")}</div>
     </section>
-    <section class="pick-step"><div class="step-head muted">Not BiS</div><div class="picker minor">${["boss", "ied", OTHER].map((v) => option("line", v)).join("")}</div></section>
+    <section class="pick-step"><div class="step-head muted">Not BiS</div><div class="picker minor">${["boss", "ied"].map((v) => option("line", v)).join("")}</div></section>
     </div><div class="add-side">${mock}
     <div class="add-row add-under">
       <span class="add-msg muted small">${addMsg}</span>
@@ -722,8 +722,11 @@ async function readPiece(img, { quiet = false } = {}) {
   say("Reading the skills…", 50);
   const parsed = parseTooltip((await worker.recognize(c)).data.text);
   if (!parsed.slot && parsed.skip) return { skip: parsed.skip };
-  const known = new Set([...OPTIONS.line, ...FILLERS.map((f) => f.k), OTHER]);
-  return { slot: parsed.slot ?? null, cls: CLASSES.includes(parsed.cls) ? parsed.cls : null, sockets, lines: (parsed.lines ?? []).filter((k) => known.has(k)).slice(0, 3), equipped: Boolean(parsed.equipped) };
+  // Every line in the game has a button; one the reader couldn't make out is left for you to pick.
+  const known = new Set([...OPTIONS.line, ...FILLERS.map((f) => f.k)]);
+  const read = parsed.lines ?? [];
+  const lines = read.filter((k) => known.has(k)).slice(0, 3);
+  return { slot: parsed.slot ?? null, cls: CLASSES.includes(parsed.cls) ? parsed.cls : null, sockets, lines, unread: Math.min(3, read.length) - lines.length, equipped: Boolean(parsed.equipped) };
 }
 
 // One screenshot fills in Add a piece, for you to check and Add.
@@ -739,8 +742,9 @@ async function fillFromScreenshot(img) {
       scan.text = "Read the jewels from the item picture ✓ Pick its equipment and skills, then Add.";
     } else {
       draft = { ...freshDraft(), slot: r.slot, cls: r.cls, sockets: r.sockets, lines: r.lines, equipped: r.equipped };
+      const unread = r.unread ? ` Couldn't read ${r.unread === 1 ? "one skill line" : `${r.unread} skill lines`}: pick ${r.unread === 1 ? "it" : "them"} below.` : "";
       scan.text = r.slot
-        ? "Filled in ✓ Check it below, fix anything with a click, then Add. Paste the next one any time."
+        ? `Filled in ✓${unread} Check it below, fix anything with a click, then Add. Paste the next one any time.`
         : "Read the jewels and skills, but not the equipment type: click it below, then Add.";
     }
     addMsg = "";
@@ -762,6 +766,7 @@ async function addFromScreenshots(files) {
   reading = true;
   const added = [];
   const failed = [];
+  let unread = 0; // pieces with a skill line the reader couldn't make out
   recentIds = new Set();
   try {
     for (const [i, file] of files.entries()) {
@@ -773,6 +778,7 @@ async function addFromScreenshots(files) {
           const it = remember({ slot: r.slot, cls: r.cls ?? classOption(state.classId).classes[0], lines: r.lines, sockets: r.sockets, equipped: r.equipped, stats: `shot-${Date.now()}-${i}` });
           recentIds.add(it.id);
           added.push(it);
+          if (r.unread) unread++;
         } else failed.push(file.name || `#${i + 1}`);
       } catch {
         failed.push(file.name || `#${i + 1}`);
@@ -782,7 +788,7 @@ async function addFromScreenshots(files) {
     reading = false;
   }
   save();
-  scan.text = `Added ${added.length} piece${added.length === 1 ? "" : "s"} from ${files.length} screenshots ✓${failed.length ? ` · ${failed.length} couldn't be read (${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}): add those by hand` : ""}. The new ones are highlighted in Your pieces: check them, and Edit anything that's off.`;
+  scan.text = `Added ${added.length} piece${added.length === 1 ? "" : "s"} from ${files.length} screenshots ✓${failed.length ? ` · ${failed.length} couldn't be read (${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}): add those by hand` : ""}${unread ? ` · ${unread} ${unread === 1 ? "has a skill line" : "have skill lines"} it couldn't read: Edit to add` : ""}. The new ones are highlighted in Your pieces: check them, and Edit anything that's off.`;
   scan.pct = 100;
   scan.busy = false;
   render();

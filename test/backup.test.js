@@ -100,6 +100,11 @@ test("caps sizes and fixes duplicates", () => {
   assert.equal(new Set(out.items.map((it) => it.id)).size, 1000);
 });
 
+test("an old \"other\" line is dropped", () => {
+  const out = sanitize({ items: [{ slot: "Hat", lines: ["leap", "other", "wh"] }] });
+  assert.deepEqual(out.items[0].lines, ["leap", "wh"]);
+});
+
 test("old saves still load", () => {
   const out = sanitize({ classId: "Pirate", items: [{ id: "x", key: "Cape|Thief|thief|1+2", slot: "Cape", cls: "Thief", lines: ["thief"], sockets: [] }] });
   assert.equal(out.classId, "Pirate (STR)");

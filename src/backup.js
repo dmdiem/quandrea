@@ -5,13 +5,14 @@
 // else (unknown fields, odd strings, HTML, "__proto__" tricks, huge inputs) is dropped. The page
 // never runs or displays text from a backup as-is.
 
-import { SLOTS, TARGETS, FILLERS, OTHER } from "./parse.js?v=59";
-import { CLASSES, CLASS_OPTIONS } from "./solver.js?v=59";
+import { SLOTS, TARGETS, FILLERS } from "./parse.js?v=60";
+import { CLASSES, CLASS_OPTIONS } from "./solver.js?v=60";
 
 const PREFIX = "QUANDREA1:";
 export const MAX_CODE = 500_000; // characters; a full bag is far smaller
 const MAX_ITEMS = 1000;
-const LINES = new Set([...TARGETS.map((t) => t.k), ...FILLERS.map((f) => f.k), OTHER]);
+// Every line in the game. (Older saves had "other" for a line that couldn't be read: it's dropped.)
+const LINES = new Set([...TARGETS.map((t) => t.k), ...FILLERS.map((f) => f.k)]);
 const SOCKETS = new Set(["prismatic", "blue", "red", "green", "purple", "grey"]);
 const CELLS = new Set(["empty", "item", "lines"]);
 const CLASS_IDS = new Set(CLASS_OPTIONS.map((o) => o.id));

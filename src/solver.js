@@ -6,21 +6,26 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS, OTHER } from "./parse.js?v=59";
+import { SLOTS, TARGETS } from "./parse.js?v=60";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 
 // Two builds, both 18 lines:
-//   original: 3 Leap, 3 White Hole, 3 Registry, 3 ATT, 1 Crit DMG, 1 of each of the 5 classes; 4 prismatics
-//   eu (courtesy of Shapaz, via the 3L Set Solver): 3 each of Leap, White Hole, Registry, ATT, Crit DMG
-//         and Damage, no class lines (they have no passive Final Damage); a prismatic on every piece
+//   original ("General", the default): 3 Leap, 3 White Hole, 3 Registry, 3 ATT, 1 Crit DMG, 1 of each
+//         of the 5 classes; 4 prismatics. The class procs hit many enemies: mobbing, dungeons, quests.
+//   eu ("Bossing", the EU build, courtesy of Shapaz, via the 3L Set Solver): 3 each of Leap, White Hole,
+//         Registry, ATT, Crit DMG and Damage, no class lines; a prismatic on every piece. An optional
+//         min-max for heavy bossing past the 22 badge: about +7% Final Damage, give or take.
+// (The ids stay "original" and "eu" so saved choices keep working.)
 const needs = (over) => TARGETS.map((t) => over[t.k] ?? t.need);
 const NO_CLASSES = { archer: 0, warrior: 0, thief: 0, mage: 0, pirate: 0 };
 export const BUILDS = {
-  original: { id: "original", name: "Original BiS", short: "Original", need: needs({}), prismatic: 4,
-    about: "3 each of Leap, White Hole, Registry, ATT; 1 Crit DMG; all 5 class lines; 4 prismatics" },
-  eu: { id: "eu", name: "EU BiS", short: "EU", need: needs({ crit: 3, dmg: 3, ...NO_CLASSES }), prismatic: 6,
-    about: "Courtesy of Shapaz: 3 each of Leap, White Hole, Registry, ATT, Crit DMG and Damage; no class lines" },
+  original: { id: "original", name: "General BiS", short: "General", need: needs({}), prismatic: 4,
+    about: "For mobbing, dungeons and quests: 3 each of Leap, White Hole, Registry, ATT; 1 Crit DMG; all 5 class lines (their procs hit many enemies); 4 prismatics",
+    note: "General is fine for most players. Want to sweat it for bossing past the 22 badge? Bossing is about +7% Final Damage." },
+  eu: { id: "eu", name: "Bossing BiS", short: "Bossing", need: needs({ crit: 3, dmg: 3, ...NO_CLASSES }), prismatic: 6,
+    about: "Optional min-max for heavy bossing past the 22 badge (about +7% Final Damage): 3 each of Leap, White Hole, Registry, ATT, Crit DMG and Damage; no class lines. The EU build, courtesy of Shapaz",
+    note: "Optional min-max: only worth it past the 22 badge if you boss a lot (about +7% Final Damage). General is fine for everything else." },
 };
 export const BUILD_IDS = Object.keys(BUILDS);
 export const buildOf = (id) => BUILDS[id] ?? BUILDS.original;

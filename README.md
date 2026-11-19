@@ -35,11 +35,16 @@ which socket colours you can use.
 ## What it's aiming for
 
 **First: 18/18 hologram lines.** Six pieces (hat, top, bottom, shoes, gloves, cape; weapons and
-shoulders can't roll lines), three lines each. There are two builds people go for, and Quandrea
+shoulders can't roll lines), three lines each. There are two builds, and Quandrea
 works out your best combo for both (the buttons at the top of Hologram lines show each score;
 click one to see its board):
 
-| Line | Original BiS | EU BiS |
+- **General**: the one most people want. Its class lines' procs hit many enemies, which is great for
+  mobbing, dungeons and quests.
+- **Bossing**: an optional min-max for when you're going past the 22 badge and doing lots of bossing. It's
+  about +7% Final Damage, give or take, so not necessary. It's the EU build, courtesy of Shapaz.
+
+| Line | General | Bossing |
 |---|---|---|
 | Dimensional Leap, White Hole, Registry, Attack Power & Magic ATT | 3 each | 3 each |
 | Critical Damage | 1 | 3 |
@@ -47,8 +52,8 @@ click one to see its board):
 | Class lines (Bowman, Warrior, Thief, Mage, Pirate) | 1 each | – |
 | Prismatic jewels | 4 | 6 |
 
-The EU build is courtesy of Shapaz: after the Nov 19, 2026 maintenance it drops the class lines (the only
-ones with no passive Final Damage) for 3 Crit DMG and 3 Damage. Class line damage, strongest first: Bowman, Warrior, Thief, Mage, Pirate (v.272 patch notes,
+Bossing drops the class lines (the only ones with no passive Final Damage, and their procs are spread
+over many enemies) for 3 Crit DMG and 3 Damage, which hit one target harder. Class line damage, strongest first: Bowman, Warrior, Thief, Mage, Pirate (v.272 patch notes,
 Lv. 8, the same for every job). Boss Damage and Ignore Defense lines never count, and neither do extra copies.
 When it's a tie, the piece with more lines wins, so early on it still fills every slot.
 
@@ -71,8 +76,8 @@ Gem colours by class: red = Warrior, green = Bowman, grey = Pirate, purple = Thi
 
 ### Your pieces
 
-Everything you've added, by slot, each tagged with the builds whose best combo it's in (**Original**,
-**EU**; the one you're looking at is highlighted), and marked **Equipped**, **In best combo**, **For jewels** (perfect
+Everything you've added, by slot, each tagged with the builds whose best combo it's in (**General**,
+**Bossing**; the one you're looking at is highlighted), and marked **Equipped**, **In best combo**, **For jewels** (perfect
 sockets for its slot, 3 your class can use, to move your lines onto with an Orb; Orbs are rare, so nothing
 less counts) or spare. The left
 side, **What to wear**, is the best combo piece by piece, with Equip / Swap buttons.

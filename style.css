@@ -638,3 +638,4 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 .bt { font-size: 11px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
 .bt.on { border-color: var(--holo); color: var(--holo-ink); background: color-mix(in srgb, var(--holo-hi) 45%, var(--surface)); font-weight: 600; }
 .chip.off { color: var(--muted); background: transparent; border: 1px dashed var(--line); font-weight: 500; }
+.build-note { margin: -4px 0 10px; }
