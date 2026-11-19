@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=60";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf } from "./solver.js?v=60";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=60";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=60";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=60";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=60";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=61";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf } from "./solver.js?v=61";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=61";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=61";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=61";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=61";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -287,7 +287,7 @@ function render() {
           const nowRow = !showNow && wearing && !it.equipped ? `<div class="piece-now"><span class="wearing-now">↳ Equipped:</span> ${linesOf(wearing)}</div>` : "";
           return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span>
             <span class="lines">${it.lines.map((k, j) => (inBuild(k) ? chip(k, !shown.counted[s][j]) : offChip(k))).join("") || `<span class="muted">no lines</span>`}</span>
-            <span class="piece-socks">${socks(it.sockets)}<span class="tag">${socketValue(it, state.classId).good}/3</span></span>
+            <span class="piece-socks">${socks(it.sockets)}</span>
             <span class="piece-act">${action}</span></div>${nowRow}`;
         }).join("")}
         <div class="piece totals"><span class="piece-slot">Sockets</span><span class="muted small">${(() => { const v3 = SLOTS.map((s) => shown.picks[s] && socketValue(shown.picks[s], state.classId)).filter(Boolean); return `${v3.reduce((n, x) => n + x.good, 0)}/18 usable · ${v3.filter((x) => x.prismatic).length}/${build.prismatic} prismatic pieces`; })()}</span></div>
