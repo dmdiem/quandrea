@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=56";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=56";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=56";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=56";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=56";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=56";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=57";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=57";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=57";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=57";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=57";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=57";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -225,6 +225,11 @@ function render() {
   // The board shows what you wear (solid), then what your best combo would add (faint), then dots.
   const fromNow = Object.fromEntries(TARGETS.map((t) => [t.k, []]));
   for (const s of SLOTS) nowRes.picks[s]?.lines.forEach((k, j) => nowRes.counted[s][j] && fromNow[k].push(s));
+  // Extra copies (beyond the 1 or 3 that count) of the set the board shows: still +1 to the skill.
+  const extras = Object.fromEntries(TARGETS.map((t) => [t.k, []]));
+  const boardSet = seenAny ? nowRes : res;
+  for (const s of SLOTS) boardSet.picks[s]?.lines.forEach((k, j) => !boardSet.counted[s][j] && extras[k] && extras[k].push(s));
+  const extraPip = (slot) => `<span class="pip extra" title="Extra ${slot}: +1 to the skill, past what counts for 18/18">${slotIcon(slot)}</span>`;
   const spots = (t) => {
     if (!seenAny) return from[t.k].map((sl) => [sl, false]);
     const have = fromNow[t.k];
@@ -245,7 +250,7 @@ function render() {
     <p class="muted small"><b>${res.score}/${TOTAL}</b> possible with your best combo${res.score > nowScore ? ` <span class="pip up legend"></span> faint icons = pieces to swap in` : ""}</p>`
       : `<div class="score"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with the best combo</span></div>`}
     <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
-      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: t.need }, (_, j) => cell(t.k, sp[j]?.[0], sp[j]?.[1])).join(""); })()}</div></div>`).join("")}</div>
+      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: t.need }, (_, j) => cell(t.k, sp[j]?.[0], sp[j]?.[1])).join("") + extras[t.k].map(extraPip).join(""); })()}</div></div>`).join("")}</div>
     ${gaps.length ? `<div class="hunt"><span class="label">Still missing · ${gaps.length}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}</div></div>` : `<p class="act on">All 18 ✓</p>`}`;
   if (typeof draft !== "undefined") $("add-panel").innerHTML = addForm();
   $("lines").innerHTML = `

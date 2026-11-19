@@ -5,7 +5,11 @@
 A gear checker for MapleStory's Quanah world. Click in each piece's hologram lines and sockets, and it
 builds the best set: one piece per slot, as close to the 18 lines as you can get.
 
-Everything runs in your browser. Your items are saved only in that browser.
+**No install, and it never touches the game.** It's a web page: open the link and use it. It doesn't
+connect to MapleStory, read its memory or files, or press anything; it only sees screenshots you choose
+to paste. Everything stays in your browser.
+
+Your pieces are saved only in that browser (Presets and Copy backup help you keep them).
 
 ## Using it
 

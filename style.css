@@ -598,3 +598,9 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
   transform: translate(-50%, 12px); opacity: 0; pointer-events: none; padding: 9px 16px; border-radius: 999px;
   background: var(--fg); color: var(--bg); font-size: 13px; font-weight: 600; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); transition: opacity 200ms, transform 200ms; }
 .page-status.show { opacity: 1; transform: translate(-50%, 0); }
+/* Extra copies on the board: faded, with a small + */
+.pip.extra { position: relative; opacity: 0.5; border: 1px dashed var(--line); background: transparent; margin-left: 3px; }
+.pip.extra::after { content: "+"; position: absolute; top: -6px; right: -4px; font-size: 10px; font-weight: 800; color: var(--muted); }
+/* The three promises under the tagline */
+.promises { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; padding: 0; list-style: none; }
+.promises li { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--keep); background: color-mix(in srgb, var(--keep) 12%, transparent); border: 1px solid color-mix(in srgb, var(--keep) 35%, transparent); cursor: help; }
