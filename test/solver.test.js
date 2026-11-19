@@ -110,10 +110,13 @@ test("socket set: aims for 4 prismatic pieces, the rest all your colour", () => 
   const few = socketSet([...prism.slice(0, 3), ...stat], "Magician");
   assert.equal(few.prismatic, 3);
   assert.equal(few.good, 18);
-  // One usable socket next to a dead one isn't worth an Orb; prismatic + anything is.
+  // Orbs are rare: only perfect sockets count (3, all usable). Near misses don't.
   assert.equal(socketSet([item("Shoes", "", { sockets: ["red", "blue"] })], "Magician").picks.Shoes, null);
-  assert.ok(socketSet([item("Shoes", "", { sockets: ["prismatic", "red"] })], "Magician").picks.Shoes);
-  assert.ok(socketSet([item("Shoes", "", { sockets: ["blue", "blue"] })], "Magician").picks.Shoes);
+  assert.equal(socketSet([item("Shoes", "", { sockets: ["prismatic", "red"] })], "Magician").picks.Shoes, null);
+  assert.equal(socketSet([item("Shoes", "", { sockets: ["blue", "blue"] })], "Magician").picks.Shoes, null);
+  assert.equal(socketSet([item("Shoes", "", { sockets: ["prismatic", "blue", "red"] })], "Magician").picks.Shoes, null);
+  assert.ok(socketSet([item("Shoes", "", { sockets: ["prismatic", "blue", "blue"] })], "Magician").picks.Shoes);
+  assert.ok(socketSet([item("Shoes", "", { sockets: ["blue", "blue", "blue"] })], "Magician").picks.Shoes);
   assert.equal(socketNote(item("Shoes", "", { sockets: ["prismatic", "blue", "red"] }), "Magician"), "2 of 3 usable (prismatic, blue); red is no use to you");
   assert.equal(socketNote(item("Shoes", "", { sockets: ["blue", "blue", "blue"] }), "Magician"), "3 of 3 usable (blue, blue, blue)");
   // A slot with nothing useful is left empty.

@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=57";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, PRISMATIC_GOAL } from "./solver.js?v=57";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=57";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=57";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=57";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=57";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=58";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, PRISMATIC_GOAL } from "./solver.js?v=58";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=58";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=58";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=58";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=58";
 
 const KEY = "quandrea.v1";
 const $ = (id) => document.getElementById(id);
@@ -251,7 +251,8 @@ function render() {
       : `<div class="score"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with the best combo</span></div>`}
     <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
       <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: t.need }, (_, j) => cell(t.k, sp[j]?.[0], sp[j]?.[1])).join("") + extras[t.k].map(extraPip).join(""); })()}</div></div>`).join("")}</div>
-    ${gaps.length ? `<div class="hunt"><span class="label">Still missing · ${gaps.length}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}</div></div>` : `<p class="act on">All 18 ✓</p>`}`;
+    ${gaps.length ? `<div class="hunt"><span class="label">Still missing · ${gaps.length}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}</div></div>` : `<p class="act on">All 18 ✓</p>`}
+    ${jewelProgress(sockets, option, res)}`;
   if (typeof draft !== "undefined") $("add-panel").innerHTML = addForm();
   $("lines").innerHTML = `
     <div class="row spread"><h2>What to wear</h2></div>
@@ -276,18 +277,20 @@ function render() {
         }).join("")}
         <div class="piece totals"><span class="piece-slot">Sockets</span><span class="muted small">${(() => { const v3 = SLOTS.map((s) => shown.picks[s] && socketValue(shown.picks[s], state.classId)).filter(Boolean); return `${v3.reduce((n, x) => n + x.good, 0)}/18 usable · ${v3.filter((x) => x.prismatic).length}/${PRISMATIC_GOAL} prismatic pieces`; })()}</span></div>
       </div>
-      ${showNow ? "" : `<div class="fuse"><span class="label">Best pieces to fuse your lines onto</span>
-        <span class="muted small">Goal: 4 with a prismatic, all others ${option.colours.join(" / ")}.</span>
-        <div class="fuse-list">${SLOTS.map((s) => { const it = sockets.picks[s]; const v4 = it && socketValue(it, state.classId); return `<span class="fuse-item">${slotIcon(s)}${it && v4.good ? `${socks(it.sockets)}` : `<span class="none">none yet</span>`}</span>`; }).join("")}</div></div>`}
     </section>
 `;
 
   // Your pieces: everything you've added, by slot, what you wear first. Each one says whether it's
   // equipped or in your best combo.
   const inBest = new Set(Object.values(res.picks).filter(Boolean).map((it) => it.id));
+  // The best piece per slot to fuse your lines onto with an Orb (its jewel sockets), worth keeping.
+  const forJewels = new Set(Object.values(sockets.picks).filter(Boolean).map((it) => it.id));
+  const jewelTag = (it) => (!forJewels.has(it.id) ? ""
+    : inBest.has(it.id) ? `<span class="act jewels" title="Perfect sockets and in your best combo: no Orb needed">Perfect jewels ✓</span>`
+    : `<span class="act jewels" title="Perfect sockets for this slot (${socketNote(it, state.classId)}): keep it to move your lines onto with an Orb">For jewels</span>`);
   const list = [...state.items].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || b.equipped - a.equipped || inBest.has(b.id) - inBest.has(a.id));
   const row = (it) => `<div class="bag-row${it.equipped ? " worn-row" : ""}" draggable="true" data-drag="${it.id}">
-      <div class="bag-top">${it.equipped ? `<span class="act on">Equipped ✓</span>` : inBest.has(it.id) ? `<span class="act swap">In best combo</span>` : `<span class="muted small">spare</span>`}
+      <div class="bag-top">${it.equipped ? `<span class="act on">Equipped ✓</span>` : inBest.has(it.id) ? `<span class="act swap">In best combo</span>` : forJewels.has(it.id) ? "" : `<span class="muted small">spare</span>`}${jewelTag(it)}${""}
         <span class="bag-act">${it.equipped
           ? `<button class="equip-btn" data-unequip="${it.id}" title="Not wearing this any more">Unequip</button>`
           : `<button class="equip-btn" data-equip="${it.id}" title="You put this on in game">Equip</button>`}<button class="equip-btn" data-edit="${it.id}" title="Change its jewels, skills or slot">Edit</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
@@ -721,6 +724,34 @@ async function fillFromScreenshot(img) {
   } finally {
     reading = false;
   }
+}
+
+// ---------- jewel progress ----------
+// Like the lines board, for sockets: your best jewel piece per slot (the "For jewels" ones), its three
+// sockets (usable solid, a colour your class can't use crossed out, missing dashed), and the goal of
+// 18 usable sockets with 4 prismatic pieces.
+function jewelProgress(sockets, option, res) {
+  const usable = (c) => c === "prismatic" || option.colours.includes(c);
+  const perfect = SLOTS.filter((s) => sockets.picks[s]).length;
+  const rows = SLOTS.map((s) => {
+    const it = sockets.picks[s];
+    const list = it?.sockets ?? [];
+    if (!it) return `<div class="jp-row"><span class="jp-slot" title="${s}">${slotIcon(s)}</span><span class="muted small jp-none">none yet</span></div>`;
+    const done = res.picks[s]?.id === it.id;
+    const spots = [0, 1, 2].map((i) => {
+      const c = list[i];
+      if (!c) return `<span class="jp-sock empty" title="No socket"></span>`;
+      return `<span class="jp-sock${usable(c) ? "" : " dead"}" title="${SOCK_WORD[c]}${usable(c) ? "" : `: ${option.cls} can't use it`}"><span class="sock ${c}"></span></span>`;
+    }).join("");
+    const words = state.cb && list.length ? `<span class="jp-words">${list.map((c) => SOCK_WORD[c]).join(" · ")}</span>` : "";
+    return `<div class="jp-row"><span class="jp-slot" title="${s}">${slotIcon(s)}</span><span class="jp-socks">${spots}</span>${words}${done ? `<span class="jp-done" title="This piece is in your best combo and already has perfect sockets: no Orb needed">✓</span>` : ""}</div>`;
+  }).join("");
+  return `<div class="jewel-progress">
+      <div class="jp-head"><span class="label">Jewel sockets</span></div>
+      <div class="score"><span class="big jp-big">${perfect}</span><span class="muted">/ 6 perfect pieces · <b>${Math.min(sockets.prismatic, PRISMATIC_GOAL)}/${PRISMATIC_GOAL}</b> prismatic</span></div>
+      <div class="jp-board">${rows}</div>
+      <p class="muted small">Perfect = 3 sockets you can use (${option.cls}: ${option.colours.join(", ")}, or prismatic). Orbs are rare, so only these count. ✓ = in your best combo already: no Orb needed.</p>
+    </div>`;
 }
 
 // ---------- presets ----------

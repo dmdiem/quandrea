@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS, OTHER } from "./parse.js?v=57";
+import { SLOTS, TARGETS, OTHER } from "./parse.js?v=58";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const NEED = TARGETS.map((t) => t.need);
@@ -156,9 +156,9 @@ export function socketValue(item, classId) {
 
 export const PRISMATIC_GOAL = 4;
 
-// Worth fusing your lines onto: a prismatic socket, or at least 2 sockets you can use. One usable
-// socket next to dead ones isn't worth an Orb; prismatic + your colour is the usual stepping stone.
-export const worthSockets = (v) => v.prismatic > 0 || v.good >= 2;
+// Orbs are rare, so a jewel base has to be perfect already: 3 sockets, all ones your class can use
+// (prismatic counts). Anything less isn't worth fusing onto.
+export const worthSockets = (v) => v.good >= 3 && v.dead === 0;
 
 // "2 of 3 usable (prismatic, blue); red is no use to you"
 export function socketNote(item, classId) {

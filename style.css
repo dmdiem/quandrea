@@ -604,3 +604,23 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 /* The three promises under the tagline */
 .promises { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; padding: 0; list-style: none; }
 .promises li { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--keep); background: color-mix(in srgb, var(--keep) 12%, transparent); border: 1px solid color-mix(in srgb, var(--keep) 35%, transparent); cursor: help; }
+/* Board fills down each column: the big lines on the left, the classes (strongest first) on the right */
+.progress .board { grid-auto-flow: column; grid-template-rows: repeat(5, auto); }
+/* "For jewels": keep it as the base to move your lines onto with an Orb */
+.act.jewels { margin-left: 4px; color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+/* Jewel progress, under the lines board */
+.jewel-progress { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.jewel-progress .score { margin: 2px 0 6px; }
+.jewel-progress .jp-big { font-size: 26px; }
+.jp-board { display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: column; grid-template-rows: repeat(3, auto); gap: 4px 16px; }
+.jp-row { display: flex; align-items: center; gap: 8px; }
+.jp-slot .slot-icon { width: 16px; height: 16px; color: var(--muted); }
+.jp-socks { display: inline-flex; gap: 6px; }
+.jp-sock { width: 16px; height: 16px; display: grid; place-items: center; position: relative; }
+.jp-sock .sock { width: 12px; height: 12px; }
+.jp-sock.dead { opacity: 0.35; }
+.jp-sock.dead::after { content: ""; position: absolute; width: 16px; height: 2px; background: var(--fg); transform: rotate(-45deg); border-radius: 2px; }
+.jp-sock.empty::before { content: ""; width: 9px; height: 9px; transform: rotate(45deg); border: 1.5px dashed var(--muted); border-radius: 50%; border-top-left-radius: 1px; }
+.jp-words { font-size: 10.5px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.jp-none { font-size: 11px; }
+.jp-done { color: var(--keep); font-weight: 800; }

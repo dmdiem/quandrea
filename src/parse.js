@@ -11,10 +11,12 @@ export const TARGETS = [
   { k: "reg", name: "Registry", need: 3 },
   { k: "atk", name: "ATT & M.ATT", need: 3 },
   { k: "crit", name: "Crit DMG", need: 1 },
-  { k: "warrior", name: "Warrior", need: 1 },
-  { k: "mage", name: "Mage", need: 1 },
+  // The class lines, strongest to weakest (their hologram skill damage in the v.272 patch notes;
+  // the same order for every job).
   { k: "archer", name: "Bowman", need: 1 },
+  { k: "warrior", name: "Warrior", need: 1 },
   { k: "thief", name: "Thief", need: 1 },
+  { k: "mage", name: "Mage", need: 1 },
   { k: "pirate", name: "Pirate", need: 1 },
 ];
 export const OTHER = "other"; // a line we don't recognise

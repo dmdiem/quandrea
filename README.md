@@ -64,7 +64,9 @@ Gem colours by class: red = Warrior, green = Bowman, grey = Pirate, purple = Thi
 
 ### Your pieces
 
-Everything you've added, by slot, each marked **Equipped**, **In best combo** or spare. The left
+Everything you've added, by slot, each marked **Equipped**, **In best combo**, **For jewels** (perfect
+sockets for its slot, 3 your class can use, to move your lines onto with an Orb; Orbs are rare, so nothing
+less counts) or spare. The left
 side, **What to wear**, is the best combo piece by piece, with Equip / Swap buttons.
 
 The **best combo** is the best outfit you can make from everything you've added, worn or in your
