@@ -72,7 +72,7 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
   background: linear-gradient(135deg, color-mix(in srgb, var(--holo) 26%, transparent), color-mix(in srgb, var(--holo-hi) 30%, transparent) 50%, color-mix(in srgb, var(--holo) 14%, transparent)); }
 .chip.k-leap, .chip.k-wh, .chip.k-reg, .chip.k-atk { font-weight: 700; border-color: var(--holo); }
 /* Lines that aren't among the 18 (Boss DMG, Ignore DEF, Damage, unknown): plain dashed tags */
-.chip.k-other, .chip.k-boss, .chip.k-ied, .chip.k-dmg { color: var(--muted); background: transparent; border: 1px dashed var(--line); font-weight: 500; }
+.chip.k-other, .chip.k-boss, .chip.k-ied { color: var(--muted); background: transparent; border: 1px dashed var(--line); font-weight: 500; }
 .board-name { display: inline-flex; align-items: center; gap: 6px; }
 .chip.extra { opacity: 0.6; border-style: dashed; }
 .chip small { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
@@ -605,7 +605,7 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 .promises { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; padding: 0; list-style: none; }
 .promises li { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--keep); background: color-mix(in srgb, var(--keep) 12%, transparent); border: 1px solid color-mix(in srgb, var(--keep) 35%, transparent); cursor: help; }
 /* Board fills down each column: the big lines on the left, the classes (strongest first) on the right */
-.progress .board { grid-auto-flow: column; grid-template-rows: repeat(5, auto); }
+.progress .board { grid-auto-flow: column; }
 /* "For jewels": keep it as the base to move your lines onto with an Orb */
 .act.jewels { margin-left: 4px; color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 /* Jewel progress, under the lines board */
@@ -624,3 +624,17 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 .jp-words { font-size: 10.5px; font-weight: 700; color: var(--muted); white-space: nowrap; }
 .jp-none { font-size: 11px; }
 .jp-done { color: var(--keep); font-weight: 800; }
+/* Pieces just added from several screenshots: highlighted to check */
+.bag-row.new-row { outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: -2px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.bag-row.new-row::before { content: "new"; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); }
+
+/* Build picker: each build with its best score */
+.build-pick { display: flex; gap: 6px; margin: 4px 0 10px; }
+.build-pick button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); cursor: pointer; font-size: 12px; line-height: 1.2; }
+.build-pick button b { font-size: 15px; }
+.build-pick button[aria-pressed="true"] { border-color: var(--holo); background: color-mix(in srgb, var(--holo-hi) 45%, var(--surface)); color: var(--holo-ink); box-shadow: inset 0 0 0 1px var(--holo); }
+/* Which builds a piece is in */
+.build-tags { display: inline-flex; gap: 3px; }
+.bt { font-size: 11px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.bt.on { border-color: var(--holo); color: var(--holo-ink); background: color-mix(in srgb, var(--holo-hi) 45%, var(--surface)); font-weight: 600; }
+.chip.off { color: var(--muted); background: transparent; border: 1px dashed var(--line); font-weight: 500; }

@@ -1,15 +1,17 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=58";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, PRISMATIC_GOAL } from "./solver.js?v=58";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=58";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=58";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=58";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=58";
+import { SLOTS, TARGETS, FILLERS, OTHER, isTarget, parseTooltip } from "./parse.js?v=59";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf } from "./solver.js?v=59";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=59";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=59";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=59";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=59";
 
 const KEY = "quandrea.v1";
+// Two builds (Original, EU): the optimizer solves all of them, the progress panel shows
+// the one you pick, and each piece says which builds' best combos it's in.
 const $ = (id) => document.getElementById(id);
-const SHORT = { leap: "Leap", wh: "WH", reg: "Reg", atk: "ATT", crit: "Crit", warrior: "War", mage: "Mage", archer: "Bow", thief: "Thief", pirate: "Pir" };
+const SHORT = { leap: "Leap", wh: "WH", reg: "Reg", atk: "ATT", crit: "Crit", dmg: "DMG", warrior: "War", mage: "Mage", archer: "Bow", thief: "Thief", pirate: "Pir" };
 const NAME = Object.fromEntries([...TARGETS.map((t) => [t.k, t.name]), ...FILLERS.map((f) => [f.k, f.name]), [OTHER, "Other"]]);
 const SOCKETS = ["prismatic", "blue", "red", "green", "purple", "grey"];
 
@@ -31,6 +33,7 @@ function load() {
       view: ["equipped", "best"].includes(raw.view) ? raw.view : undefined,
       scale: typeof raw.scale === "number" && raw.scale > 0.3 && raw.scale < 3 ? raw.scale : undefined,
     };
+    ui.build = BUILD_IDS.includes(raw.build) ? raw.build : "original";
     state = { ...state, ...ui, ...sanitize(raw), presets: cleanPresets(raw.presets), activePreset: Number.isInteger(raw.activePreset) ? raw.activePreset : null };
   } catch {}
 }
@@ -156,13 +159,14 @@ const SLOT_PATHS = {
 };
 const slotIcon = (slot) => `<svg class="slot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SLOT_PATHS[slot] ?? ""}</svg>`;
 // A symbol for each line, so they're easy to tell apart without colour: a leap, a white hole, a
-// ledger (Registry), sword and wand (ATT & M.ATT), a target (Crit), and for the classes a sword,
+// ledger (Registry), sword and wand (ATT & M.ATT), a target (Crit), a burst (Damage), and for the classes a sword,
 // wand, bow and arrow, shuriken and anchor.
 const CLASS_PATHS = {
   leap: '<path d="M3.5 19.5C5 10 13 5.5 19.5 11"/><path d="M19.5 11l-4.8.3M19.5 11l.6-4.7"/><path d="M3 21h4"/>',
   wh: '<ellipse cx="12" cy="16" rx="9" ry="4"/><ellipse cx="12" cy="16" rx="4" ry="1.6"/><path d="M12 3v6M6.5 5l2.2 4.5M17.5 5l-2.2 4.5"/>',
   reg: '<path d="M6 3h9l3.5 3.5V21H6z"/><path d="M15 3v3.5h3.5"/><path d="M9 11h6M9 14.5h6M9 18h3.5"/>',
   atk: '<path d="M4 4l10 10"/><path d="M11.5 16.5l5-5"/><path d="M14 14l5.5 5.5"/><path d="M20 4 6 18"/><path d="M4.5 19.5 6 18"/><path d="M19.5 2.8l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z" stroke-width="1.2"/>',
+  dmg: '<path d="M12 2.5l1.9 5.3 5.4-1.6-2.8 4.9 4.9 2.6-5.6.9.5 5.6L12 16.3l-4.3 3.9.5-5.6-5.6-.9 4.9-2.6-2.8-4.9 5.4 1.6z"/>',
   crit: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/>',
   warrior: '<path d="M19.5 4.5 18.8 9 9.6 18.2 5.8 14.4 15 5.2z"/><path d="M4.2 12.8l7 7"/><path d="M7.4 16.6 3.8 20.2"/>',
   mage: '<path d="M4 20 14 10"/><path d="M17 2.8l1.1 2.9 2.9 1.1-2.9 1.1L17 10.8l-1.1-2.9L13 6.8l2.9-1.1z"/>',
@@ -187,7 +191,8 @@ const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("")
 function render() {
   renderPresets();
   // Always aims for the real 18 (an older "any 3 lines" setting in a save is ignored).
-  const { res, sockets, verdicts: v } = verdicts(state.items, { ...state, mode: "endgame" });
+  const build = buildOf(state.build);
+  const { res, sockets, all, inBuilds } = verdicts(state.items, { ...state, mode: "endgame", build: build.id });
   const option = classOption(state.classId);
 
   $("class").innerHTML = CLASSES.map((c) => `<option ${c === option.cls ? "selected" : ""}>${c}</option>`).join("");
@@ -208,7 +213,7 @@ function render() {
 
   // What you're wearing now (from the "Currently Equipped" boxes), and how it compares.
   const worn = Object.fromEntries(SLOTS.map((s) => [s, state.items.find((it) => it.slot === s && it.equipped) ?? null]));
-  const nowRes = solve(Object.values(worn).filter(Boolean));
+  const nowRes = solve(Object.values(worn).filter(Boolean), "endgame", build.id);
   const nowScore = nowRes.score;
   const seenAny = Object.values(worn).some(Boolean);
 
@@ -238,6 +243,16 @@ function render() {
   };
   // Still missing: the lines this set doesn't have yet, with how many of each.
   const gaps = missing(shown);
+  // A line this build doesn't count at all (a class line in EU, Damage in Original) is drawn like
+  // Boss DMG, not as an "extra".
+  const inBuild = (k) => build.need[TARGETS.findIndex((t) => t.k === k)] > 0;
+  const offChip = (k) => `<span class="chip k-${k} off" title="Not part of ${build.name}">${icon(k)}${NAME[k]}</span>`;
+  // The board's rows: the lines this build counts.
+  const rowsOf = TARGETS.map((t, i) => ({ t, n: build.need[i] })).filter((r) => r.n > 0);
+  const boardRow = ({ t, n }) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
+      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j]?.[0], sp[j]?.[1])).join("") + extras[t.k].map(extraPip).join(""); })()}</div></div>`;
+  // One button per build with its best score, so you can see which suits your gear.
+  const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}</div>`;
   const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
   // What the collapsed piece list says, so a swap is never hidden.
   const swaps = SLOTS.filter((s) => res.picks[s] && !res.picks[s].equipped);
@@ -245,12 +260,12 @@ function render() {
   // Progress, beside Add a piece so it moves as you add: the score, what you wear now, the 18-line
   // board and what's still missing.
   $("progress").innerHTML = `<h2>Hologram lines</h2>
+    ${buildPick}
     ${seenAny
       ? `<div class="score"><span class="big">${nowScore}</span><span class="muted">/ ${TOTAL} equipped now</span></div>
     <p class="muted small"><b>${res.score}/${TOTAL}</b> possible with your best combo${res.score > nowScore ? ` <span class="pip up legend"></span> faint icons = pieces to swap in` : ""}</p>`
       : `<div class="score"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with the best combo</span></div>`}
-    <div class="board">${TARGETS.map((t) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
-      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: t.need }, (_, j) => cell(t.k, sp[j]?.[0], sp[j]?.[1])).join("") + extras[t.k].map(extraPip).join(""); })()}</div></div>`).join("")}</div>
+    <div class="board" style="grid-template-rows: repeat(${Math.ceil(rowsOf.length / 2)}, auto)">${rowsOf.map(boardRow).join("")}</div>
     ${gaps.length ? `<div class="hunt"><span class="label">Still missing · ${gaps.length}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}</div></div>` : `<p class="act on">All 18 ✓</p>`}
     ${jewelProgress(sockets, option, res)}`;
   if (typeof draft !== "undefined") $("add-panel").innerHTML = addForm();
@@ -271,11 +286,11 @@ function render() {
           // On a swap, the piece you have on now, right under the one to swap in.
           const nowRow = !showNow && wearing && !it.equipped ? `<div class="piece-now"><span class="wearing-now">↳ Equipped:</span> ${linesOf(wearing)}</div>` : "";
           return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span>
-            <span class="lines">${it.lines.map((k, j) => chip(k, !shown.counted[s][j])).join("") || `<span class="muted">no lines</span>`}</span>
+            <span class="lines">${it.lines.map((k, j) => (inBuild(k) ? chip(k, !shown.counted[s][j]) : offChip(k))).join("") || `<span class="muted">no lines</span>`}</span>
             <span class="piece-socks">${socks(it.sockets)}<span class="tag">${socketValue(it, state.classId).good}/3</span></span>
             <span class="piece-act">${action}</span></div>${nowRow}`;
         }).join("")}
-        <div class="piece totals"><span class="piece-slot">Sockets</span><span class="muted small">${(() => { const v3 = SLOTS.map((s) => shown.picks[s] && socketValue(shown.picks[s], state.classId)).filter(Boolean); return `${v3.reduce((n, x) => n + x.good, 0)}/18 usable · ${v3.filter((x) => x.prismatic).length}/${PRISMATIC_GOAL} prismatic pieces`; })()}</span></div>
+        <div class="piece totals"><span class="piece-slot">Sockets</span><span class="muted small">${(() => { const v3 = SLOTS.map((s) => shown.picks[s] && socketValue(shown.picks[s], state.classId)).filter(Boolean); return `${v3.reduce((n, x) => n + x.good, 0)}/18 usable · ${v3.filter((x) => x.prismatic).length}/${build.prismatic} prismatic pieces`; })()}</span></div>
       </div>
     </section>
 `;
@@ -283,14 +298,19 @@ function render() {
   // Your pieces: everything you've added, by slot, what you wear first. Each one says whether it's
   // equipped or in your best combo.
   const inBest = new Set(Object.values(res.picks).filter(Boolean).map((it) => it.id));
+  // Which builds' best combos each piece is in (the one you're looking at first and solid).
+  const buildTags = (it) => {
+    const ids = BUILD_IDS.filter((id) => inBuilds[it.id]?.includes(id));
+    return ids.length ? `<span class="build-tags" title="In the best combo for: ${ids.map((id) => BUILDS[id].name).join(", ")}">${ids.map((id) => `<span class="bt${id === build.id ? " on" : ""}">${BUILDS[id].short}</span>`).join("")}</span>` : "";
+  };
   // The best piece per slot to fuse your lines onto with an Orb (its jewel sockets), worth keeping.
   const forJewels = new Set(Object.values(sockets.picks).filter(Boolean).map((it) => it.id));
   const jewelTag = (it) => (!forJewels.has(it.id) ? ""
     : inBest.has(it.id) ? `<span class="act jewels" title="Perfect sockets and in your best combo: no Orb needed">Perfect jewels ✓</span>`
     : `<span class="act jewels" title="Perfect sockets for this slot (${socketNote(it, state.classId)}): keep it to move your lines onto with an Orb">For jewels</span>`);
   const list = [...state.items].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || b.equipped - a.equipped || inBest.has(b.id) - inBest.has(a.id));
-  const row = (it) => `<div class="bag-row${it.equipped ? " worn-row" : ""}" draggable="true" data-drag="${it.id}">
-      <div class="bag-top">${it.equipped ? `<span class="act on">Equipped ✓</span>` : inBest.has(it.id) ? `<span class="act swap">In best combo</span>` : forJewels.has(it.id) ? "" : `<span class="muted small">spare</span>`}${jewelTag(it)}${""}
+  const row = (it) => `<div class="bag-row${it.equipped ? " worn-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}" draggable="true" data-drag="${it.id}">
+      <div class="bag-top">${it.equipped ? `<span class="act on">Equipped ✓</span>` : inBest.has(it.id) ? `<span class="act swap">In best combo</span>` : forJewels.has(it.id) || inBuilds[it.id] ? "" : `<span class="muted small">spare</span>`}${buildTags(it)}${jewelTag(it)}
         <span class="bag-act">${it.equipped
           ? `<button class="equip-btn" data-unequip="${it.id}" title="Not wearing this any more">Unequip</button>`
           : `<button class="equip-btn" data-equip="${it.id}" title="You put this on in game">Equip</button>`}<button class="equip-btn" data-edit="${it.id}" title="Change its jewels, skills or slot">Edit</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
@@ -407,7 +427,7 @@ function addForm() {
     <div class="scan-zone${scan.busy ? " busy" : ""}" id="scan-zone" title="Paste (Ctrl+V), drop an image here, or click to pick one">
       <span class="scan-text" id="scan-text">${scan.text}</span>
       <div class="scan-bar"><div class="scan-fill" id="scan-fill" style="width:${scan.pct}%"></div></div>
-      <input type="file" id="scan-file" accept="image/*" hidden>
+      <input type="file" id="scan-file" accept="image/*" multiple hidden>
     </div>
     <div class="add-body"><div class="add-picks">
     <div class="pick-pair">${STEPS.slice(0, 2).map((s2) => `<section class="pick-step">
@@ -418,7 +438,7 @@ function addForm() {
       <div class="step-head">${STEP_NAME.line} <span class="muted small">${draft.lines.length}/3${draft.lines.length ? ` · <button class="linkish" data-clear="line">clear</button>` : ""}</span></div>
       <div class="picker picker-grid">${OPTIONS.line.map((v) => option("line", v)).join("")}</div>
     </section>
-    <section class="pick-step"><div class="step-head muted">Not BiS</div><div class="picker minor">${["boss", "ied", "dmg", OTHER].map((v) => option("line", v)).join("")}</div></section>
+    <section class="pick-step"><div class="step-head muted">Not BiS</div><div class="picker minor">${["boss", "ied", OTHER].map((v) => option("line", v)).join("")}</div></section>
     </div><div class="add-side">${mock}
     <div class="add-row add-under">
       <span class="add-msg muted small">${addMsg}</span>
@@ -438,6 +458,12 @@ document.addEventListener("click", (e) => {
   if (t.id !== "clear") confirmClear = false;
   if (t.dataset.themePick) return setTheme(t.dataset.themePick);
   if (presetAction(t)) return;
+  if (t.dataset.build && BUILD_IDS.includes(t.dataset.build)) {
+    state.build = t.dataset.build;
+    save();
+    render();
+    return;
+  }
   if (t.id === "simple-toggle") {
     state.simple = !state.simple;
     save();
@@ -507,7 +533,7 @@ function addPiece() {
     render();
     return;
   }
-  remember({ slot: draft.slot, cls: classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: Boolean(draft.equipped), stats: `hand-${Date.now()}` });
+  remember({ slot: draft.slot, cls: draft.cls ?? classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: Boolean(draft.equipped), stats: `hand-${Date.now()}` });
   addMsg = `Added ${draft.equipped ? "your equipped " : draft.slot === "Shoes" || draft.slot === "Gloves" ? "" : "a "}${draft.slot.toLowerCase()} ✓`;
   setStatus(addMsg);
   draft = freshDraft();
@@ -540,6 +566,11 @@ async function imageFromFile(file) {
   ctx.drawImage(bmp, 0, 0);
   return ctx.getImageData(0, 0, c.width, c.height);
 }
+async function scanFiles(list) {
+  const files = [...(list ?? [])].filter((f) => f.type.startsWith("image/"));
+  if (files.length > 1) return addFromScreenshots(files);
+  return scanFile(files[0]);
+}
 async function scanFile(file) {
   if (!file?.type.startsWith("image/")) return;
   try {
@@ -555,14 +586,14 @@ document.addEventListener("dragover", (e) => {
 document.addEventListener("drop", (e) => {
   if (!e.target.closest?.("#scan-zone")) return;
   e.preventDefault();
-  scanFile(e.dataTransfer?.files?.[0]);
+  scanFiles(e.dataTransfer?.files);
 });
 document.addEventListener("click", (e) => {
   if (e.target.closest?.("#scan-zone") && !e.target.closest("input")) $("scan-file")?.click();
 });
 document.addEventListener("change", (e) => {
   if (e.target.id !== "scan-file") return;
-  scanFile(e.target.files?.[0]);
+  scanFiles(e.target.files);
   e.target.value = "";
 });
 
@@ -654,7 +685,7 @@ function findPieceTooltip(img) {
 }
 
 // The scan area at the top of Add a piece: what to do, and a bar that fills while it reads.
-const SCAN_HINT = "Hover an item in the game, press <b>PrtScn</b>, then <b>Ctrl+V</b> here (or drop / click to pick a screenshot). It fills in the piece below; check it and click Add.";
+const SCAN_HINT = "Hover an item in the game, press <b>PrtScn</b>, then <b>Ctrl+V</b> here: it fills in the piece below to check and Add. Or drop / pick <b>several screenshots</b> at once to add them all.";
 const scan = { text: SCAN_HINT, pct: 0, busy: false };
 function setScan(text, pct, busy = scan.busy) {
   Object.assign(scan, { text, pct, busy });
@@ -663,59 +694,56 @@ function setScan(text, pct, busy = scan.busy) {
   $("scan-zone")?.classList.toggle("busy", busy);
 }
 
-async function fillFromScreenshot(img) {
-  if (reading) return;
-  setScan("Finding the item…", 8, true);
+// Read one screenshot: the item's equipment type, skill lines and jewels, or why it couldn't.
+// Returns { slot, lines, sockets, equipped } (slot may be null), { skip } for gear with no lines,
+// { socketsOnly } for a snip of just the item picture, or null when there's no item at all.
+async function readPiece(img, { quiet = false } = {}) {
+  const say = (text, pct) => { if (!quiet) setScan(text, pct, true); };
+  say("Finding the item…", 8);
   const found = findPieceTooltip(img);
   if (!found) {
-    // A snip of just the item picture: fill in its jewels, the rest is up to you.
     const icon = findIcon(img, undefined, { anywhere: true });
     const sockets = icon ? findSockets(img, icon).slice(0, 3) : [];
-    if (sockets.length) {
-      draft = { ...draft, sockets };
-      scan.text = "Read the jewels from the item picture ✓ Pick its equipment and skills, then Add.";
-      scan.pct = 100;
-      scan.busy = false;
-      render();
-      return;
-    }
-    setScan("Couldn't find an item in that screenshot. Hover the item in the game, then press PrtScn and Ctrl+V here.", 0, false);
-    return;
+    return sockets.length ? { socketsOnly: sockets } : null;
   }
+  const { box, sc } = found;
+  const top = Math.max(0, box.y - Math.round(40 * sc)); // the title can sit just above the border
+  const area = { x: box.x, y: top, width: box.width, height: box.y + box.height - top };
+  const sockets = findSockets(img, findIcon(img, box)).slice(0, 3);
+  say("Reading the jewels…", 15);
+  // Read the text enlarged to 3x normal size, smoothly, before the black-and-white cut.
+  const big = resizeImage(cropImage(img, area), 3 / sc);
+  const prepared = prepareForOcr(big, { x: 0, y: 0, width: big.width, height: big.height }, { scale: 1 });
+  const c = document.createElement("canvas");
+  c.width = prepared.width;
+  c.height = prepared.height;
+  c.getContext("2d").putImageData(new ImageData(prepared.data, prepared.width, prepared.height), 0, 0);
+  const worker = await getReader();
+  say("Reading the skills…", 50);
+  const parsed = parseTooltip((await worker.recognize(c)).data.text);
+  if (!parsed.slot && parsed.skip) return { skip: parsed.skip };
+  const known = new Set([...OPTIONS.line, ...FILLERS.map((f) => f.k), OTHER]);
+  return { slot: parsed.slot ?? null, cls: CLASSES.includes(parsed.cls) ? parsed.cls : null, sockets, lines: (parsed.lines ?? []).filter((k) => known.has(k)).slice(0, 3), equipped: Boolean(parsed.equipped) };
+}
+
+// One screenshot fills in Add a piece, for you to check and Add.
+async function fillFromScreenshot(img) {
+  if (reading) return;
   reading = true;
   try {
-    const { box, sc } = found;
-    const top = Math.max(0, box.y - Math.round(40 * sc)); // the title can sit just above the border
-    const area = { x: box.x, y: top, width: box.width, height: box.y + box.height - top };
-    const icon = findIcon(img, box);
-    const sockets = findSockets(img, icon).slice(0, 3);
-    setScan("Reading the jewels…", 15, true);
-    // Read the text enlarged to 3x normal size, smoothly, before the black-and-white cut.
-    const big = resizeImage(cropImage(img, area), 3 / sc);
-    const prepared = prepareForOcr(big, { x: 0, y: 0, width: big.width, height: big.height }, { scale: 1 });
-    const c = document.createElement("canvas");
-    c.width = prepared.width;
-    c.height = prepared.height;
-    c.getContext("2d").putImageData(new ImageData(prepared.data, prepared.width, prepared.height), 0, 0);
-    const worker = await getReader();
-    setScan("Reading the skills…", 50, true);
-    const parsed = parseTooltip((await worker.recognize(c)).data.text);
-    if (!parsed.slot && parsed.skip) {
-      setScan(`That's a ${parsed.skip.toLowerCase()}: it can't roll hologram lines.`, 0, false);
-      return;
+    const r = await readPiece(img);
+    if (!r) return setScan("Couldn't find an item in that screenshot. Hover the item in the game, then press PrtScn and Ctrl+V here.", 0, false);
+    if (r.skip) return setScan(`That's a ${r.skip.toLowerCase()}: it can't roll hologram lines.`, 0, false);
+    if (r.socketsOnly) {
+      draft = { ...draft, sockets: r.socketsOnly };
+      scan.text = "Read the jewels from the item picture ✓ Pick its equipment and skills, then Add.";
+    } else {
+      draft = { ...freshDraft(), slot: r.slot, cls: r.cls, sockets: r.sockets, lines: r.lines, equipped: r.equipped };
+      scan.text = r.slot
+        ? "Filled in ✓ Check it below, fix anything with a click, then Add. Paste the next one any time."
+        : "Read the jewels and skills, but not the equipment type: click it below, then Add.";
     }
-    const known = new Set([...OPTIONS.line, ...FILLERS.map((f) => f.k), OTHER]);
-    draft = {
-      ...freshDraft(),
-      slot: parsed.slot ?? null,
-      sockets,
-      lines: (parsed.lines ?? []).filter((k) => known.has(k)).slice(0, 3),
-      equipped: Boolean(parsed.equipped),
-    };
     addMsg = "";
-    scan.text = parsed.slot
-      ? "Filled in ✓ Check it below, fix anything with a click, then Add. Paste the next one any time."
-      : "Read the jewels and skills, but not the equipment type: click it below, then Add.";
     scan.pct = 100;
     scan.busy = false;
     render();
@@ -724,6 +752,40 @@ async function fillFromScreenshot(img) {
   } finally {
     reading = false;
   }
+}
+
+// Several screenshots at once: each one that reads becomes a piece straight away, and the new pieces
+// are highlighted in Your pieces so you can check them (each has Edit).
+let recentIds = new Set();
+async function addFromScreenshots(files) {
+  if (reading) return;
+  reading = true;
+  const added = [];
+  const failed = [];
+  recentIds = new Set();
+  try {
+    for (const [i, file] of files.entries()) {
+      setScan(`Reading ${i + 1} of ${files.length}…`, Math.round((i / files.length) * 100), true);
+      try {
+        const r = await readPiece(await imageFromFile(file), { quiet: true });
+        if (r?.slot) {
+          // The class the tooltip names (another class's gear stays out of your best combo).
+          const it = remember({ slot: r.slot, cls: r.cls ?? classOption(state.classId).classes[0], lines: r.lines, sockets: r.sockets, equipped: r.equipped, stats: `shot-${Date.now()}-${i}` });
+          recentIds.add(it.id);
+          added.push(it);
+        } else failed.push(file.name || `#${i + 1}`);
+      } catch {
+        failed.push(file.name || `#${i + 1}`);
+      }
+    }
+  } finally {
+    reading = false;
+  }
+  save();
+  scan.text = `Added ${added.length} piece${added.length === 1 ? "" : "s"} from ${files.length} screenshots ✓${failed.length ? ` · ${failed.length} couldn't be read (${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}): add those by hand` : ""}. The new ones are highlighted in Your pieces: check them, and Edit anything that's off.`;
+  scan.pct = 100;
+  scan.busy = false;
+  render();
 }
 
 // ---------- jewel progress ----------
@@ -748,7 +810,7 @@ function jewelProgress(sockets, option, res) {
   }).join("");
   return `<div class="jewel-progress">
       <div class="jp-head"><span class="label">Jewel sockets</span></div>
-      <div class="score"><span class="big jp-big">${perfect}</span><span class="muted">/ 6 perfect pieces · <b>${Math.min(sockets.prismatic, PRISMATIC_GOAL)}/${PRISMATIC_GOAL}</b> prismatic</span></div>
+      <div class="score"><span class="big jp-big">${perfect}</span><span class="muted">/ 6 perfect pieces · <b>${Math.min(sockets.prismatic, sockets.goal)}/${sockets.goal}</b> prismatic</span></div>
       <div class="jp-board">${rows}</div>
       <p class="muted small">Perfect = 3 sockets you can use (${option.cls}: ${option.colours.join(", ")}, or prismatic). Orbs are rare, so only these count. ✓ = in your best combo already: no Orb needed.</p>
     </div>`;

@@ -174,3 +174,41 @@ test("Leap, White Hole and Registry come before the rest of the 18", () => {
   const res = solve(items);
   assert.equal(res.picks.Hat.id, "wh-hat");
 });
+
+test("Original build aims for 4 prismatic pieces", () => {
+  const S = ["Hat", "Top", "Bottom", "Shoes", "Gloves", "Cape"];
+  const prism = S.map((s) => item(s, "", { sockets: ["prismatic", "blue", "blue"] }));
+  const stat = S.map((s) => item(s, "", { sockets: ["blue", "blue", "blue"] }));
+  assert.equal(socketSet([...prism, ...stat], "Magician").goal, 4);
+});
+
+test("EU build: 3 Crit DMG and 3 Damage, no class lines", () => {
+  const set = [
+    item("Hat", "leap wh crit"),
+    item("Top", "leap reg dmg"),
+    item("Bottom", "leap atk crit"),
+    item("Shoes", "wh reg dmg"),
+    item("Gloves", "wh atk crit"),
+    item("Cape", "reg atk dmg"),
+  ];
+  const eu = solve(set, "endgame", "eu");
+  assert.equal(eu.score, 18);
+  assert.deepEqual(missing(eu), []);
+  // Damage never counts in the original build, and class lines never count in EU.
+  assert.equal(solve(set).score, 13);
+  const withClass = solve([item("Hat", "leap mage pirate")], "endgame", "eu");
+  assert.equal(withClass.score, 1);
+  assert.deepEqual(missing(withClass).filter((k) => ["mage", "pirate", "archer"].includes(k)), []);
+  assert.equal(socketSet(set, "Magician", "eu").goal, 6);
+});
+
+test("each piece says which builds' best combos it's in", () => {
+  const classHat = item("Hat", "leap wh mage", { id: "class-hat" });
+  const dmgHat = item("Hat", "leap wh dmg", { id: "dmg-hat" });
+  const top = item("Top", "leap reg atk", { id: "top" });
+  const { inBuilds, all } = verdicts([classHat, dmgHat, top]);
+  assert.deepEqual(Object.keys(all).sort(), ["eu", "original"]);
+  assert.deepEqual(inBuilds["class-hat"], ["original"]);
+  assert.deepEqual(inBuilds["dmg-hat"], ["eu"]);
+  assert.deepEqual(inBuilds.top.sort(), ["eu", "original"]);
+});

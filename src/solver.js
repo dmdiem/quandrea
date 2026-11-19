@@ -6,14 +6,31 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS, OTHER } from "./parse.js?v=58";
+import { SLOTS, TARGETS, OTHER } from "./parse.js?v=59";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
-const NEED = TARGETS.map((t) => t.need);
-const BASE = NEED.map((n) => n + 1);
+
+// Two builds, both 18 lines:
+//   original: 3 Leap, 3 White Hole, 3 Registry, 3 ATT, 1 Crit DMG, 1 of each of the 5 classes; 4 prismatics
+//   eu (courtesy of Shapaz, via the 3L Set Solver): 3 each of Leap, White Hole, Registry, ATT, Crit DMG
+//         and Damage, no class lines (they have no passive Final Damage); a prismatic on every piece
+const needs = (over) => TARGETS.map((t) => over[t.k] ?? t.need);
+const NO_CLASSES = { archer: 0, warrior: 0, thief: 0, mage: 0, pirate: 0 };
+export const BUILDS = {
+  original: { id: "original", name: "Original BiS", short: "Original", need: needs({}), prismatic: 4,
+    about: "3 each of Leap, White Hole, Registry, ATT; 1 Crit DMG; all 5 class lines; 4 prismatics" },
+  eu: { id: "eu", name: "EU BiS", short: "EU", need: needs({ crit: 3, dmg: 3, ...NO_CLASSES }), prismatic: 6,
+    about: "Courtesy of Shapaz: 3 each of Leap, White Hole, Registry, ATT, Crit DMG and Damage; no class lines" },
+};
+export const BUILD_IDS = Object.keys(BUILDS);
+export const buildOf = (id) => BUILDS[id] ?? BUILDS.original;
+// Tallies are packed into one number, one digit per line, sized for the biggest need of any build.
+const MAXNEED = TARGETS.map((_, i) => Math.max(...Object.values(BUILDS).map((b) => b.need[i])));
+const BASE = MAXNEED.map((n) => n + 1);
 const MUL = [];
 BASE.reduce((m, b, i) => ((MUL[i] = m), m * b), 1);
-export const TOTAL = NEED.reduce((a, b) => a + b, 0); // 18
+const NEED = BUILDS.original.need;
+export const TOTAL = 18;
 
 const digit = (st, i) => Math.floor(st / MUL[i]) % BASE[i];
 export const counts = (st) => NEED.map((_, i) => digit(st, i));
@@ -25,10 +42,13 @@ const core = (st) => CORE.reduce((n, i) => n + digit(st, i), 0);
 const BIG = ["leap", "wh", "reg"].map((k) => IDX[k]);
 const big = (st) => BIG.reduce((n, i) => n + digit(st, i), 0);
 
-function add(st, lines) {
+// Can this line still count in this build's tally?
+const counts1 = (st, i, b) => digit(st, i) < b.need[i];
+
+function add(st, lines, b = BUILDS.original) {
   for (const k of lines) {
     const i = IDX[k];
-    if (i !== undefined && digit(st, i) < NEED[i]) st += MUL[i];
+    if (i !== undefined && counts1(st, i, b)) st += MUL[i];
   }
   return st;
 }
@@ -37,7 +57,8 @@ function add(st, lines) {
 export const useful = (item) => item.lines.filter((k) => IDX[k] !== undefined).length;
 
 // items: [{ id, slot, lines, equipped? }]. Returns the picks and how good they are.
-export function solve(items, mode = "endgame") {
+export function solve(items, mode = "endgame", build = "original") {
+  const b = buildOf(build);
   const bySlot = SLOTS.map((s) => items.filter((it) => it.slot === s));
   // Map of tally -> { score, prev, item }. score = how much we like the path so far (lines, equipped).
   let layer = new Map([[0, { extra: 0 }]]);
@@ -46,7 +67,7 @@ export function solve(items, mode = "endgame") {
     const next = new Map();
     for (const [st, info] of layer) {
       for (const it of opts.length ? opts : [null]) {
-        const ns = it ? add(st, it.lines) : st;
+        const ns = it ? add(st, it.lines, b) : st;
         // early: every line counts most. endgame: the 18 come first, then more lines in total (an
         // extra Mage line is still +1 to that skill, up to Lv. 8), then what you already wear.
         const extra = info.extra + (it ? it.lines.length * (mode === "early" ? 100 : 10) + (it.equipped ? 1 : 0) : 0);
@@ -59,7 +80,7 @@ export function solve(items, mode = "endgame") {
   }
   // Leap, White Hole and Registry first (their damage is why 3 of each is BiS); then the most of the
   // 18; then ATT & M.ATT; then more lines in total; then what you already wear.
-  const value = (st, e) => (mode === "early" ? e.extra * 100 + tally(st) * 10 : big(st) * 1e7 + tally(st) * 1e5 + core(st) * 1e3 + e.extra);
+  const value = (st, e) => (mode === "early" ? e.extra * 100 + tally(st) * 10 : big(st) * 1e9 + tally(st) * 1e7 + core(st) * 1e5 + e.extra);
   let bestSt = 0;
   let best = null;
   for (const [st, e] of layer) if (!best || value(st, e) > value(bestSt, best)) [bestSt, best] = [st, e];
@@ -71,14 +92,14 @@ export function solve(items, mode = "endgame") {
     st = e.prev;
   }
   // Which picked lines count toward the 18 (a 4th Leap or a 2nd Pirate is an extra).
-  const run = NEED.map(() => 0);
   const counted = {};
+  let run = 0;
   for (const s of SLOTS) {
     const it = picks[s];
-    counted[s] = it ? it.lines.map((k) => { const i = IDX[k]; if (i === undefined || run[i] >= NEED[i]) return false; run[i]++; return true; }) : [];
+    counted[s] = it ? it.lines.map((k) => { const i = IDX[k]; if (i === undefined || !counts1(run, i, b)) return false; run += MUL[i]; return true; }) : [];
   }
   const lines = SLOTS.reduce((n, s) => n + (picks[s]?.lines.length ?? 0), 0);
-  return { picks, counted, counts: counts(bestSt), score: tally(bestSt), lines };
+  return { picks, counted, counts: counts(bestSt), score: tally(bestSt), lines, build: b.id };
 }
 
 // "One more piece finishes it": for each slot, the lines a single new piece there would need to
@@ -113,7 +134,10 @@ export function onePieceAway(items) {
 }
 
 // What's still missing from the 18, as line keys (e.g. ["wh", "wh", "mage"]).
-export const missing = (res) => TARGETS.flatMap((t, i) => Array(t.need - res.counts[i]).fill(t.k));
+export function missing(res) {
+  const b = buildOf(res.build);
+  return TARGETS.flatMap((t, i) => Array(Math.max(0, b.need[i] - res.counts[i])).fill(t.k));
+}
 
 // ---- Sockets (after the 18 lines) ----
 // Jewels go in sockets. Once the 18 lines are done, you farm a second set with the right sockets and
@@ -172,7 +196,8 @@ export function socketNote(item, classId) {
 
 // The best socket piece per slot, aiming for 4 slots with a prismatic. Returns
 // { picks: { slot: item|null }, good (of 18), prismatic (pieces with one) }.
-export function socketSet(items, classId) {
+export function socketSet(items, classId, build = "original") {
+  const goal = buildOf(build).prismatic;
   const best = SLOTS.map((s) => {
     const mine = items
       .filter((it) => it.slot === s)
@@ -195,8 +220,8 @@ export function socketSet(items, classId) {
       if (want?.v.prismatic) prism++;
     });
     if (!ok) continue;
-    const rank = Math.min(prism, PRISMATIC_GOAL) * 100 + good;
-    if (!plan || rank > plan.rank) plan = { rank, picks, good, prismatic: prism };
+    const rank = Math.min(prism, goal) * 100 + good;
+    if (!plan || rank > plan.rank) plan = { rank, picks, good, prismatic: prism, goal };
   }
   return plan;
 }
@@ -207,11 +232,15 @@ export function socketSet(items, classId) {
 //         - "spare":   all 3 lines are on the list (worth holding while you farm)
 //         - "sockets": the best socket piece for its slot, to fuse your lines onto
 //   trash - anything else, and gear for another class
-export function verdicts(items, { classId = "Magician", mode = "endgame" } = {}) {
+export function verdicts(items, { classId = "Magician", mode = "endgame", build = "original" } = {}) {
   const { classes } = classOption(classId);
   const mine = items.filter((it) => classes.includes(it.cls));
-  const res = solve(mine, mode);
-  const sockets = socketSet(mine, classId);
+  const res = solve(mine, mode, build);
+  const sockets = socketSet(mine, classId, build);
+  // Every build's best combo, so each piece can say which ones it's in.
+  const all = Object.fromEntries(BUILD_IDS.map((id) => [id, id === res.build ? res : solve(mine, mode, id)]));
+  const inBuilds = {};
+  for (const [id, r] of Object.entries(all)) for (const it of Object.values(r.picks)) if (it) (inBuilds[it.id] ??= []).push(id);
   const picked = new Set(Object.values(res.picks).filter(Boolean).map((it) => it.id));
   const donor = new Set(Object.values(sockets.picks).filter(Boolean).map((it) => it.id));
   const out = {};
@@ -222,5 +251,5 @@ export function verdicts(items, { classId = "Magician", mode = "endgame" } = {})
     else if (donor.has(it.id)) out[it.id] = { verdict: "keep", reason: "sockets", why: `For its sockets: ${socketNote(it, classId)}` };
     else out[it.id] = { verdict: "trash", why: useful(it) ? "The best combo has a better piece for this slot" : "No lines on the list" };
   }
-  return { res, sockets, verdicts: out };
+  return { res, sockets, verdicts: out, all, inBuilds };
 }

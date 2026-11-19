@@ -4,13 +4,15 @@
 export const CLASSES = ["Magician", "Warrior", "Bowman", "Thief", "Pirate"];
 export const SLOTS = ["Hat", "Top", "Bottom", "Shoes", "Gloves", "Cape"];
 
-// The 18 lines a finished set wants: 3 each of four, and one of each class plus Crit DMG.
+// Every line some build counts. need = the Original BiS (3 each of four, one of each class plus Crit
+// DMG); the other builds (solver.js BUILDS) change the counts. Damage only counts in the EU build.
 export const TARGETS = [
   { k: "leap", name: "Leap", need: 3 },
   { k: "wh", name: "White Hole", need: 3 },
   { k: "reg", name: "Registry", need: 3 },
   { k: "atk", name: "ATT & M.ATT", need: 3 },
   { k: "crit", name: "Crit DMG", need: 1 },
+  { k: "dmg", name: "Damage", need: 0 },
   // The class lines, strongest to weakest (their hologram skill damage in the v.272 patch notes;
   // the same order for every job).
   { k: "archer", name: "Bowman", need: 1 },
@@ -20,11 +22,10 @@ export const TARGETS = [
   { k: "pirate", name: "Pirate", need: 1 },
 ];
 export const OTHER = "other"; // a line we don't recognise
-// Lines that roll but aren't among the 18: shown by name, never counted.
+// Lines that roll but no build counts: shown by name, never counted.
 export const FILLERS = [
   { k: "boss", name: "Boss DMG" },
   { k: "ied", name: "Ignore DEF" },
-  { k: "dmg", name: "Damage" },
 ];
 export const isTarget = (k) => TARGETS.some((t) => t.k === k);
 const FILLER_RE = [
