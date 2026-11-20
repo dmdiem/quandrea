@@ -259,3 +259,12 @@ test("a piece fits a build's perfect set only if all 3 of its lines are ones the
   assert.equal(fitsBuild(item("Hat", "atk crit boss"), "eu"), false);
 });
 
+
+test("on a tie, the piece with more sockets your class can use wins", () => {
+  const plain = item("Bottom", "leap wh", { id: "plain", sockets: ["red", "red"] });
+  const blue = item("Bottom", "leap wh", { id: "blue", sockets: ["blue", "blue", "blue"] });
+  assert.equal(solve([plain, blue], "endgame", "original", "Magician").picks.Bottom.id, "blue");
+  // ...but never over a better line score.
+  const better = item("Bottom", "leap wh reg", { id: "better", sockets: [] });
+  assert.equal(solve([plain, blue, better], "endgame", "original", "Magician").picks.Bottom.id, "better");
+});

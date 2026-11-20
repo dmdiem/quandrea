@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=70";
+import { SLOTS, TARGETS } from "./parse.js?v=71";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); // strongest first (v.272)
@@ -88,7 +88,8 @@ export const fitsBuild = (item, id) => item.lines.length === 3 && item.lines.eve
 export const useful = (item) => item.lines.filter((k) => IDX[k] !== undefined).length;
 
 // items: [{ id, slot, lines }]. Returns the picks and how good they are.
-export function solve(items, mode = "endgame", build = "original") {
+// classId (optional): on a tie, the piece with more sockets your class can use wins (no Orb needed).
+export function solve(items, mode = "endgame", build = "original", classId = null) {
   const b = buildOf(build);
   const bySlot = SLOTS.map((s) => items.filter((it) => it.slot === s));
   // Map of tally -> { score, prev, item }. score = how much we like the path so far (more lines).
@@ -101,7 +102,8 @@ export function solve(items, mode = "endgame", build = "original") {
         const ns = it ? add(st, it.lines, b) : st;
         // early: every line counts most. endgame: the 18 come first, then more lines in total (an
         // extra Mage line is still +1 to that skill, up to Lv. 8).
-        const extra = info.extra + (it ? it.lines.length * (mode === "early" ? 100 : 10) : 0);
+        const sockets = it && classId ? socketValue(it, classId).good : 0;
+        const extra = info.extra + (it ? it.lines.length * (mode === "early" ? 1000 : 100) + sockets : 0);
         const cur = next.get(ns);
         if (!cur || extra > cur.extra) next.set(ns, { extra, prev: st, item: it, slot: si });
       }
@@ -110,7 +112,7 @@ export function solve(items, mode = "endgame", build = "original") {
     layer = next;
   }
   // Leap, White Hole and Registry first (their damage is why 3 of each is BiS); then the most of the
-  // 18; then ATT & M.ATT; then more lines in total.
+  // 18; then ATT & M.ATT; then more lines in total; then more usable sockets.
   const value = (st, e) => (mode === "early" ? e.extra * 100 + tally(st) * 10 : big(st) * 1e9 + tally(st) * 1e7 + core(st) * 1e5 + e.extra);
   let bestSt = 0;
   let best = null;
@@ -276,10 +278,10 @@ export function socketSet(items, classId, build = "original") {
 export function verdicts(items, { classId = "Magician", mode = "endgame", build = "original" } = {}) {
   const { classes } = classOption(classId);
   const mine = items.filter((it) => classes.includes(it.cls));
-  const res = solve(mine, mode, build);
+  const res = solve(mine, mode, build, classId);
   const sockets = socketSet(mine, classId, build);
   // Every build's best combo, so each piece can say which ones it's in.
-  const all = Object.fromEntries(BUILD_IDS.map((id) => [id, id === res.build ? res : solve(mine, mode, id)]));
+  const all = Object.fromEntries(BUILD_IDS.map((id) => [id, id === res.build ? res : solve(mine, mode, id, classId)]));
   const inBuilds = {};
   for (const [id, r] of Object.entries(all)) for (const it of Object.values(r.picks)) if (it) (inBuilds[it.id] ??= []).push(id);
   const picked = new Set(Object.values(res.picks).filter(Boolean).map((it) => it.id));
