@@ -253,6 +253,5 @@ test("Flex: when the 5 any spots overflow, a class line is left over, not Crit D
   assert.equal(res.flex, 5);
   assert.equal(res.counts[TARGETS.findIndex((t) => t.k === "crit")], 3);
   const left = Object.entries(res.counted).flatMap(([s, c]) => c.map((ok, j) => (!ok ? res.picks[s].lines[j] : null)).filter(Boolean));
-  assert.equal(left.length, 1);
-  assert.ok(["mage", "thief", "pirate", "archer"].includes(left[0]));
+  assert.deepEqual(left, ["pirate"]); // the weakest class line is the one left over
 });

@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=65";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=65";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=65";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=65";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=65";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=65";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=66";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=66";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=66";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=66";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=66";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=66";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows

@@ -6,10 +6,10 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=65";
+import { SLOTS, TARGETS } from "./parse.js?v=66";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
-const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]);
+const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); // strongest first (v.272)
 
 // Three builds, all 18 lines (buttons in this order: General, Flex, Bossing):
 //   original ("General", the default): 3 Leap, 3 White Hole, 3 Registry, 3 ATT, 1 Crit DMG, 1 of each
@@ -123,7 +123,8 @@ export function solve(items, mode = "endgame", build = "original") {
   // take the spots first, so a class line is the one left over.
   const counted = Object.fromEntries(SLOTS.map((s) => [s, (picks[s]?.lines ?? []).map(() => false)]));
   let run = 0;
-  const passes = b.flexCap ? [(k) => !CLASS_KEYS.has(k), (k) => CLASS_KEYS.has(k)] : [() => true];
+  // (Then the class lines strongest first, so the weakest is the one left over.)
+  const passes = b.flexCap ? [(k) => !CLASS_KEYS.has(k), ...[...CLASS_KEYS].map((c) => (k) => k === c)] : [() => true];
   for (const pass of passes)
     for (const s of SLOTS)
       picks[s]?.lines.forEach((k, j) => {
