@@ -659,3 +659,8 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 .build-pick button b { white-space: nowrap; }
 .custom-scores { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; margin: -2px 0 10px; }
 .board .lv { font-size: 12px; font-weight: 700; color: var(--holo-ink); margin-left: 6px; min-width: 34px; align-self: center; }
+/* Another class's gear: a clear warning on the piece */
+.class-warn { margin: 0 0 6px; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; color: var(--trash); background: color-mix(in srgb, var(--trash) 12%, transparent); border: 1px solid color-mix(in srgb, var(--trash) 45%, transparent); }
+.class-warn .linkish { margin-left: 6px; font-weight: 600; }
+.bag-row.other-class .lines, .bag-row.other-class .socks { opacity: .55; }
+.mock-tip .class-warn { margin: 4px 0 6px; text-align: left; }

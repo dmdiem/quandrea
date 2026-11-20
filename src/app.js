@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=76";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=76";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=76";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=76";
-import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=76";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=76";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=77";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=77";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=77";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=77";
+import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=77";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=77";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -312,10 +312,13 @@ function render() {
   const status = (it) => (custom ? (inBest.has(it.id) ? `<span class="act on">In use ✓</span>` : mine.has(it.cls) ? `<button class="act swap" data-use="${it.id}" title="Put this in your Custom outfit">Use</button>` : "")
     : inBest.has(it.id) ? `<span class="act on" title="Best in slot for ${build.name}">BiS ✓</span>`
     : forJewels.has(it.id) || BUILD_IDS.some((id) => fitsBuild(it, id)) ? "" : `<span class="muted small">spare</span>`);
-  const row = (it) => `<div class="bag-row${inBest.has(it.id) ? " best-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}">
-      <div class="bag-top">${status(it)}${buildTags(it)}${jewelTag(it)}
+  // Another class's gear never counts: say so loudly, with a one-click fix for a misread title.
+  const notMine = (it) => !option.classes.includes(it.cls);
+  const classWarn = (it) => (notMine(it) ? `<div class="class-warn">⚠ ${it.cls ?? "Unknown"} gear: not counted for you <button class="linkish" data-mine="${it.id}" title="The screenshot's class was misread: make it ${option.cls} gear">It's ${option.cls} gear</button></div>` : "");
+  const row = (it) => `<div class="bag-row${inBest.has(it.id) ? " best-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}${notMine(it) ? " other-class" : ""}">
+      ${classWarn(it)}<div class="bag-top">${status(it)}${buildTags(it)}${jewelTag(it)}
         <span class="bag-act"><button class="equip-btn" data-edit="${it.id}" title="Change its jewels, skills or slot">Edit</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
-      <div class="lines">${linesOf(it)}${!option.classes.includes(it.cls) ? `<span class="tag">${it.cls ?? "?"}</span>` : ""}</div>
+      <div class="lines">${linesOf(it)}</div>
       ${socks(it.sockets)}
     </div>`;
   $("items").innerHTML = `
@@ -382,6 +385,7 @@ function addForm() {
     : `<span class="mt-line empty">skill line ${i + 1}</span>`)).join("");
   const mock = `<div class="mock-tip" aria-label="The piece so far">
       <div class="mt-name">${draft.slot ? `${draft.slot}` : "Pick the equipment"}</div>
+      ${draft.cls && !classOption(state.classId).classes.includes(draft.cls) ? `<div class="class-warn">⚠ ${draft.cls} gear: not counted for you <button class="linkish" data-draft-mine="1" title="The screenshot's class was misread">It's ${classOption(state.classId).cls} gear</button></div>` : ""}
       <div class="mt-frame">
         <div class="mt-socks">${mockSocks}</div>
         <div class="mt-pic">${draft.slot ? slotIcon(draft.slot) : `<span class="mt-q">?</span>`}</div>
@@ -425,6 +429,22 @@ document.addEventListener("click", (e) => {
   if (t.id !== "clear") confirmClear = false;
   if (t.dataset.themePick) return setTheme(t.dataset.themePick);
   if (presetAction(t)) return;
+  if (t.dataset.draftMine) {
+    draft.cls = null; // Add then uses your class
+    render();
+    return;
+  }
+  if (t.dataset.mine) {
+    const it = state.items.find((x) => x.id === t.dataset.mine);
+    if (it) {
+      it.cls = classOption(state.classId).cls;
+      it.key = [it.slot, it.cls, it.lines.join(","), String(it.key ?? "").split("|").at(-1)].join("|");
+      setStatus(`Your ${it.slot.toLowerCase()} is ${it.cls} gear now ✓`);
+    }
+    save();
+    render();
+    return;
+  }
   if (t.dataset.use) {
     const it = state.items.find((x) => x.id === t.dataset.use);
     if (it) state.custom = { ...state.custom, [it.slot]: it.id };
