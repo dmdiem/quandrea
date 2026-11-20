@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=73";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=73";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=73";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=73";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=73";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=73";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=74";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=74";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=74";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=74";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=74";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=74";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -383,8 +383,9 @@ function addForm() {
     </div>`;
   return `<div class="add-manual" id="add-manual">
     <h2>${draft.editId ? "Edit a piece" : "Add a piece"}</h2>
-    <div class="scan-zone${scan.busy ? " busy" : ""}" id="scan-zone" title="Paste (Ctrl+V), drop an image here, or click to pick one">
-      <span class="scan-text" id="scan-text">${scan.text}</span>
+    <div class="scan-zone${scan.busy ? " busy" : ""}" id="scan-zone" title="Paste (Ctrl+V) or drop screenshots here">
+      <div class="scan-row"><span class="scan-text" id="scan-text">${scan.text}</span>
+        <button type="button" class="ghost scan-pick" id="scan-pick" title="Pick one or more screenshot files">Upload…</button></div>
       <div class="scan-bar"><div class="scan-fill" id="scan-fill" style="width:${scan.pct}%"></div></div>
       <input type="file" id="scan-file" accept="image/*" multiple hidden>
     </div>
@@ -552,7 +553,8 @@ document.addEventListener("drop", (e) => {
   scanFiles(e.dataTransfer?.files);
 });
 document.addEventListener("click", (e) => {
-  if (e.target.closest?.("#scan-zone") && !e.target.closest("input")) $("scan-file")?.click();
+  // Only the Upload button opens the file picker; clicking the area itself does nothing (paste there).
+  if (e.target.closest?.("#scan-pick")) $("scan-file")?.click();
 });
 document.addEventListener("change", (e) => {
   if (e.target.id !== "scan-file") return;
@@ -648,7 +650,7 @@ function findPieceTooltip(img) {
 }
 
 // The scan area at the top of Add a piece: what to do, and a bar that fills while it reads.
-const SCAN_HINT = "Hover an item in the game, press <b>PrtScn</b>, then <b>Ctrl+V</b> here: it fills in the piece below to check and Add. Or drop / pick <b>several screenshots</b> at once to add them all.";
+const SCAN_HINT = "Hover an item in the game, press <b>PrtScn</b>, then <b>Ctrl+V</b> here: it fills in the piece below to check and Add. Or drop screenshots here, or <b>Upload…</b> several at once to add them all.";
 const scan = { text: SCAN_HINT, pct: 0, busy: false };
 function setScan(text, pct, busy = scan.busy) {
   Object.assign(scan, { text, pct, busy });
