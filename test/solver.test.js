@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { solve, missing, onePieceAway, verdicts, findSame, fitsBuild, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
+import { solve, missing, onePieceAway, verdicts, findSame, fitsBuild, BUILDS, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
 import { TARGETS } from "../src/parse.js";
 
 let n = 0;
@@ -257,4 +257,10 @@ test("a piece fits a build's perfect set only if all 3 of its lines are ones the
   assert.equal(fitsBuild(item("Hat", "atk crit dmg"), "eu"), true);
   assert.equal(fitsBuild(item("Hat", "atk crit"), "eu"), false); // only 2 lines
   assert.equal(fitsBuild(item("Hat", "atk crit boss"), "eu"), false);
+});
+
+test("which skills each build's prismatic jewels are for", () => {
+  assert.deepEqual(BUILDS.original.prismFor, ["leap", "wh", "reg", "atk"]);
+  assert.deepEqual(BUILDS.eu.prismFor, ["leap", "wh", "reg", "atk", "crit", "dmg"]);
+  for (const b of Object.values(BUILDS)) assert.equal(b.prismFor.length, b.prismatic);
 });
