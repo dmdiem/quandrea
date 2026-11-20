@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=79";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=79";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=79";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=79";
-import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=79";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=79";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=80";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=80";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=80";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=80";
+import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=80";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=80";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -199,7 +199,8 @@ function render() {
   // Ties: other outfits with the same score (each missing something different). Option 1 is the
   // recommended one; the arrows cycle through the rest.
   const options = custom ? [v.res] : solveOptions(state.items.filter((it) => classOption(state.classId).classes.includes(it.cls)), "endgame", build.id, state.classId);
-  const optIdx = Math.min(Math.max(0, state.optIdx?.[build.id] ?? 0), options.length - 1);
+  // The arrows wrap around: › on the last option goes back to option 1, ‹ on option 1 to the last.
+  const optIdx = (((state.optIdx?.[build.id] ?? 0) % options.length) + options.length) % options.length;
   const res = options[optIdx] ?? v.res;
   // The board's fixed rows: the lines this build needs (in Flex, the 13 shared ones; its other 5 go in
   // one "Any 5" row that shows which line fills each spot).
@@ -272,9 +273,9 @@ function render() {
   $("progress").innerHTML = `<h2>Hologram lines</h2>
     ${buildPick}
     <div class="score"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with your best combo</span></div>
-    ${options.length > 1 ? `<div class="opt-cycle"><button class="ghost" data-opt="-1" aria-label="Previous option"${optIdx === 0 ? " disabled" : ""}>‹</button>
+    ${options.length > 1 ? `<div class="opt-cycle"><button class="ghost" data-opt="-1" aria-label="Previous option">‹</button>
       <span>Option <b>${optIdx + 1}</b> of ${options.length} · ${optIdx === 0 ? "recommended" : "same score"}${gaps.length ? `, missing ${[...new Set(gaps)].map((k) => NAME[k]).join(", ")}` : ""}</span>
-      <button class="ghost" data-opt="1" aria-label="Next option"${optIdx === options.length - 1 ? " disabled" : ""}>›</button></div>` : ""}
+      <button class="ghost" data-opt="1" aria-label="Next option">›</button></div>` : ""}
     <div class="board" style="grid-template-rows: repeat(${Math.ceil(rowsOf.length / 2)}, auto)">${rowsOf.map(boardRow).join("")}</div>
     ${gaps.length || flexLeft ? `<div class="hunt"><span class="label">Still missing · ${gaps.length + flexLeft}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}${flexLeft ? `<span class="chip flex-chip" title="Any class line (each class once), a 2nd or 3rd Crit DMG, or Damage">✦ Any: class · Crit · Damage</span>${flexLeft > 1 ? `<span class="times">×${flexLeft}</span>` : ""}` : ""}</div></div>` : `<p class="act on">All 18 ✓</p>`}
     ${dropsHtml(onePieceAway(state.items.filter((it) => option.classes.includes(it.cls)), build.id), res)}
@@ -444,7 +445,7 @@ document.addEventListener("click", (e) => {
   if (presetAction(t)) return;
   if (t.dataset.opt) {
     const id = buildOf(state.build).id;
-    state.optIdx = { ...state.optIdx, [id]: Math.max(0, (state.optIdx?.[id] ?? 0) + Number(t.dataset.opt)) };
+    state.optIdx = { ...state.optIdx, [id]: (state.optIdx?.[id] ?? 0) + Number(t.dataset.opt) };
     render(); // not saved: a fresh visit starts on the recommended option
     return;
   }
