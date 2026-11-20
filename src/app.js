@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=74";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=74";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=74";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=74";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=74";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=74";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=75";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=75";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=75";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=75";
+import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=75";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=75";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -30,10 +30,10 @@ function load() {
     const ui = {
       cb: raw.cb === true,
       simple: raw.simple === true,
-      view: ["equipped", "best"].includes(raw.view) ? raw.view : undefined,
       scale: typeof raw.scale === "number" && raw.scale > 0.3 && raw.scale < 3 ? raw.scale : undefined,
     };
-    ui.build = BUILD_IDS.includes(raw.build) ? raw.build : "original";
+    ui.build = BUILD_IDS.includes(raw.build) || raw.build === "custom" ? raw.build : "original";
+    ui.custom = cleanCustom(raw.custom);
     state = { ...state, ...ui, ...sanitize(raw), presets: cleanPresets(raw.presets), activePreset: Number.isInteger(raw.activePreset) ? raw.activePreset : null };
   } catch {}
 }
@@ -191,7 +191,9 @@ function render() {
   // Always aims for the real 18 (an older "any 3 lines" setting in a save is ignored).
   // Core + flex: the 13 lines both builds share, plus 5 flex lines (class, Crit DMG or Damage). The
   // General / Bossing choice only says which flex lines to favour.
-  const build = buildOf(state.build);
+  // Custom: you pick a piece per slot (starting from the General best combo) and see its totals.
+  const custom = state.build === "custom";
+  const build = buildOf(custom ? "original" : state.build);
   const { res, sockets, all, inBuilds } = verdicts(state.items, { ...state, mode: "endgame", build: build.id });
   // The board's fixed rows: the lines this build needs (in Flex, the 13 shared ones; its other 5 go in
   // one "Any 5" row that shows which line fills each spot).
@@ -256,7 +258,7 @@ function render() {
       <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j], Boolean(build.flexCap) && j >= rowNeed[TARGETS.indexOf(t)])).join("") + leftNote(extras[t.k]); })()}</div></div>`;
 
   // One button per build with its best score, so you can see which suits your gear.
-  const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}</div>${build.note ? `<p class="muted small build-note">${build.note}${build.flexCap ? ` <span class="legend-any"></span> = Flex.` : ""}</p>` : ""}`;
+  const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${!custom && id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}<button data-build="custom" aria-pressed="${custom}" title="Pick any piece for each slot and see its totals"><span>Custom</span><b>your pick</b></button></div>${custom ? `<p class="muted small build-note">Your own outfit: click <b>Use</b> on a piece in Your pieces to put it in. It starts as your General best combo.</p>` : build.note ? `<p class="muted small build-note">${build.note}${build.flexCap ? ` <span class="legend-any"></span> = Flex.` : ""}</p>` : ""}`;
   const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
   // Progress, beside Add a piece so it moves as you add: the score, what you wear now, the 18-line
   // board and what's still missing.
@@ -285,8 +287,13 @@ function render() {
     </section>
 `;
 
+  // Custom: your picks (or the General best piece where you haven't picked), and their totals.
+  const mine = new Set(option.classes);
+  const outfit = Object.fromEntries(SLOTS.map((s) => [s, state.items.find((it) => it.id === state.custom?.[s] && it.slot === s && mine.has(it.cls)) ?? res.picks[s] ?? null]));
+  if (custom) renderCustom(outfit, buildPick, option);
+
   // Your pieces: everything you've added, by slot, BiS first.
-  const inBest = new Set(Object.values(res.picks).filter(Boolean).map((it) => it.id));
+  const inBest = new Set(Object.values(custom ? outfit : res.picks).filter(Boolean).map((it) => it.id));
   // Which builds' best combos each piece is in (the one you're looking at first and solid).
   const buildTags = (it) => {
     // Which builds' perfect 18/18 set this piece could be part of (all 3 lines used). Flex takes
@@ -302,7 +309,8 @@ function render() {
     : `<span class="act jewels" title="Perfect sockets for this slot (${socketNote(it, state.classId)}): keep it to move your lines onto with an Orb">For jewels</span>`);
   // Each slot leads with its BiS piece (the best combo for the build you picked), highlighted.
   const list = [...state.items].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || inBest.has(b.id) - inBest.has(a.id));
-  const status = (it) => (inBest.has(it.id) ? `<span class="act on" title="Best in slot for ${build.name}">BiS ✓</span>`
+  const status = (it) => (custom ? (inBest.has(it.id) ? `<span class="act on">In use ✓</span>` : mine.has(it.cls) ? `<button class="act swap" data-use="${it.id}" title="Put this in your Custom outfit">Use</button>` : "")
+    : inBest.has(it.id) ? `<span class="act on" title="Best in slot for ${build.name}">BiS ✓</span>`
     : forJewels.has(it.id) || BUILD_IDS.some((id) => fitsBuild(it, id)) ? "" : `<span class="muted small">spare</span>`);
   const row = (it) => `<div class="bag-row${inBest.has(it.id) ? " best-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}">
       <div class="bag-top">${status(it)}${buildTags(it)}${jewelTag(it)}
@@ -417,7 +425,14 @@ document.addEventListener("click", (e) => {
   if (t.id !== "clear") confirmClear = false;
   if (t.dataset.themePick) return setTheme(t.dataset.themePick);
   if (presetAction(t)) return;
-  if (t.dataset.build && BUILD_IDS.includes(t.dataset.build)) {
+  if (t.dataset.use) {
+    const it = state.items.find((x) => x.id === t.dataset.use);
+    if (it) state.custom = { ...state.custom, [it.slot]: it.id };
+    save();
+    render();
+    return;
+  }
+  if (t.dataset.build && (BUILD_IDS.includes(t.dataset.build) || t.dataset.build === "custom")) {
     state.build = t.dataset.build;
     save();
     render();
@@ -543,7 +558,7 @@ async function scanFile(file) {
     setScan(`Couldn't read that image: ${err.message}`, 0, false);
   }
 }
-// The scan area also takes a dropped image, or a click to pick one.
+// The scan area also takes dropped images (the Upload… button picks files).
 document.addEventListener("dragover", (e) => {
   if (e.target.closest?.("#scan-zone")) e.preventDefault();
 });
@@ -767,6 +782,40 @@ async function addFromScreenshots(files) {
   render();
 }
 
+// ---------- custom outfit ----------
+// Every line on the outfit with its level (how many pieces carry it), no caps; how it would score in
+// each build; its jewels; and the pieces in What to wear.
+function renderCustom(outfit, buildPick, option) {
+  const pieces = SLOTS.map((s) => outfit[s]).filter(Boolean);
+  const at = new Map(); // line -> slots that carry it
+  for (const s of SLOTS) for (const k of outfit[s]?.lines ?? []) at.set(k, [...(at.get(k) ?? []), s]);
+  const order = [...TARGETS.map((t) => t.k), ...FILLERS.map((f) => f.k)].filter((k) => at.has(k));
+  const rows = order.map((k) => `<div class="board-row"><span class="board-name">${icon(k)}${NAME[k]}</span>
+      <div class="cells">${at.get(k).map((sl) => `<span class="pip on" title="${sl}">${slotIcon(sl)}</span>`).join("")}<span class="lv">Lv. ${at.get(k).length}</span></div></div>`).join("");
+  const scores = BUILD_IDS.map((id) => `<span class="cs"><span class="muted">${BUILDS[id].short}</span> <b>${solve(pieces, "endgame", id).score}/${TOTAL}</b></span>`).join("");
+  const lines = pieces.reduce((n, it) => n + it.lines.length, 0);
+  $("progress").innerHTML = `<h2>Hologram lines</h2>
+    ${buildPick}
+    <div class="score"><span class="big">${lines}</span><span class="muted">/ ${TOTAL} lines on your outfit</span></div>
+    <div class="custom-scores">${scores}</div>
+    <div class="board" style="grid-template-rows: repeat(${Math.ceil(order.length / 2)}, auto)">${rows}</div>
+    ${jewelProgress(socketSet(pieces, state.classId, "original"), option, { picks: outfit })}`;
+  $("lines").innerHTML = `
+    <div class="row spread"><h2>What to wear</h2></div>
+    <section class="set pieces always-open" id="pieces">
+      <div class="pieces-head"><span class="label">Your outfit · Custom</span></div>
+      <div class="pieces-list">${SLOTS.map((s) => {
+          const it = outfit[s];
+          if (!it) return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span><span class="none">nothing added yet</span></div>`;
+          return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span>
+            <span class="lines">${linesOf(it)}</span>
+            <span class="piece-socks">${socks(it.sockets)}</span></div>`;
+        }).join("")}
+      </div>
+    </section>
+`;
+}
+
 // ---------- jewel progress ----------
 // Like the lines board, for sockets: your best jewel piece per slot (the "For jewels" ones), its three
 // sockets (usable solid, a colour your class can't use crossed out, missing dashed), and the goal of
@@ -826,6 +875,7 @@ function presetAction(t) {
     if (state.items.length && state.activePreset !== i && !confirm(`Load "${p.name}"? It replaces the ${state.items.length} pieces on the page (save them to a preset first if you want to keep them).`)) return true;
     state.items = p.items.map((it) => ({ ...it, lines: [...it.lines], sockets: [...it.sockets] }));
     state.classId = p.classId;
+    state.custom = cleanCustom(p.custom);
     state.activePreset = i;
     draft = freshDraft();
     setStatus(`Loaded preset ${i + 1}: ${p.name} ✓`);

@@ -94,11 +94,12 @@ Registry, ATT, Crit DMG or Damage: no class lines). Pieces are also tagged **For
 spare.
 
 The **best combo** is the best outfit you can make from everything you've added, worn or in your
-bag: one piece per slot. It goes for the **most damage**: each line is weighted by roughly what a level
-of it adds (from the skill tooltips): Leap, White Hole and Registry most (+5% Final Damage each), then
-ATT, Crit DMG, Damage, and class lines least (a Lv. 1 proc). Then as many of the 18 lines as possible,
-then more lines in total, then better jewel sockets (fewer Orbs). In Flex, the 5 "any" spots go to the
-strongest of those lines. It's worked out over every combination, so it never wastes a
+bag: one piece per slot. For **General** and **Bossing** (a fixed 18) it gets as many of the 18 as possible
+first, so adding a piece never lowers your score; between equal scores it takes the one with more
+damage. Each line is weighted by roughly what a level of it adds (from the skill tooltips): Leap, White
+Hole and Registry most (+5% Final Damage each), then ATT, Crit DMG, Damage, and class lines least (a Lv. 1
+proc). **Flex** goes for the most damage first, and its 5 "any" spots go to the strongest lines. Then more
+lines in total, then better jewel sockets (fewer Orbs). It's worked out over every combination, so it never wastes a
 slot on a line another piece already covers. The idea comes from the community's 3L Set Solver (see Credits).
 
 ## What it reads from a screenshot

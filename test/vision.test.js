@@ -247,6 +247,16 @@ test("sockets are still found when a dark band sits above the item picture", () 
   assert.deepEqual(findSockets(img, icon), ["prismatic", "red", "purple"]);
 });
 
+test("sockets are still found when the picture box comes out a few pixels too low", () => {
+  const img = screen();
+  const t = tooltip(img, 100, 100, 320, 560, ["prismatic", "blue"]);
+  const ix = t.x + 15, iy = t.y + 120;
+  fill(img, ix, iy, 78, 1, [130, 134, 140]); // the frame's light top edge
+  const icon = findIcon(img, { x: t.x, y: t.y, width: t.w, height: t.h });
+  assert.deepEqual(findSockets(img, icon), ["prismatic", "blue"]);
+  assert.deepEqual(findSockets(img, { ...icon, y: icon.y + 6 }), ["prismatic", "blue"]);
+});
+
 test("a snip of just the item picture: its sockets are found anywhere in the image", () => {
   // Only the picture (no tooltip around it), in the middle of a small image.
   const img = screen(160, 200);

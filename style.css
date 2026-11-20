@@ -222,7 +222,7 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .hunt-row { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; font-size: 13px; }
 .hunt-row b { min-width: 52px; }
 
-/* Your gear: the equipped piece in its own tinted box, inventory pieces as plain rows below. */
+/* Your pieces: the BiS piece in its own tinted box, the rest as plain rows below. */
 .eq-box { background: color-mix(in srgb, var(--keep) 9%, transparent); border-left: 3px solid var(--keep); border-radius: 8px; padding: 6px 10px; }
 .sub.eq { color: var(--keep); margin-top: 0; }
 .bag { border-top: 1px dashed var(--line); padding-top: 6px; margin-top: 4px; }
@@ -239,7 +239,6 @@ select { background: var(--surface); border: 1px solid var(--line); border-radiu
 .small-seg button { padding: 3px 10px; font-size: 12px; }
 .equip-btn { font-size: 11px; padding: 2px 8px; }
 .inv-item[draggable="true"] { cursor: grab; }
-.slot.drop-hover { outline: 2px dashed var(--keep); }
 
 /* Left column tabs: Equipped now | Best combo */
 .side-tabs { display: flex; gap: 4px; position: sticky; top: 0; z-index: 2; background: var(--bg); padding-bottom: 2px; }
@@ -656,3 +655,7 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 .scan-row { display: flex; align-items: flex-start; gap: 10px; }
 .scan-row .scan-text { flex: 1; }
 .scan-pick { flex: none; padding: 4px 12px; font-size: 12.5px; }
+/* Custom outfit */
+.build-pick button b { white-space: nowrap; }
+.custom-scores { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; margin: -2px 0 10px; }
+.board .lv { font-size: 12px; font-weight: 700; color: var(--holo-ink); margin-left: 6px; min-width: 34px; align-self: center; }

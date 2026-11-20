@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=74";
+import { SLOTS, TARGETS } from "./parse.js?v=75";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); // strongest first (v.272)
@@ -133,9 +133,13 @@ export function solve(items, mode = "endgame", build = "original", classId = nul
     layers.push(next);
     layer = next;
   }
-  // Most damage first: each counted line weighted by roughly what a level of it adds (see WORTH);
-  // then the most of the 18; then the four 3-each skills; then more lines; then more usable sockets.
-  const value = (st, e) => (mode === "early" ? e.extra * 100 + tally(st) * 10 : (b.flexCap ? flexScore(st, b.flexCap).worth : worth(st)) * 1e8 + (b.flexCap ? flexScore(st, b.flexCap).tally : tally(st)) * 1e6 + core(st) * 1e4 + e.extra);
+  // General and Bossing (a fixed 18): the most of the 18 first, then the most damage (each counted
+  // line weighted by roughly what a level of it adds, see WORTH). Flex (any 5 of several lines): the
+  // most damage first, then the most of the 18. Then the four 3-each skills; then more lines; then
+  // more usable sockets.
+  const value = (st, e) => (mode === "early" ? e.extra * 100 + tally(st) * 10 : (b.flexCap
+    ? flexScore(st, b.flexCap).worth * 1e8 + flexScore(st, b.flexCap).tally * 1e6
+    : tally(st) * 1e8 + worth(st) * 1e5) + core(st) * 1e4 + e.extra);
   let bestSt = 0;
   let best = null;
   for (const [st, e] of layer) if (!best || value(st, e) > value(bestSt, best)) [bestSt, best] = [st, e];

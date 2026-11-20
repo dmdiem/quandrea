@@ -158,16 +158,12 @@ test("on a tie, the four big skills beat a spare class or Crit line", () => {
   assert.equal(res.counts[1], 3); // White Hole 3/3
 });
 
-test("Leap, White Hole and Registry come before the rest of the 18", () => {
-  // A White Hole hat (2nd WH) vs a hat with two class lines: the class hat makes 1 more of the 18,
-  // but White Hole wins.
-  const items = [
-    item("Hat", "wh", { id: "wh-hat" }),
-    item("Hat", "warrior thief", { id: "class-hat" }),
-    item("Top", "wh reg"),
-  ];
-  const res = solve(items);
-  assert.equal(res.picks.Hat.id, "wh-hat");
+test("General: the most of the 18 first; on a tie, the line worth more (White Hole over a class)", () => {
+  const top = item("Top", "wh reg");
+  // 2 lines beat 1, even a White Hole: General's score is the strict 18.
+  assert.equal(solve([item("Hat", "wh", { id: "wh" }), item("Hat", "warrior thief", { id: "classes" }), top]).picks.Hat.id, "classes");
+  // Same count: White Hole wins over a class line.
+  assert.equal(solve([item("Hat", "wh", { id: "wh" }), item("Hat", "warrior", { id: "warrior" }), top]).picks.Hat.id, "wh");
 });
 
 test("Original build aims for 4 prismatic pieces", () => {
@@ -279,4 +275,13 @@ test("ATT isn't dropped to 1 just to finish Leap when that loses lines (Flex)", 
   const res = solve(set, "endgame", "flex");
   assert.equal(res.score, 17);
   assert.equal(res.counts[TARGETS.findIndex((t) => t.k === "atk")], 3);
+});
+
+test("adding a piece never lowers General's score", () => {
+  const set = [
+    item("Hat", "reg thief atk"), item("Top", "leap atk reg"), item("Bottom", "wh pirate archer"),
+    item("Shoes", "crit atk wh"), item("Gloves", "wh crit mage"), item("Cape", "reg crit leap"),
+  ];
+  const before = solve(set).score;
+  assert.equal(solve([...set, item("Hat", "reg leap archer")]).score, before);
 });

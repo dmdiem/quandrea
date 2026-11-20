@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanPresets, cleanName, makePreset, PRESET_COUNT } from "../src/presets.js";
+import { cleanPresets, cleanName, makePreset, cleanCustom, PRESET_COUNT } from "../src/presets.js";
 
 const hat = { id: "a", slot: "Hat", cls: "Magician", lines: ["leap", "wh"], sockets: ["blue"], equipped: true };
 
@@ -36,4 +36,10 @@ test("a snapshot is a copy, not the live list", () => {
   state.items[0].lines.push("reg");
   assert.deepEqual(p.items[0].lines, ["leap", "wh"]);
   assert.equal(p.name, "Preset 1");
+});
+
+test("Custom picks are kept in a preset, and only as slot -> plain id", () => {
+  const p = cleanPresets([makePreset({ items: [hat], classId: "Magician", custom: { Hat: "a", Top: "<b>x</b>", Ring: "a" } }, 0, "Mine")])[0];
+  assert.deepEqual(p.custom, { Hat: "a" });
+  assert.deepEqual(cleanCustom(null), {});
 });

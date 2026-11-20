@@ -198,13 +198,15 @@ export function findSockets(img, icon) {
     v.sort((a, b) => a - b);
     return v[Math.floor(v.length / 2)];
   };
-  let top = icon.y;
-  for (let y = icon.y; y < icon.y + Math.round(icon.size * 0.15); y++) {
-    if (rowLight(y) > rowLight(y + 1) + 12 && rowLight(y) > 100) {
-      top = y - 1;
-      break;
-    }
-  }
+  // (The icon box can also come out a few pixels too low: only if no edge is found from icon.y down,
+  // look a little above it.)
+  const edgeIn = (from, to) => {
+    for (let y = from; y < to; y++) if (rowLight(y) > rowLight(y + 1) + 12 && rowLight(y) > 100) return y - 1;
+    return null;
+  };
+  const top = edgeIn(icon.y, icon.y + Math.round(icon.size * 0.15))
+    ?? edgeIn(Math.max(1, icon.y - Math.round(icon.size * 0.12)), icon.y)
+    ?? icon.y;
   const y0 = top + Math.round(icon.size * 0.05);
   const y1 = top + Math.round(icon.size * 0.17);
   // The frame's top is a smooth grey. Mark anything clearly coloured or clearly darker.
