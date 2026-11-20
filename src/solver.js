@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=67";
+import { SLOTS, TARGETS } from "./parse.js?v=68";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); // strongest first (v.272)
@@ -79,6 +79,10 @@ function add(st, lines, b = BUILDS.original) {
 const sorted = (list) => [...(list ?? [])].sort().join(",");
 export const samePiece = (a, b) => a.slot === b.slot && (a.cls ?? null) === (b.cls ?? null) && sorted(a.lines) === sorted(b.lines) && sorted(a.sockets) === sorted(b.sockets);
 export const findSame = (items, piece) => items.find((it) => it !== piece && samePiece(it, piece)) ?? null;
+
+// Could this piece be part of a perfect 18/18 set for a build? All 3 of its lines are ones the
+// build uses (a Thief line never fits Bossing; a Damage line never fits General).
+export const fitsBuild = (item, id) => item.lines.length === 3 && item.lines.every((k) => IDX[k] !== undefined && buildOf(id).need[IDX[k]] > 0);
 
 // How many of an item's lines are on the list (the most it could ever add).
 export const useful = (item) => item.lines.filter((k) => IDX[k] !== undefined).length;

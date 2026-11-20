@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { solve, missing, onePieceAway, verdicts, findSame, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
+import { solve, missing, onePieceAway, verdicts, findSame, fitsBuild, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
 import { TARGETS } from "../src/parse.js";
 
 let n = 0;
@@ -248,4 +248,13 @@ test("Flex: when the 5 any spots overflow, a class line is left over, not Crit D
   assert.equal(res.counts[TARGETS.findIndex((t) => t.k === "crit")], 3);
   const left = Object.entries(res.counted).flatMap(([s, c]) => c.map((ok, j) => (!ok ? res.picks[s].lines[j] : null)).filter(Boolean));
   assert.deepEqual(left, ["pirate"]); // the weakest class line is the one left over
+});
+
+test("a piece fits a build's perfect set only if all 3 of its lines are ones the build uses", () => {
+  assert.equal(fitsBuild(item("Hat", "atk crit thief"), "eu"), false); // Thief never fits Bossing
+  assert.equal(fitsBuild(item("Hat", "atk crit thief"), "original"), true);
+  assert.equal(fitsBuild(item("Hat", "atk crit dmg"), "original"), false); // Damage never fits General
+  assert.equal(fitsBuild(item("Hat", "atk crit dmg"), "eu"), true);
+  assert.equal(fitsBuild(item("Hat", "atk crit"), "eu"), false); // only 2 lines
+  assert.equal(fitsBuild(item("Hat", "atk crit boss"), "eu"), false);
 });

@@ -88,8 +88,8 @@ Gem colours by class: red = Warrior, green = Bowman, grey = Pirate, purple = Thi
 ### Your pieces
 
 Everything you've added, by slot, with each slot's **BiS ✓** piece (for the build you picked) first and
-highlighted. Pieces are also tagged with the builds whose best combo they're in (**General**,
-**Bossing**; Flex is a mix of the two, so it has no tag), **For jewels** (perfect sockets for its slot,
+highlighted. A **Bossing** tag means all 3 of a piece's lines fit a perfect Bossing set (Leap, White Hole,
+Registry, ATT, Crit DMG or Damage: no class lines). Pieces are also tagged **For jewels** (perfect sockets for its slot,
 3 your class can use, to move your lines onto with an Orb; Orbs are rare, so nothing less counts) or
 spare.
 

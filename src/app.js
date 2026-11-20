@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=67";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=67";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=67";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=67";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=67";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=67";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=68";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=68";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=68";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=68";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=68";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=68";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -290,9 +290,11 @@ function render() {
   const inBest = new Set(Object.values(res.picks).filter(Boolean).map((it) => it.id));
   // Which builds' best combos each piece is in (the one you're looking at first and solid).
   const buildTags = (it) => {
-    // Flex is a mix of the two, so pieces are tagged General and/or Bossing only.
-    const ids = BUILD_IDS.filter((id) => id !== "flex" && inBuilds[it.id]?.includes(id));
-    return ids.length ? `<span class="build-tags" title="In the best combo for: ${ids.map((id) => BUILDS[id].name).join(", ")}">${ids.map((id) => `<span class="bt${id === build.id ? " on" : ""}">${BUILDS[id].short}</span>`).join("")}</span>` : "";
+    // Which builds' perfect 18/18 set this piece could be part of (all 3 lines used). Flex takes
+    // anything that fits either, so pieces are tagged General and/or Bossing only.
+    // General takes almost any line, so only the Bossing tag tells you something.
+    const ids = ["eu"].filter((id) => fitsBuild(it, id));
+    return ids.length ? `<span class="build-tags" title="All 3 lines fit a perfect set for: ${ids.map((id) => BUILDS[id].name).join(", ")}">${ids.map((id) => `<span class="bt${id === build.id ? " on" : ""}">${BUILDS[id].short}</span>`).join("")}</span>` : "";
   };
   // The best piece per slot to fuse your lines onto with an Orb (its jewel sockets), worth keeping.
   const forJewels = new Set(Object.values(sockets.picks).filter(Boolean).map((it) => it.id));
@@ -302,7 +304,7 @@ function render() {
   // Each slot leads with its BiS piece (the best combo for the build you picked), highlighted.
   const list = [...state.items].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || inBest.has(b.id) - inBest.has(a.id));
   const status = (it) => (inBest.has(it.id) ? `<span class="act on" title="Best in slot for ${build.name}">BiS ✓</span>`
-    : forJewels.has(it.id) || inBuilds[it.id] ? "" : `<span class="muted small">spare</span>`);
+    : forJewels.has(it.id) || BUILD_IDS.some((id) => fitsBuild(it, id)) ? "" : `<span class="muted small">spare</span>`);
   const row = (it) => `<div class="bag-row${inBest.has(it.id) ? " best-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}">
       <div class="bag-top">${status(it)}${buildTags(it)}${jewelTag(it)}
         <span class="bag-act"><button class="equip-btn" data-edit="${it.id}" title="Change its jewels, skills or slot">Edit</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
