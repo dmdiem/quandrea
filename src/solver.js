@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=69";
+import { SLOTS, TARGETS } from "./parse.js?v=70";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); // strongest first (v.272)
@@ -22,14 +22,14 @@ const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); //
 const needs = (over) => TARGETS.map((t) => over[t.k] ?? t.need);
 const NO_CLASSES = { archer: 0, warrior: 0, thief: 0, mage: 0, pirate: 0 };
 export const BUILDS = {
-  original: { id: "original", name: "General BiS", short: "General", need: needs({}), prismatic: 4, prismFor: ["leap", "wh", "reg", "atk"],
+  original: { id: "original", name: "General BiS", short: "General", need: needs({}), prismatic: 4,
     about: "For mobbing, dungeons and quests: 3 each of Leap, White Hole, Registry, ATT; 1 Crit DMG; all 5 class lines (their procs hit many enemies); 4 prismatics",
     note: "General is fine for most players. Want to sweat it for bossing past the 22 badge? Bossing is about +7% Final Damage." },
   // In between: the 13 lines both builds share, plus any 5 of class, Crit DMG or Damage lines.
-  flex: { id: "flex", name: "Flex", short: "Flex", need: needs({ crit: 3, dmg: 3 }), flexCap: 5, prismatic: 4, prismFor: ["leap", "wh", "reg", "atk"],
+  flex: { id: "flex", name: "Flex", short: "Flex", need: needs({ crit: 3, dmg: 3 }), flexCap: 5, prismatic: 4,
     about: "In between: the 13 lines both builds share (3 each of Leap, White Hole, Registry, ATT, 1 Crit DMG), plus any 5 class, Crit DMG or Damage lines",
     note: "In between: the 13 lines both builds share, plus any 5 class, Crit DMG or Damage lines. Uses whatever mix your gear has." },
-  eu: { id: "eu", name: "Bossing BiS", short: "Bossing", need: needs({ crit: 3, dmg: 3, ...NO_CLASSES }), prismatic: 6, prismFor: ["leap", "wh", "reg", "atk", "crit", "dmg"],
+  eu: { id: "eu", name: "Bossing BiS", short: "Bossing", need: needs({ crit: 3, dmg: 3, ...NO_CLASSES }), prismatic: 6,
     about: "Optional min-max for heavy bossing past the 22 badge (about +7% Final Damage): 3 each of Leap, White Hole, Registry, ATT, Crit DMG and Damage; no class lines. The EU build, courtesy of Shapaz",
     note: "Optional min-max: only worth it past the 22 badge if you boss a lot (about +7% Final Damage). General is fine for everything else." },
 };

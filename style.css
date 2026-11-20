@@ -653,5 +653,3 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 .progress .pip:not(.on) { background: transparent; border: 1.5px dashed color-mix(in srgb, var(--muted) 70%, transparent); }
 .progress .pip:not(.on)::before { content: none; }
 .act.small-act { font-size: 11px; padding: 1px 6px; }
-.jp-for { margin-top: 10px; }
-.jp-for .label { display: block; margin-bottom: 4px; }

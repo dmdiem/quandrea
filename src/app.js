@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=69";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=69";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=69";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=69";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=69";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=69";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=70";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=70";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=70";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=70";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=70";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=70";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -790,7 +790,6 @@ function jewelProgress(sockets, option, res) {
       <div class="jp-head"><span class="label">Jewel sockets</span></div>
       <div class="score"><span class="big jp-big">${perfect}</span><span class="muted" title="Perfect = all 3 sockets are ones you can use (${option.colours.join(", ")} or prismatic). ✓ = already in your best combo.">/ 6 perfect pieces · <b>${Math.min(sockets.prismatic, sockets.goal)}/${sockets.goal}</b> prismatic</span></div>
       <div class="jp-board">${rows}</div>
-      <div class="jp-for" title="A prismatic jewel takes one skill past Lv. 3 (up to Lv. 8). It can go in any piece's prismatic socket."><span class="label">Prismatic jewels for</span><div class="lines">${buildOf(res.build).prismFor.map((k) => chip(k)).join("")}</div></div>
     </div>`;
 }
 
