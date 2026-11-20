@@ -16,6 +16,12 @@ Your pieces are saved only in that browser (Presets and Copy backup help you kee
 1. In **Add a piece**, click each item's **equipment**, **jewels** and **skills**, then **Add**. Or hover the item in the game, press **PrtScn**, then **Ctrl+V** on
    the page: it fills them in for you to check before you click Add.
 2. For the pieces you're wearing, switch on **Currently Equipped** before Add (or click **Equip** later).
+3. Adding a piece you already added (same slot, class, lines and jewels) doesn't make a copy: the one you
+   have is highlighted instead.
+
+**Hologram lines** shows your score out of 18 for the build you pick, and a board of what you're wearing
+(a small **+1** after a row is a spare copy: still +1 to that skill, but past what counts). **Still
+missing** lists what to farm next, and **What to wear** lists the pieces to swap in.
 
 **Simpling Dumpling mode** (button at the top) is a simple screen for colour-blind players: hover an
 item in the game, press PrtScn and paste the screenshot, and its socket colours show up as big words, with ✓ on the ones your class
@@ -35,22 +41,27 @@ which socket colours you can use.
 ## What it's aiming for
 
 **First: 18/18 hologram lines.** Six pieces (hat, top, bottom, shoes, gloves, cape; weapons and
-shoulders can't roll lines), three lines each. There are two builds, and Quandrea
-works out your best combo for both (the buttons at the top of Hologram lines show each score;
+shoulders can't roll lines), three lines each. There are three builds, and Quandrea
+works out your best combo for each (the buttons at the top of Hologram lines show each score;
 click one to see its board):
 
 - **General**: the one most people want. Its class lines' procs hit many enemies, which is great for
   mobbing, dungeons and quests.
+- **Flex**: in between. Both builds share 13 lines (3 each of Leap, White Hole, Registry, ATT, and 1
+  Crit DMG); Flex wants those plus any 5 class, Crit DMG or Damage lines, whatever mix your gear has.
+  Only Boss DMG and Ignore DEF are wasted. When there are more of those lines than the 5 spots,
+  Crit DMG and Damage count first.
 - **Bossing**: an optional min-max for when you're going past the 22 badge and doing lots of bossing. It's
   about +7% Final Damage, give or take, so not necessary. It's the EU build, courtesy of Shapaz.
 
-| Line | General | Bossing |
-|---|---|---|
-| Dimensional Leap, White Hole, Registry, Attack Power & Magic ATT | 3 each | 3 each |
-| Critical Damage | 1 | 3 |
-| Damage Enhancement | – | 3 |
-| Class lines (Bowman, Warrior, Thief, Mage, Pirate) | 1 each | – |
-| Prismatic jewels | 4 | 6 |
+| Line | General | Flex | Bossing |
+|---|---|---|---|
+| Dimensional Leap, White Hole, Registry, Attack Power & Magic ATT | 3 each | 3 each | 3 each |
+| Critical Damage | 1 | 1 + any | 3 |
+| Damage Enhancement | – | any | 3 |
+| Class lines (Bowman, Warrior, Thief, Mage, Pirate) | 1 each | any | – |
+| "Any" lines (class, more Crit DMG, Damage) | – | 5 | – |
+| Prismatic jewels | 4 | 4 | 6 |
 
 Bossing drops the class lines (the only ones with no passive Final Damage, and their procs are spread
 over many enemies) for 3 Crit DMG and 3 Damage, which hit one target harder. Class line damage, strongest first: Bowman, Warrior, Thief, Mage, Pirate (v.272 patch notes,
@@ -77,7 +88,7 @@ Gem colours by class: red = Warrior, green = Bowman, grey = Pirate, purple = Thi
 ### Your pieces
 
 Everything you've added, by slot, each tagged with the builds whose best combo it's in (**General**,
-**Bossing**; the one you're looking at is highlighted), and marked **Equipped**, **In best combo**, **For jewels** (perfect
+**Bossing**; Flex is a mix of the two, so it has no tag; the one you're looking at is highlighted), and marked **Equipped**, **In best combo**, **For jewels** (perfect
 sockets for its slot, 3 your class can use, to move your lines onto with an Orb; Orbs are rare, so nothing
 less counts) or spare. The left
 side, **What to wear**, is the best combo piece by piece, with Equip / Swap buttons.

@@ -6,16 +6,18 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=61";
+import { SLOTS, TARGETS } from "./parse.js?v=62";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
+const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]);
 
-// Two builds, both 18 lines:
+// Three builds, all 18 lines (buttons in this order: General, Flex, Bossing):
 //   original ("General", the default): 3 Leap, 3 White Hole, 3 Registry, 3 ATT, 1 Crit DMG, 1 of each
 //         of the 5 classes; 4 prismatics. The class procs hit many enemies: mobbing, dungeons, quests.
 //   eu ("Bossing", the EU build, courtesy of Shapaz, via the 3L Set Solver): 3 each of Leap, White Hole,
 //         Registry, ATT, Crit DMG and Damage, no class lines; a prismatic on every piece. An optional
 //         min-max for heavy bossing past the 22 badge: about +7% Final Damage, give or take.
+//   flex: in between: the 13 shared lines plus any 5 class, Crit DMG or Damage lines.
 // (The ids stay "original" and "eu" so saved choices keep working.)
 const needs = (over) => TARGETS.map((t) => over[t.k] ?? t.need);
 const NO_CLASSES = { archer: 0, warrior: 0, thief: 0, mage: 0, pirate: 0 };
@@ -23,12 +25,23 @@ export const BUILDS = {
   original: { id: "original", name: "General BiS", short: "General", need: needs({}), prismatic: 4,
     about: "For mobbing, dungeons and quests: 3 each of Leap, White Hole, Registry, ATT; 1 Crit DMG; all 5 class lines (their procs hit many enemies); 4 prismatics",
     note: "General is fine for most players. Want to sweat it for bossing past the 22 badge? Bossing is about +7% Final Damage." },
+  // In between: the 13 lines both builds share, plus any 5 of class, Crit DMG or Damage lines.
+  flex: { id: "flex", name: "Flex", short: "Flex", need: needs({ crit: 3, dmg: 3 }), flexCap: 5, prismatic: 4,
+    about: "In between: the 13 lines both builds share (3 each of Leap, White Hole, Registry, ATT, 1 Crit DMG), plus any 5 class, Crit DMG or Damage lines",
+    note: "In between: the 13 lines both builds share, plus any 5 class, Crit DMG or Damage lines. Uses whatever mix your gear has." },
   eu: { id: "eu", name: "Bossing BiS", short: "Bossing", need: needs({ crit: 3, dmg: 3, ...NO_CLASSES }), prismatic: 6,
     about: "Optional min-max for heavy bossing past the 22 badge (about +7% Final Damage): 3 each of Leap, White Hole, Registry, ATT, Crit DMG and Damage; no class lines. The EU build, courtesy of Shapaz",
     note: "Optional min-max: only worth it past the 22 badge if you boss a lot (about +7% Final Damage). General is fine for everything else." },
 };
 export const BUILD_IDS = Object.keys(BUILDS);
 export const buildOf = (id) => BUILDS[id] ?? BUILDS.original;
+
+// Flex: both builds share 13 lines (3 each of Leap, White Hole, Registry, ATT, and 1 Crit DMG), the
+// "core". The other 5 can be any class line (each class once), more Crit DMG (up to 3 in all) or
+// Damage (up to 3). Only Boss DMG and Ignore DEF never help.
+export const CORE_NEED = needs({ ...NO_CLASSES });
+export const CORE_TOTAL = CORE_NEED.reduce((a, b) => a + b, 0); // 13
+export const FLEX_TOTAL = 5;
 // Tallies are packed into one number, one digit per line, sized for the biggest need of any build.
 const MAXNEED = TARGETS.map((_, i) => Math.max(...Object.values(BUILDS).map((b) => b.need[i])));
 const BASE = MAXNEED.map((n) => n + 1);
@@ -47,8 +60,11 @@ const core = (st) => CORE.reduce((n, i) => n + digit(st, i), 0);
 const BIG = ["leap", "wh", "reg"].map((k) => IDX[k]);
 const big = (st) => BIG.reduce((n, i) => n + digit(st, i), 0);
 
+// Lines past the 13 core ones (a class, Damage, or a 2nd or 3rd Crit DMG).
+const coreScore = (st) => CORE_NEED.reduce((n, need, i) => n + Math.min(need, digit(st, i)), 0);
+const flexUsed = (st) => tally(st) - coreScore(st);
 // Can this line still count in this build's tally?
-const counts1 = (st, i, b) => digit(st, i) < b.need[i];
+const counts1 = (st, i, b) => digit(st, i) < b.need[i] && (!b.flexCap || digit(st, i) < CORE_NEED[i] || flexUsed(st) < b.flexCap);
 
 function add(st, lines, b = BUILDS.original) {
   for (const k of lines) {
@@ -57,6 +73,12 @@ function add(st, lines, b = BUILDS.original) {
   }
   return st;
 }
+
+// The same piece added twice: same slot, class, 3 lines and jewels (in any order). Two real pieces
+// that match on all of that are rare enough to treat as one.
+const sorted = (list) => [...(list ?? [])].sort().join(",");
+export const samePiece = (a, b) => a.slot === b.slot && (a.cls ?? null) === (b.cls ?? null) && sorted(a.lines) === sorted(b.lines) && sorted(a.sockets) === sorted(b.sockets);
+export const findSame = (items, piece) => items.find((it) => it !== piece && samePiece(it, piece)) ?? null;
 
 // How many of an item's lines are on the list (the most it could ever add).
 export const useful = (item) => item.lines.filter((k) => IDX[k] !== undefined).length;
@@ -96,15 +118,22 @@ export function solve(items, mode = "endgame", build = "original") {
     if (e.item) picks[SLOTS[e.slot]] = e.item;
     st = e.prev;
   }
-  // Which picked lines count toward the 18 (a 4th Leap or a 2nd Pirate is an extra).
-  const counted = {};
+  // Which picked lines count toward the 18 (a 4th Leap or a 2nd Pirate is an extra). In Flex, when
+  // there are more "any 5" lines than spots, Crit DMG and Damage (they have Final Damage passives)
+  // take the spots first, so a class line is the one left over.
+  const counted = Object.fromEntries(SLOTS.map((s) => [s, (picks[s]?.lines ?? []).map(() => false)]));
   let run = 0;
-  for (const s of SLOTS) {
-    const it = picks[s];
-    counted[s] = it ? it.lines.map((k) => { const i = IDX[k]; if (i === undefined || !counts1(run, i, b)) return false; run += MUL[i]; return true; }) : [];
-  }
+  const passes = b.flexCap ? [(k) => !CLASS_KEYS.has(k), (k) => CLASS_KEYS.has(k)] : [() => true];
+  for (const pass of passes)
+    for (const s of SLOTS)
+      picks[s]?.lines.forEach((k, j) => {
+        const i = IDX[k];
+        if (!pass(k) || i === undefined || !counts1(run, i, b)) return;
+        run += MUL[i];
+        counted[s][j] = true;
+      });
   const lines = SLOTS.reduce((n, s) => n + (picks[s]?.lines.length ?? 0), 0);
-  return { picks, counted, counts: counts(bestSt), score: tally(bestSt), lines, build: b.id };
+  return { picks, counted, counts: counts(run), score: tally(run), core: coreScore(run), flex: tally(run) - coreScore(run), lines, build: b.id };
 }
 
 // "One more piece finishes it": for each slot, the lines a single new piece there would need to
@@ -139,9 +168,11 @@ export function onePieceAway(items) {
 }
 
 // What's still missing from the 18, as line keys (e.g. ["wh", "wh", "mage"]).
+// For core + flex, only the core lines (the flex ones can be any of several: see res.flex).
 export function missing(res) {
   const b = buildOf(res.build);
-  return TARGETS.flatMap((t, i) => Array(Math.max(0, b.need[i] - res.counts[i])).fill(t.k));
+  const need = b.flexCap ? CORE_NEED : b.need;
+  return TARGETS.flatMap((t, i) => Array(Math.max(0, need[i] - res.counts[i])).fill(t.k));
 }
 
 // ---- Sockets (after the 18 lines) ----

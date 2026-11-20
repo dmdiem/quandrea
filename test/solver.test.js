@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { solve, missing, onePieceAway, verdicts, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
+import { solve, missing, onePieceAway, verdicts, findSame, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
+import { TARGETS } from "../src/parse.js";
 
 let n = 0;
 const item = (slot, lines, extra = {}) => ({ id: String(++n), slot, cls: "Magician", lines: lines.split(" ").filter(Boolean), sockets: [], ...extra });
@@ -207,8 +208,51 @@ test("each piece says which builds' best combos it's in", () => {
   const dmgHat = item("Hat", "leap wh dmg", { id: "dmg-hat" });
   const top = item("Top", "leap reg atk", { id: "top" });
   const { inBuilds, all } = verdicts([classHat, dmgHat, top]);
-  assert.deepEqual(Object.keys(all).sort(), ["eu", "original"]);
-  assert.deepEqual(inBuilds["class-hat"], ["original"]);
-  assert.deepEqual(inBuilds["dmg-hat"], ["eu"]);
-  assert.deepEqual(inBuilds.top.sort(), ["eu", "original"]);
+  assert.deepEqual(Object.keys(all).sort(), ["eu", "flex", "original"]);
+  assert.deepEqual(inBuilds["class-hat"].filter((id) => id !== "flex"), ["original"]);
+  assert.deepEqual(inBuilds["dmg-hat"].filter((id) => id !== "flex"), ["eu"]);
+  assert.deepEqual(inBuilds.top.sort(), ["eu", "flex", "original"]);
+});
+
+test("the same piece added twice is spotted (lines and jewels in any order)", () => {
+  const a = item("Hat", "leap wh atk", { sockets: ["prismatic", "blue", "red"] });
+  assert.equal(findSame([a], item("Hat", "atk leap wh", { sockets: ["red", "prismatic", "blue"] })), a);
+  assert.equal(findSame([a], item("Hat", "leap wh atk", { sockets: ["prismatic", "blue", "blue"] })), null); // other jewels
+  assert.equal(findSame([a], item("Top", "leap wh atk", { sockets: ["prismatic", "blue", "red"] })), null); // other slot
+  assert.equal(findSame([a], item("Hat", "leap wh atk", { cls: "Thief", sockets: ["prismatic", "blue", "red"] })), null); // other class
+  assert.equal(findSame([a], a), null); // not itself
+});
+
+test("Flex: the 13 shared lines plus any 5 class, Crit DMG or Damage lines", () => {
+  // 13 core lines, then a mix of 2 class lines, a 2nd Crit DMG and 2 Damage: 18/18 in Flex only.
+  const set = [
+    item("Hat", "leap wh crit"),
+    item("Top", "leap reg mage"),
+    item("Bottom", "leap atk dmg"),
+    item("Shoes", "wh reg crit"),
+    item("Gloves", "wh atk thief"),
+    item("Cape", "reg atk dmg"),
+  ];
+  const flex = solve(set, "endgame", "flex");
+  assert.equal(flex.score, 18);
+  assert.equal(flex.core, 13);
+  assert.equal(flex.flex, 5);
+  assert.deepEqual(missing(flex), []);
+  assert.ok(solve(set).score < 18 && solve(set, "endgame", "eu").score < 18);
+  // A 6th flex line doesn't count, and neither does a repeated class or Boss DMG.
+  const capped = solve([item("Hat", "mage thief pirate"), item("Top", "archer warrior dmg"), item("Bottom", "mage boss crit")], "endgame", "flex");
+  assert.equal(capped.flex, 5);
+  // Missing in Flex: only the shared lines (the "any 5" spots show as a count in the page).
+  assert.deepEqual(missing(solve([item("Hat", "mage thief pirate")], "endgame", "flex")), ["leap", "leap", "leap", "wh", "wh", "wh", "reg", "reg", "reg", "atk", "atk", "atk", "crit"]);
+});
+
+test("Flex: when the 5 any spots overflow, a class line is left over, not Crit DMG", () => {
+  // 1 core Crit + 2 more Crit and 4 classes: 6 lines for 5 spots.
+  const set = [item("Hat", "crit mage"), item("Top", "thief crit"), item("Bottom", "pirate archer"), item("Shoes", "crit")];
+  const res = solve(set, "endgame", "flex");
+  assert.equal(res.flex, 5);
+  assert.equal(res.counts[TARGETS.findIndex((t) => t.k === "crit")], 3);
+  const left = Object.entries(res.counted).flatMap(([s, c]) => c.map((ok, j) => (!ok ? res.picks[s].lines[j] : null)).filter(Boolean));
+  assert.equal(left.length, 1);
+  assert.ok(["mage", "thief", "pirate", "archer"].includes(left[0]));
 });

@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=61";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf } from "./solver.js?v=61";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=61";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=61";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=61";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=61";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=62";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=62";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=62";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=62";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=62";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=62";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -191,8 +191,13 @@ const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("")
 function render() {
   renderPresets();
   // Always aims for the real 18 (an older "any 3 lines" setting in a save is ignored).
+  // Core + flex: the 13 lines both builds share, plus 5 flex lines (class, Crit DMG or Damage). The
+  // General / Bossing choice only says which flex lines to favour.
   const build = buildOf(state.build);
   const { res, sockets, all, inBuilds } = verdicts(state.items, { ...state, mode: "endgame", build: build.id });
+  // The board's fixed rows: the lines this build needs (in Flex, the 13 shared ones; its other 5 go in
+  // one "Any 5" row that shows which line fills each spot).
+  const rowNeed = build.flexCap ? CORE_NEED : build.need;
   const option = classOption(state.classId);
 
   $("class").innerHTML = CLASSES.map((c) => `<option ${c === option.cls ? "selected" : ""}>${c}</option>`).join("");
@@ -222,35 +227,46 @@ function render() {
   const showNow = false;
   const shown = res;
   const head = shown.score;
+  // Split the counted lines of a set into the core rows and the flex row (in slot order).
+  const split = (set) => {
+    const coreAt = Object.fromEntries(TARGETS.map((t) => [t.k, []]));
+    const flex = [];
+    for (const s of SLOTS) set.picks[s]?.lines.forEach((k, j) => {
+      if (!set.counted[s][j]) return;
+      const i = TARGETS.findIndex((t) => t.k === k);
+      if (coreAt[k].length < rowNeed[i]) coreAt[k].push(s);
+      else flex.push({ k, slot: s });
+    });
+    return { coreAt, flex };
+  };
+  const board = split(seenAny ? nowRes : res);
   const from = Object.fromEntries(TARGETS.map((t) => [t.k, []])); // line -> slots that supply it
   for (const s of SLOTS) shown.picks[s]?.lines.forEach((k, j) => shown.counted[s][j] && from[k].push(s));
   // Just the slot's icon (its name on hover); an empty dashed box when the line is missing.
   // A filled spot shows the icon of the equipment that gives the line; a missing one is a faint dot.
   const cell = (k, slot, up = false) => `<span class="pip ${slot ? (up ? "up" : "on") : ""}" title="${slot ? (up ? `${slot}: swap in your best combo piece for this` : slot) : "Missing"}" aria-label="${slot ?? "Missing"}">${slot ? slotIcon(slot) : ""}</span>`;
-  // The board shows what you wear (solid), then what your best combo would add (faint), then dots.
+  // The board shows what you wear (solid), then dots for what you still need (before anything is
+  // marked equipped, it shows the best combo instead).
   const fromNow = Object.fromEntries(TARGETS.map((t) => [t.k, []]));
   for (const s of SLOTS) nowRes.picks[s]?.lines.forEach((k, j) => nowRes.counted[s][j] && fromNow[k].push(s));
   // Extra copies (beyond the 1 or 3 that count) of the set the board shows: still +1 to the skill.
   const extras = Object.fromEntries(TARGETS.map((t) => [t.k, []]));
   const boardSet = seenAny ? nowRes : res;
   for (const s of SLOTS) boardSet.picks[s]?.lines.forEach((k, j) => !boardSet.counted[s][j] && extras[k] && extras[k].push(s));
-  const extraPip = (slot) => `<span class="pip extra" title="Extra ${slot}: +1 to the skill, past what counts for 18/18">${slotIcon(slot)}</span>`;
-  const spots = (t) => {
-    if (!seenAny) return from[t.k].map((sl) => [sl, false]);
-    const have = fromNow[t.k];
-    const gain = from[t.k].filter((sl) => !res.picks[sl]?.equipped).slice(0, Math.max(0, from[t.k].length - have.length));
-    return [...have.map((sl) => [sl, false]), ...gain.map((sl) => [sl, true])];
-  };
+  // Extra copies: a small "+2" after the row (which pieces on hover), not more boxes.
+  const extraNote = (slots) => (slots.length ? `<span class="extra-note" title="Extra from your ${slots.join(", ").toLowerCase()}: still +1 to the skill each, past what counts for 18/18">+${slots.length}</span>` : "");
+  // Only what you wear (or, before anything is equipped, the best combo); swaps are in What to wear.
+  const spots = (t) => board.coreAt[t.k].map((sl) => [sl, false]);
   // Still missing: the lines this set doesn't have yet, with how many of each.
   const gaps = missing(shown);
   // A line this build doesn't count at all (a class line in Bossing, Damage in General) is drawn like
   // Boss DMG, not as an "extra".
   const inBuild = (k) => build.need[TARGETS.findIndex((t) => t.k === k)] > 0;
   const offChip = (k) => `<span class="chip k-${k} off" title="Not part of ${build.name}">${icon(k)}${NAME[k]}</span>`;
-  // The board's rows: the lines this build counts.
-  const rowsOf = TARGETS.map((t, i) => ({ t, n: build.need[i] })).filter((r) => r.n > 0);
+  const rowsOf = TARGETS.map((t, i) => ({ t, n: rowNeed[i] })).filter((r) => r.n > 0);
   const boardRow = ({ t, n }) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
-      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j]?.[0], sp[j]?.[1])).join("") + extras[t.k].map(extraPip).join(""); })()}</div></div>`;
+      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j]?.[0], sp[j]?.[1])).join("") + extraNote(extras[t.k]); })()}</div></div>`;
+
   // One button per build with its best score, so you can see which suits your gear.
   const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}</div>${build.note ? `<p class="muted small build-note">${build.note}</p>` : ""}`;
   const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
@@ -259,14 +275,15 @@ function render() {
   const swapNote = !seenAny ? "" : swaps.length ? `${swaps.length} to swap: ${swaps.join(", ")}` : "all of them are equipped";
   // Progress, beside Add a piece so it moves as you add: the score, what you wear now, the 18-line
   // board and what's still missing.
+  const flexLeft = build.flexCap ? FLEX_TOTAL - res.flex : 0;
   $("progress").innerHTML = `<h2>Hologram lines</h2>
     ${buildPick}
     ${seenAny
-      ? `<div class="score"><span class="big">${nowScore}</span><span class="muted">/ ${TOTAL} equipped now</span></div>
-    <p class="muted small"><b>${res.score}/${TOTAL}</b> possible with your best combo${res.score > nowScore ? ` <span class="pip up legend"></span> faint icons = pieces to swap in` : ""}</p>`
+      ? `<div class="score"><span class="big">${nowScore}</span><span class="muted">/ ${TOTAL} equipped now</span></div>`
       : `<div class="score"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with the best combo</span></div>`}
+    ${seenAny ? `<p class="muted small"><b>${res.score}/${TOTAL}</b> possible with your best combo${res.score > nowScore ? ": see What to wear" : ""}</p>` : ""}
     <div class="board" style="grid-template-rows: repeat(${Math.ceil(rowsOf.length / 2)}, auto)">${rowsOf.map(boardRow).join("")}</div>
-    ${gaps.length ? `<div class="hunt"><span class="label">Still missing · ${gaps.length}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}</div></div>` : `<p class="act on">All 18 ✓</p>`}
+    ${gaps.length || flexLeft ? `<div class="hunt"><span class="label">Still missing · ${gaps.length + flexLeft}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}${flexLeft ? `<span class="chip flex-chip" title="Any class line (each class once), a 2nd or 3rd Crit DMG, or Damage">✦ Any: class · Crit · Damage</span>${flexLeft > 1 ? `<span class="times">×${flexLeft}</span>` : ""}` : ""}</div></div>` : `<p class="act on">All 18 ✓</p>`}
     ${jewelProgress(sockets, option, res)}`;
   if (typeof draft !== "undefined") $("add-panel").innerHTML = addForm();
   $("lines").innerHTML = `
@@ -300,7 +317,8 @@ function render() {
   const inBest = new Set(Object.values(res.picks).filter(Boolean).map((it) => it.id));
   // Which builds' best combos each piece is in (the one you're looking at first and solid).
   const buildTags = (it) => {
-    const ids = BUILD_IDS.filter((id) => inBuilds[it.id]?.includes(id));
+    // Flex is a mix of the two, so pieces are tagged General and/or Bossing only.
+    const ids = BUILD_IDS.filter((id) => id !== "flex" && inBuilds[it.id]?.includes(id));
     return ids.length ? `<span class="build-tags" title="In the best combo for: ${ids.map((id) => BUILDS[id].name).join(", ")}">${ids.map((id) => `<span class="bt${id === build.id ? " on" : ""}">${BUILDS[id].short}</span>`).join("")}</span>` : "";
   };
   // The best piece per slot to fuse your lines onto with an Orb (its jewel sockets), worth keeping.
@@ -533,7 +551,20 @@ function addPiece() {
     render();
     return;
   }
-  remember({ slot: draft.slot, cls: draft.cls ?? classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: Boolean(draft.equipped), stats: `hand-${Date.now()}` });
+  const piece = { slot: draft.slot, cls: draft.cls ?? classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: Boolean(draft.equipped) };
+  // Already added: don't add it twice (just mark it equipped if you said so), and point at it.
+  const same = findSame(state.items, piece);
+  if (same) {
+    if (piece.equipped) equipItem(same.id);
+    recentIds = new Set([same.id]);
+    addMsg = `You already added this ${draft.slot.toLowerCase()}: it's highlighted in Your pieces`;
+    setStatus(addMsg);
+    draft = freshDraft();
+    save();
+    render();
+    return;
+  }
+  remember({ ...piece, stats: `hand-${Date.now()}` });
   addMsg = `Added ${draft.equipped ? "your equipped " : draft.slot === "Shoes" || draft.slot === "Gloves" ? "" : "a "}${draft.slot.toLowerCase()} ✓`;
   setStatus(addMsg);
   draft = freshDraft();
@@ -767,6 +798,7 @@ async function addFromScreenshots(files) {
   const added = [];
   const failed = [];
   let unread = 0; // pieces with a skill line the reader couldn't make out
+  let dupes = 0; // screenshots of pieces you'd already added
   recentIds = new Set();
   try {
     for (const [i, file] of files.entries()) {
@@ -775,6 +807,14 @@ async function addFromScreenshots(files) {
         const r = await readPiece(await imageFromFile(file), { quiet: true });
         if (r?.slot) {
           // The class the tooltip names (another class's gear stays out of your best combo).
+          const piece = { slot: r.slot, cls: r.cls ?? classOption(state.classId).classes[0], lines: r.lines, sockets: r.sockets, equipped: r.equipped };
+          const same = findSame(state.items, piece);
+          if (same) {
+            if (piece.equipped) equipItem(same.id);
+            recentIds.add(same.id);
+            dupes++;
+            continue;
+          }
           const it = remember({ slot: r.slot, cls: r.cls ?? classOption(state.classId).classes[0], lines: r.lines, sockets: r.sockets, equipped: r.equipped, stats: `shot-${Date.now()}-${i}` });
           recentIds.add(it.id);
           added.push(it);
@@ -788,7 +828,7 @@ async function addFromScreenshots(files) {
     reading = false;
   }
   save();
-  scan.text = `Added ${added.length} piece${added.length === 1 ? "" : "s"} from ${files.length} screenshots ✓${failed.length ? ` · ${failed.length} couldn't be read (${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}): add those by hand` : ""}${unread ? ` · ${unread} ${unread === 1 ? "has a skill line" : "have skill lines"} it couldn't read: Edit to add` : ""}. The new ones are highlighted in Your pieces: check them, and Edit anything that's off.`;
+  scan.text = `Added ${added.length} piece${added.length === 1 ? "" : "s"} from ${files.length} screenshots ✓${failed.length ? ` · ${failed.length} couldn't be read (${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}): add those by hand` : ""}${dupes ? ` · ${dupes} ${dupes === 1 ? "was" : "were"} already added, so skipped` : ""}${unread ? ` · ${unread} ${unread === 1 ? "has a skill line" : "have skill lines"} it couldn't read: Edit to add` : ""}. The new ones are highlighted in Your pieces: check them, and Edit anything that's off.`;
   scan.pct = 100;
   scan.busy = false;
   render();

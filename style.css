@@ -639,3 +639,6 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 .bt.on { border-color: var(--holo); color: var(--holo-ink); background: color-mix(in srgb, var(--holo-hi) 45%, var(--surface)); font-weight: 600; }
 .chip.off { color: var(--muted); background: transparent; border: 1px dashed var(--line); font-weight: 500; }
 .build-note { margin: -4px 0 10px; }
+/* Core + flex */
+.chip.flex-chip { border: 1px dashed var(--holo); color: var(--holo-ink); background: transparent; }
+.extra-note { font-size: 11px; font-weight: 700; color: var(--muted); margin-left: 4px; align-self: center; cursor: help; }
