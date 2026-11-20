@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=71";
+import { SLOTS, TARGETS } from "./parse.js?v=73";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); // strongest first (v.272)
@@ -63,6 +63,26 @@ const big = (st) => BIG.reduce((n, i) => n + digit(st, i), 0);
 // Lines past the 13 core ones (a class, Damage, or a 2nd or 3rd Crit DMG).
 const coreScore = (st) => CORE_NEED.reduce((n, need, i) => n + Math.min(need, digit(st, i)), 0);
 const flexUsed = (st) => tally(st) - coreScore(st);
+// Roughly what one level of each line adds (from the skill tooltips): Leap, White Hole and Registry
+// +5% Final Damage each; ATT +5% ATT and a little Final Damage; Crit DMG +5% Crit Damage; Damage +5%
+// Damage (spread over all your other Damage %); a class line a Lv. 1 proc. In tenths.
+const WORTH = TARGETS.map((t) => ({ leap: 50, wh: 50, reg: 50, atk: 30, crit: 25, dmg: 20 })[t.k] ?? 10);
+const worth = (st) => WORTH.reduce((n, w, i) => n + w * digit(st, i), 0);
+// Flex, scored from an uncapped tally: the 13 shared lines, plus the best 5 of the rest (by WORTH).
+// (Searching with the cap applied would fill the 5 spots in slot order, not with the best lines.)
+function flexScore(st, cap) {
+  const extra = [];
+  let lines = 0;
+  let w = 0;
+  CORE_NEED.forEach((need, i) => {
+    const d = digit(st, i);
+    lines += Math.min(need, d);
+    w += WORTH[i] * Math.min(need, d);
+    for (let j = need; j < d; j++) extra.push(WORTH[i]);
+  });
+  const best = extra.sort((a, b) => b - a).slice(0, cap);
+  return { tally: lines + best.length, worth: w + best.reduce((a, b) => a + b, 0) };
+}
 // Can this line still count in this build's tally?
 const counts1 = (st, i, b) => digit(st, i) < b.need[i] && (!b.flexCap || digit(st, i) < CORE_NEED[i] || flexUsed(st) < b.flexCap);
 
@@ -93,13 +113,15 @@ export function solve(items, mode = "endgame", build = "original", classId = nul
   const b = buildOf(build);
   const bySlot = SLOTS.map((s) => items.filter((it) => it.slot === s));
   // Map of tally -> { score, prev, item }. score = how much we like the path so far (more lines).
+  // Flex searches without its 5-spot cap and applies it when scoring (flexScore).
+  const searchB = b.flexCap ? { ...b, flexCap: 0 } : b;
   let layer = new Map([[0, { extra: 0 }]]);
   const layers = [];
   for (const [si, opts] of bySlot.entries()) {
     const next = new Map();
     for (const [st, info] of layer) {
       for (const it of opts.length ? opts : [null]) {
-        const ns = it ? add(st, it.lines, b) : st;
+        const ns = it ? add(st, it.lines, searchB) : st;
         // early: every line counts most. endgame: the 18 come first, then more lines in total (an
         // extra Mage line is still +1 to that skill, up to Lv. 8).
         const sockets = it && classId ? socketValue(it, classId).good : 0;
@@ -111,9 +133,9 @@ export function solve(items, mode = "endgame", build = "original", classId = nul
     layers.push(next);
     layer = next;
   }
-  // Leap, White Hole and Registry first (their damage is why 3 of each is BiS); then the most of the
-  // 18; then ATT & M.ATT; then more lines in total; then more usable sockets.
-  const value = (st, e) => (mode === "early" ? e.extra * 100 + tally(st) * 10 : big(st) * 1e9 + tally(st) * 1e7 + core(st) * 1e5 + e.extra);
+  // Most damage first: each counted line weighted by roughly what a level of it adds (see WORTH);
+  // then the most of the 18; then the four 3-each skills; then more lines; then more usable sockets.
+  const value = (st, e) => (mode === "early" ? e.extra * 100 + tally(st) * 10 : (b.flexCap ? flexScore(st, b.flexCap).worth : worth(st)) * 1e8 + (b.flexCap ? flexScore(st, b.flexCap).tally : tally(st)) * 1e6 + core(st) * 1e4 + e.extra);
   let bestSt = 0;
   let best = null;
   for (const [st, e] of layer) if (!best || value(st, e) > value(bestSt, best)) [bestSt, best] = [st, e];

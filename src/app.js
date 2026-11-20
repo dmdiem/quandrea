@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=71";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=71";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=71";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=71";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=71";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=71";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=73";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=73";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=73";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=73";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=73";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=73";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -238,10 +238,9 @@ function render() {
   // Extra copies (beyond the 1 or 3 that count) in the best combo: still +1 to the skill.
   const extras = Object.fromEntries(TARGETS.map((t) => [t.k, []]));
   for (const s of SLOTS) res.picks[s]?.lines.forEach((k, j) => !res.counted[s][j] && extras[k] && extras[k].push(s));
-  // Extra copies: a small "+2" after the row (which pieces on hover), not more boxes.
-  const extraNote = (slots) => (slots.length ? `<span class="extra-note" title="Extra from your ${slots.join(", ").toLowerCase()}: still +1 to the skill each, past what counts for 18/18">+${slots.length}</span>` : "");
-  // In Flex, a line you have that none of the 5 spots could take: "not counted", not "+1".
-  const leftNote = (slots) => slots.map((sl) => `<span class="pip on left" title="Excess (${sl.toLowerCase()}): all 5 Flex spots are full, so it doesn't count toward 18. Still +1 to the skill." aria-label="Excess, ${sl}">${slotIcon(sl)}</span>`).join("");
+  // A copy past what counts (a 4th Leap, a 2nd Crit DMG in General, a class line once Flex's 5 are
+  // full): a red box with that piece's icon. Still +1 to the skill.
+  const leftNote = (slots) => slots.map((sl) => `<span class="pip on left" title="Excess (${sl.toLowerCase()}): past what counts toward 18${build.flexCap ? " (all 5 Flex spots are full)" : ""}. Still +1 to the skill." aria-label="Excess, ${sl}">${slotIcon(sl)}</span>`).join("");
   const spots = (t) => board.coreAt[t.k];
   // Still missing: the lines this set doesn't have yet, with how many of each.
   const gaps = missing(shown);
@@ -254,7 +253,7 @@ function render() {
   const rowsOf = TARGETS.map((t, i) => ({ t, n: Math.max(rowNeed[i], build.flexCap ? board.coreAt[t.k].length : 0) }))
     .filter((r) => r.n > 0 || (build.flexCap && extras[r.t.k].length));
   const boardRow = ({ t, n }) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
-      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j], Boolean(build.flexCap) && j >= rowNeed[TARGETS.indexOf(t)])).join("") + (n ? extraNote(extras[t.k]) : leftNote(extras[t.k])); })()}</div></div>`;
+      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j], Boolean(build.flexCap) && j >= rowNeed[TARGETS.indexOf(t)])).join("") + leftNote(extras[t.k]); })()}</div></div>`;
 
   // One button per build with its best score, so you can see which suits your gear.
   const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}</div>${build.note ? `<p class="muted small build-note">${build.note}${build.flexCap ? ` <span class="legend-any"></span> = Flex.` : ""}</p>` : ""}`;

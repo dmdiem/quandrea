@@ -268,3 +268,15 @@ test("on a tie, the piece with more sockets your class can use wins", () => {
   const better = item("Bottom", "leap wh reg", { id: "better", sockets: [] });
   assert.equal(solve([plain, blue, better], "endgame", "original", "Magician").picks.Bottom.id, "better");
 });
+
+test("ATT isn't dropped to 1 just to finish Leap when that loses lines (Flex)", () => {
+  const set = [
+    item("Hat", "reg thief atk"), item("Top", "leap atk reg"), item("Top", "wh archer leap"),
+    item("Bottom", "wh pirate archer"), item("Bottom", "reg wh mage"),
+    item("Shoes", "crit atk wh"), item("Shoes", "pirate leap warrior"),
+    item("Gloves", "wh crit mage"), item("Cape", "reg crit leap"),
+  ];
+  const res = solve(set, "endgame", "flex");
+  assert.equal(res.score, 17);
+  assert.equal(res.counts[TARGETS.findIndex((t) => t.k === "atk")], 3);
+});
