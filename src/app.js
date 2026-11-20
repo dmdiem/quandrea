@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=63";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=63";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=63";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=63";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=63";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=63";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=65";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=65";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=65";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=65";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=65";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=65";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -245,7 +245,7 @@ function render() {
   for (const s of SLOTS) shown.picks[s]?.lines.forEach((k, j) => shown.counted[s][j] && from[k].push(s));
   // Just the slot's icon (its name on hover); an empty dashed box when the line is missing.
   // A filled spot shows the icon of the equipment that gives the line; a missing one is a faint dot.
-  const cell = (k, slot, up = false, any = false) => `<span class="pip ${slot ? (up ? "up" : "on") : ""}${any ? " any" : ""}" title="${slot ? (up ? `${slot}: swap in your best combo piece for this` : any ? `${slot}: one of your "any 5" lines` : slot) : "Missing"}" aria-label="${slot ?? "Missing"}">${slot ? slotIcon(slot) : ""}</span>`;
+  const cell = (k, slot, up = false, any = false) => `<span class="pip ${slot ? (up ? "up" : "on") : ""}${any ? " any" : ""}" title="${slot ? (up ? `${slot}: swap in your best combo piece for this` : any ? `${slot}: Flex` : slot) : "Missing"}" aria-label="${slot ?? "Missing"}">${slot ? slotIcon(slot) : ""}</span>`;
   // The board shows what you wear (solid), then dots for what you still need (before anything is
   // marked equipped, it shows the best combo instead).
   const fromNow = Object.fromEntries(TARGETS.map((t) => [t.k, []]));
@@ -256,6 +256,8 @@ function render() {
   for (const s of SLOTS) boardSet.picks[s]?.lines.forEach((k, j) => !boardSet.counted[s][j] && extras[k] && extras[k].push(s));
   // Extra copies: a small "+2" after the row (which pieces on hover), not more boxes.
   const extraNote = (slots) => (slots.length ? `<span class="extra-note" title="Extra from your ${slots.join(", ").toLowerCase()}: still +1 to the skill each, past what counts for 18/18">+${slots.length}</span>` : "");
+  // In Flex, a line you have that none of the 5 spots could take: "not counted", not "+1".
+  const leftNote = (slots) => slots.map((sl) => `<span class="pip on left" title="Excess (${sl.toLowerCase()}): all 5 Flex spots are full, so it doesn't count toward 18. Still +1 to the skill." aria-label="Excess, ${sl}">${slotIcon(sl)}</span>`).join("");
   // Only what you wear (or, before anything is equipped, the best combo); swaps are in What to wear.
   const spots = (t) => board.coreAt[t.k].map((sl) => [sl, false]);
   // Still missing: the lines this set doesn't have yet, with how many of each.
@@ -269,10 +271,10 @@ function render() {
   const rowsOf = TARGETS.map((t, i) => ({ t, n: Math.max(rowNeed[i], build.flexCap ? board.coreAt[t.k].length : 0) }))
     .filter((r) => r.n > 0 || (build.flexCap && extras[r.t.k].length));
   const boardRow = ({ t, n }) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
-      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j]?.[0], sp[j]?.[1], Boolean(build.flexCap) && j >= rowNeed[TARGETS.indexOf(t)])).join("") + extraNote(extras[t.k]); })()}</div></div>`;
+      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j]?.[0], sp[j]?.[1], Boolean(build.flexCap) && j >= rowNeed[TARGETS.indexOf(t)])).join("") + (n ? extraNote(extras[t.k]) : leftNote(extras[t.k])); })()}</div></div>`;
 
   // One button per build with its best score, so you can see which suits your gear.
-  const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}</div>${build.note ? `<p class="muted small build-note">${build.note}${build.flexCap ? ` <span class="legend-any"></span> = one of your 5.` : ""}</p>` : ""}`;
+  const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}</div>${build.note ? `<p class="muted small build-note">${build.note}${build.flexCap ? ` <span class="legend-any"></span> = Flex.` : ""}</p>` : ""}`;
   const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
   // What the collapsed piece list says, so a swap is never hidden.
   const swaps = SLOTS.filter((s) => res.picks[s] && !res.picks[s].equipped);

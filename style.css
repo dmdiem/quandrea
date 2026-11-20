@@ -646,3 +646,9 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 .pip.on.any { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
 .pip.on.any .slot-icon { color: var(--accent); }
 .legend-any { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+/* Flex: a line none of the 5 spots could take (amber, dashed) */
+.pip.on.left { border: 1.5px solid var(--trash); background: color-mix(in srgb, var(--trash) 12%, transparent); cursor: help; }
+.pip.on.left .slot-icon { color: var(--trash); }
+/* An empty spot (a line you still need): a dashed outline to fill, nothing inside */
+.progress .pip:not(.on) { background: transparent; border: 1.5px dashed color-mix(in srgb, var(--muted) 70%, transparent); }
+.progress .pip:not(.on)::before { content: none; }
