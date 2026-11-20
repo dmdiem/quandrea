@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=77";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=77";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=77";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=77";
-import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=77";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=77";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=78";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=78";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=78";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=78";
+import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=78";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=78";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -268,6 +268,7 @@ function render() {
     <div class="score"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with your best combo</span></div>
     <div class="board" style="grid-template-rows: repeat(${Math.ceil(rowsOf.length / 2)}, auto)">${rowsOf.map(boardRow).join("")}</div>
     ${gaps.length || flexLeft ? `<div class="hunt"><span class="label">Still missing · ${gaps.length + flexLeft}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}${flexLeft ? `<span class="chip flex-chip" title="Any class line (each class once), a 2nd or 3rd Crit DMG, or Damage">✦ Any: class · Crit · Damage</span>${flexLeft > 1 ? `<span class="times">×${flexLeft}</span>` : ""}` : ""}</div></div>` : `<p class="act on">All 18 ✓</p>`}
+    ${dropsHtml(onePieceAway(state.items.filter((it) => option.classes.includes(it.cls)), build.id), res)}
     ${jewelProgress(sockets, option, res)}`;
   if (typeof draft !== "undefined") $("add-panel").innerHTML = addForm();
   $("lines").innerHTML = `
@@ -315,8 +316,10 @@ function render() {
   // Another class's gear never counts: say so loudly, with a one-click fix for a misread title.
   const notMine = (it) => !option.classes.includes(it.cls);
   const classWarn = (it) => (notMine(it) ? `<div class="class-warn">⚠ ${it.cls ?? "Unknown"} gear: not counted for you <button class="linkish" data-mine="${it.id}" title="The screenshot's class was misread: make it ${option.cls} gear">It's ${option.cls} gear</button></div>` : "");
+  // Hologram gear always has 3 skill lines: fewer means one wasn't read.
+  const linesWarn = (it) => (it.lines.length < 3 ? `<div class="lines-warn">⚠ Only ${it.lines.length} skill${it.lines.length === 1 ? "" : "s"}: one is probably missing <button class="linkish" data-edit="${it.id}">Edit</button></div>` : "");
   const row = (it) => `<div class="bag-row${inBest.has(it.id) ? " best-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}${notMine(it) ? " other-class" : ""}">
-      ${classWarn(it)}<div class="bag-top">${status(it)}${buildTags(it)}${jewelTag(it)}
+      ${classWarn(it)}${linesWarn(it)}<div class="bag-top">${status(it)}${buildTags(it)}${jewelTag(it)}
         <span class="bag-act"><button class="equip-btn" data-edit="${it.id}" title="Change its jewels, skills or slot">Edit</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
       <div class="lines">${linesOf(it)}</div>
       ${socks(it.sockets)}
@@ -392,6 +395,7 @@ function addForm() {
       </div>
       ${state.cb && draft.sockets.length ? `<div class="mt-sockwords">${[0, 1, 2].map((i) => `<span>${draft.sockets[i] ? SOCK_WORD[draft.sockets[i]] : "–"}</span>`).join("")}</div>` : ""}
       <div class="mt-lines">${mockLines}</div>
+      ${draft.slot && draft.lines.length > 0 && draft.lines.length < 3 ? `<div class="lines-warn">⚠ Only ${draft.lines.length} skill${draft.lines.length === 1 ? "" : "s"}: hologram gear has 3. Pick the missing one.</div>` : ""}
     </div>`;
   return `<div class="add-manual" id="add-manual">
     <h2>${draft.editId ? "Edit a piece" : "Add a piece"}</h2>
@@ -801,6 +805,24 @@ async function addFromScreenshots(files) {
   scan.busy = false;
   render();
 }
+
+// ---------- one drop finishes it ----------
+// Every single new piece that would take the set to 18/18: its slot and the lines it needs. Collapsed
+// by default; open, one compact row per slot. Only when you're 1 to 3 lines short.
+let dropsOpen = false;
+function dropsHtml(opts, res) {
+  if (!opts.length || res.score >= TOTAL) return "";
+  const bySlot = SLOTS.map((s) => [s, opts.filter((o) => o.slot === s)]).filter(([, l]) => l.length);
+  const name = (k) => ({ atk: "ATT", crit: "Crit", dmg: "Damage", mage: "Mage" })[k] ?? NAME[k];
+  return `<details class="drops" id="drops"${dropsOpen ? " open" : ""}>
+      <summary><span class="label">One drop finishes it</span> <span class="muted small">${opts.length} option${opts.length === 1 ? "" : "s"}</span></summary>
+      <p class="muted small">A new piece in that slot with those lines gets you to 18/18.</p>
+      ${bySlot.map(([s, l]) => `<div class="drop-row"><span class="drop-slot">${slotIcon(s)}${s}</span><span class="drop-opts">${l.map((o) => `<span class="drop-opt">${o.need.map(name).join(" · ")}</span>`).join("")}</span></div>`).join("")}
+    </details>`;
+}
+document.addEventListener("toggle", (e) => {
+  if (e.target.id === "drops") dropsOpen = e.target.open;
+}, true);
 
 // ---------- custom outfit ----------
 // Every line on the outfit with its level (how many pieces carry it), no caps; how it would score in

@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=77";
+import { SLOTS, TARGETS } from "./parse.js?v=78";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); // strongest first (v.272)
@@ -172,7 +172,10 @@ export function solve(items, mode = "endgame", build = "original", classId = nul
 // "One more piece finishes it": for each slot, the lines a single new piece there would need to
 // reach 18/18, keeping the best possible pieces in the other five slots. A piece holds at most 3
 // lines and can't repeat one, so only gaps of up to 3 different lines count. Fewest lines first.
-export function onePieceAway(items) {
+// build: General ("original") or Bossing ("eu"). Flex's "any 5" has too many ways to finish to list.
+export function onePieceAway(items, build = "original") {
+  const b = buildOf(build);
+  if (b.flexCap) return [];
   const bySlot = SLOTS.map((s) => items.filter((it) => it.slot === s));
   const out = [];
   const seen = new Set();
@@ -181,12 +184,12 @@ export function onePieceAway(items) {
     for (const [si, opts] of bySlot.entries()) {
       if (si === skip) continue;
       const next = new Set();
-      for (const st of layer) for (const it of opts.length ? opts : [null]) next.add(it ? add(st, it.lines) : st);
+      for (const st of layer) for (const it of opts.length ? opts : [null]) next.add(it ? add(st, it.lines, b) : st);
       layer = next;
     }
     for (const st of layer) {
       if (tally(st) < TOTAL - 3) continue;
-      const need = TARGETS.flatMap((t, i) => Array(t.need - digit(st, i)).fill(t.k));
+      const need = TARGETS.flatMap((t, i) => Array(Math.max(0, b.need[i] - digit(st, i))).fill(t.k));
       if (!need.length || new Set(need).size !== need.length) continue;
       const key = `${skip}:${need.join(",")}`;
       if (!seen.has(key)) {

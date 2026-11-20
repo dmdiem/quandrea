@@ -285,3 +285,11 @@ test("adding a piece never lowers General's score", () => {
   const before = solve(set).score;
   assert.equal(solve([...set, item("Hat", "reg leap archer")]).score, before);
 });
+
+test("one drop finishes it, per build", () => {
+  // 15 General lines: missing Leap, Mage, Pirate; Bossing wants Crit and Damage instead of classes.
+  const five = [item("Hat", "leap wh reg"), item("Top", "leap wh reg"), item("Bottom", "wh reg atk"), item("Shoes", "atk crit warrior"), item("Gloves", "atk thief archer")];
+  assert.deepEqual(onePieceAway(five).find((o) => o.slot === "Cape").need.sort(), ["leap", "mage", "pirate"]);
+  assert.ok(onePieceAway(five, "eu").every((o) => !o.need.some((k) => ["mage", "pirate", "thief", "archer", "warrior"].includes(k))));
+  assert.deepEqual(onePieceAway(five, "flex"), []);
+});
