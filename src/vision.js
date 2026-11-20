@@ -257,9 +257,11 @@ export function findSockets(img, icon) {
   };
   for (const g of groups) {
     if (g.end - g.start + 1 < minW || g.end - g.start + 1 > maxW || !reachesTop(g)) continue;
-    // The outline: the outermost marked pixel on each side of every row.
+    // The outline: the outermost marked pixel on each side of every row. Only the top part of the
+    // droplet: item art (like a glove's gold trim) can touch its bottom and pass for prismatic gold.
+    const yTop = y0 + Math.round((y1 - y0) * 0.65);
     const outline = [];
-    for (let y = y0; y <= y1; y++) {
+    for (let y = y0; y <= yTop; y++) {
       let l = null;
       let r = null;
       for (let x = g.start; x <= g.end; x++) {
@@ -271,10 +273,10 @@ export function findSockets(img, icon) {
       }
       if (l) outline.push(l, r);
     }
-    if (outline.length < 8) continue;
-    // Every pixel of the droplet, for the prismatic check in socketColor.
+    if (outline.length < 6) continue;
+    // Every pixel of the droplet's top part, for the prismatic check in socketColor.
     const all = {};
-    for (let y = y0; y <= y1; y++)
+    for (let y = y0; y <= yTop; y++)
       for (let x = g.start; x <= g.end; x++) {
         const c = at(x, y);
         if (c) all[c] = (all[c] ?? 0) + 1;

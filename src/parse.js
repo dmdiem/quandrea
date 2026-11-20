@@ -36,7 +36,8 @@ const FILLER_RE = [
 
 const SKILL = [
   ["leap", /mens[il1]\w*\s*le[a-z]?p/i],
-  ["wh", /\bw[a-z1]{2,4}\s*h[a-z0][l1I]e\b/i],
+  // "White Hole", also when OCR loses or mangles the W ("thite Hole", "‘hite Hole").
+  ["wh", /\bw[a-z1]{2,4}\s*h[a-z0][l1I]e\b|[a-z]?h[il1]te\s*h[o0][l1I]e\b/i],
   ["reg", /reg[il1]str/i],
   ["atk", /magic\s*at+\w?\s*enh|attack\s*[a-z]?ower\s*[&8]|[&8]\s*ma\w{1,3}\s*at+\w?\s*enh/i],
   ["crit", /crit\w*\s*da\w*\s*enh/i],
@@ -56,7 +57,7 @@ export function skillLines(text) {
   const lines = [];
   for (let i = 0; i < raw.length; i++) {
     const l = raw[i];
-    const start = /holo|enh\w*\s*sk[il1]/i.test(l) || SKILL.some(([, re]) => re.test(l)) || /mens[il1]|wh[il1]te\s*h[a-z0]|reg[il1]str/i.test(l);
+    const start = /holo|enh\w*\s*sk[il1]/i.test(l) || SKILL.some(([, re]) => re.test(l)) || /mens[il1]|h[il1]te\s*h[o0a]|reg[il1]str/i.test(l);
     if (!start) continue;
     // A line naming a target skill counts even when OCR mangles its "Lv. +1" (small or blurry text):
     // those names never appear in stat or potential lines.
@@ -74,7 +75,47 @@ export const noRepeats = (keys) => keys.filter((k, i) => k === OTHER || keys.ind
 export function lineKey(line) {
   for (const [k, re] of SKILL) if (re.test(line)) return k;
   for (const [k, re] of FILLER_RE) if (re.test(line)) return k;
-  return OTHER;
+  return fuzzyKey(line) ?? OTHER;
+}
+
+// When OCR mangles a few letters ("Dimensionai Lcap", "Registrv", "thite Hole"), compare the line's
+// letters with every skill's name: it counts if most letters match in the same order and it's
+// clearly closer to one name than any other.
+const NAMES = [
+  ["leap", "dimensional leap"],
+  ["wh", "white hole"],
+  ["reg", "registry"],
+  ["atk", "attack power magic att enhancement"],
+  ["crit", "critical damage enhancement"],
+  ["dmg", "damage enhancement"],
+  ["boss", "boss damage increase enhancement"],
+  ["ied", "ignore defense enhancement"],
+  ["warrior", "warrior attack"],
+  ["mage", "magician attack"],
+  ["archer", "bowman attack"],
+  ["thief", "thief attack"],
+  ["pirate", "pirate attack"],
+].map(([k, n]) => [k, n.replace(/ /g, "")]);
+const letters = (line) => String(line).toLowerCase()
+  .replace(/\[?h[o0]l[o0]gr[a-z]*\]?/g, " ") // "[Hologram]"
+  .replace(/\b(skill|sk[il1]ll|level)\b/g, " ")
+  .replace(/l[vy1]?[.,]?\s*\+\s*\d.*$/, " ") // "Lv. +1" and anything after
+  .replace(/[^a-z]/g, "");
+function editDistance(a, b) {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+export function fuzzyKey(line) {
+  const t = letters(line);
+  if (t.length < 5) return null;
+  const scored = NAMES.map(([k, n]) => [k, 1 - editDistance(t, n) / Math.max(t.length, n.length)]).sort((a, b) => b[1] - a[1]);
+  const [[k, best], [, next]] = scored;
+  return best >= 0.75 && best - next >= 0.1 ? k : null;
 }
 
 const SKIP = ["Shoulder", "Weapon", "Secondary", "Emblem", "Badge", "Pendant", "Earring", "Ring", "Belt", "Pocket", "Medal", "Heart", "Android", "Totem"];
@@ -110,6 +151,6 @@ export function parseTooltip(text) {
 }
 
 function statDigits(text) {
-  const m = text.match(/set\s*effect[\s\S]*?(?=\[holo|dimens|wh[il1]te\s*h|reg[il1]str|scro|$)/i);
+  const m = text.match(/set\s*effect[\s\S]*?(?=\[holo|dimens|h[il1]te\s*h[o0]|reg[il1]str|scro|$)/i);
   return (m?.[0] ?? "").replace(/[^0-9+]/g, "").slice(0, 60);
 }

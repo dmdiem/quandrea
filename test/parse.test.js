@@ -87,3 +87,20 @@ test("reads hologram lines from small, blurry text", () => {
 Skill v.41`;
   assert.deepEqual(parseTooltip(text).lines.sort(), ["archer", "atk"]);
 });
+
+test("White Hole is read even when OCR mangles the W", () => {
+  for (const l of ["White Hole Lv. +1", "‘thite Hole Ly. +1", "hite Hole Lv. +1", "Whlte Hole Lv. +1"]) assert.equal(lineKey(l), "wh", l);
+  const t = "Supercharged Gloves (Magician)\nDefense +398\n‘thite Hole Ly. +1\nHologram] Bowman Attack SKill Level Lv. +1\nHologram] Magician Attack Skill Ly, +1\nScroll Enhancement Mone";
+  assert.deepEqual(parseTooltip(t).lines, ["wh", "archer", "mage"]);
+});
+
+test("a skill name with a few mangled letters is still read (most letters, same order)", () => {
+  const cases = {
+    "Dimensionai Lcap Lv. +1": "leap", "Registrv Lv. +1": "reg", "Whife Ho1e Lv. +1": "wh",
+    "[Hologram] Critlcal Darnage Enhancernent Skill Lv. +1": "crit", "[Hologram] Darnage Enhancernent Skill Lv. +1": "dmg",
+    "[Hologram] Boss Darnage lncrease Enhancement Skill Lv. +1": "boss", "[Hologram] lgnore Defense Enhancernent Skill Lv. +1": "ied",
+    "[Hologram] Bowrnan Attack Skill Level Lv. +1": "archer", "[Hologram] Pirafe Atfack Skill Lv. +1": "pirate",
+  };
+  for (const [l, k] of Object.entries(cases)) assert.equal(lineKey(l), k, l);
+  for (const l of ["Scroll Enhancement None", "Required Level Lv. 160", "Jewel Stats", "Magic ATT +12"]) assert.equal(lineKey(l), "other", l);
+});

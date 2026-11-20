@@ -257,6 +257,17 @@ test("sockets are still found when the picture box comes out a few pixels too lo
   assert.deepEqual(findSockets(img, { ...icon, y: icon.y + 6 }), ["prismatic", "blue"]);
 });
 
+test("a jewel touching gold item art isn't taken for prismatic", () => {
+  // Like a red droplet sitting on Supercharged Gloves' gold trim.
+  const img = screen();
+  const t = tooltip(img, 100, 100, 320, 560, ["red"]);
+  const ix = t.x + 15, iy = t.y + 120;
+  const cx = ix + Math.round(78 / 2) - 6;
+  fill(img, cx - 6, iy + 11, 26, 6, [230, 190, 40]); // gold art across the droplet's bottom
+  const icon = findIcon(img, { x: t.x, y: t.y, width: t.w, height: t.h });
+  assert.deepEqual(findSockets(img, icon), ["red"]);
+});
+
 test("a snip of just the item picture: its sockets are found anywhere in the image", () => {
   // Only the picture (no tooltip around it), in the middle of a small image.
   const img = screen(160, 200);
