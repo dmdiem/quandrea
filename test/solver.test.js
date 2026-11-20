@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { solve, missing, onePieceAway, verdicts, findSame, fitsBuild, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
+import { solve, solveOptions, missing, onePieceAway, verdicts, findSame, fitsBuild, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
 import { TARGETS } from "../src/parse.js";
 
 let n = 0;
@@ -292,4 +292,19 @@ test("one drop finishes it, per build", () => {
   assert.deepEqual(onePieceAway(five).find((o) => o.slot === "Cape").need.sort(), ["leap", "mage", "pirate"]);
   assert.ok(onePieceAway(five, "eu").every((o) => !o.need.some((k) => ["mage", "pirate", "thief", "archer", "warrior"].includes(k))));
   assert.deepEqual(onePieceAway(five, "flex"), []);
+});
+
+test("tied options: one per different gap, recommended first", () => {
+  const set = [
+    item("Hat", "reg thief atk"), item("Top", "leap atk reg"), item("Top", "wh archer leap"),
+    item("Bottom", "wh pirate archer"), item("Bottom", "reg wh mage"),
+    item("Shoes", "crit atk wh"), item("Shoes", "pirate leap warrior"),
+    item("Gloves", "wh crit mage"), item("Cape", "reg crit leap"),
+  ];
+  const opts = solveOptions(set, "endgame", "original");
+  assert.ok(opts.length > 1);
+  assert.deepEqual(opts[0].counts, solve(set).counts);
+  assert.ok(opts.every((o) => o.score === opts[0].score));
+  const gaps = opts.map((o) => missing(o).sort().join());
+  assert.equal(new Set(gaps).size, gaps.length);
 });

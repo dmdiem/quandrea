@@ -680,3 +680,7 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 .drop-slot .slot-icon { width: 13px; height: 13px; }
 .drop-opts { display: flex; flex-wrap: wrap; gap: 3px 6px; }
 .drop-opt { padding: 1px 6px; border-radius: 5px; background: var(--sunk); white-space: nowrap; }
+/* Tied options: ‹ Option 1 of 4 › */
+.opt-cycle { display: flex; align-items: center; gap: 8px; margin: -4px 0 10px; font-size: 12.5px; }
+.opt-cycle button { padding: 2px 10px; font-size: 14px; line-height: 1.2; }
+.opt-cycle button:disabled { opacity: .35; cursor: default; }

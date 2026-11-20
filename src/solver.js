@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=78";
+import { SLOTS, TARGETS } from "./parse.js?v=79";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); // strongest first (v.272)
@@ -110,6 +110,16 @@ export const useful = (item) => item.lines.filter((k) => IDX[k] !== undefined).l
 // items: [{ id, slot, lines }]. Returns the picks and how good they are.
 // classId (optional): on a tie, the piece with more sockets your class can use wins (no Orb needed).
 export function solve(items, mode = "endgame", build = "original", classId = null) {
+  return search(items, mode, build, classId).best;
+}
+
+// Every different way to reach the best score (each a different set of lines, e.g. one missing ATT,
+// one missing White Hole), recommended one first, at most max of them.
+export function solveOptions(items, mode = "endgame", build = "original", classId = null, max = 12) {
+  return search(items, mode, build, classId, max).options;
+}
+
+function search(items, mode, build, classId, maxOptions = 0) {
   const b = buildOf(build);
   const bySlot = SLOTS.map((s) => items.filter((it) => it.slot === s));
   // Map of tally -> { score, prev, item }. score = how much we like the path so far (more lines).
@@ -143,9 +153,28 @@ export function solve(items, mode = "endgame", build = "original", classId = nul
   let bestSt = 0;
   let best = null;
   for (const [st, e] of layer) if (!best || value(st, e) > value(bestSt, best)) [bestSt, best] = [st, e];
+  const bestRes = finish(bestSt);
+  if (!maxOptions) return { best: bestRes };
+  // The other end states with the same score, best first; one per different set of counted lines.
+  const ranked = [...layer].sort((x, y) => value(y[0], y[1]) - value(x[0], x[1]));
+  const options = [bestRes];
+  // One option per different set of missing lines (Flex outfits that only swap which class fills an
+  // "any" spot count as the same option).
+  const gapKey = (r) => missing(r).sort().join();
+  const seenCounts = new Set([gapKey(bestRes)]);
+  for (const [st] of ranked) {
+    if (options.length >= maxOptions) break;
+    if (st === bestSt) continue;
+    const r = finish(st);
+    if (r.score !== bestRes.score || seenCounts.has(gapKey(r))) continue;
+    seenCounts.add(gapKey(r));
+    options.push(r);
+  }
+  return { best: bestRes, options };
 
+  function finish(endSt) {
   const picks = Object.fromEntries(SLOTS.map((s) => [s, null]));
-  for (let l = layers.length - 1, st = bestSt; l >= 0; l--) {
+  for (let l = layers.length - 1, st = endSt; l >= 0; l--) {
     const e = layers[l].get(st);
     if (e.item) picks[SLOTS[e.slot]] = e.item;
     st = e.prev;
@@ -167,6 +196,7 @@ export function solve(items, mode = "endgame", build = "original", classId = nul
       });
   const lines = SLOTS.reduce((n, s) => n + (picks[s]?.lines.length ?? 0), 0);
   return { picks, counted, counts: counts(run), score: tally(run), core: coreScore(run), flex: tally(run) - coreScore(run), lines, build: b.id };
+  }
 }
 
 // "One more piece finishes it": for each slot, the lines a single new piece there would need to

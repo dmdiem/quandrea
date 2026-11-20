@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=78";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=78";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=78";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=78";
-import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=78";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=78";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=79";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=79";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=79";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=79";
+import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=79";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=79";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -194,7 +194,13 @@ function render() {
   // Custom: you pick a piece per slot (starting from the General best combo) and see its totals.
   const custom = state.build === "custom";
   const build = buildOf(custom ? "original" : state.build);
-  const { res, sockets, all, inBuilds } = verdicts(state.items, { ...state, mode: "endgame", build: build.id });
+  const v = verdicts(state.items, { ...state, mode: "endgame", build: build.id });
+  const { sockets, all, inBuilds } = v;
+  // Ties: other outfits with the same score (each missing something different). Option 1 is the
+  // recommended one; the arrows cycle through the rest.
+  const options = custom ? [v.res] : solveOptions(state.items.filter((it) => classOption(state.classId).classes.includes(it.cls)), "endgame", build.id, state.classId);
+  const optIdx = Math.min(Math.max(0, state.optIdx?.[build.id] ?? 0), options.length - 1);
+  const res = options[optIdx] ?? v.res;
   // The board's fixed rows: the lines this build needs (in Flex, the 13 shared ones; its other 5 go in
   // one "Any 5" row that shows which line fills each spot).
   const rowNeed = build.flexCap ? CORE_NEED : build.need;
@@ -266,6 +272,9 @@ function render() {
   $("progress").innerHTML = `<h2>Hologram lines</h2>
     ${buildPick}
     <div class="score"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with your best combo</span></div>
+    ${options.length > 1 ? `<div class="opt-cycle"><button class="ghost" data-opt="-1" aria-label="Previous option"${optIdx === 0 ? " disabled" : ""}>‹</button>
+      <span>Option <b>${optIdx + 1}</b> of ${options.length} · ${optIdx === 0 ? "recommended" : "same score"}${gaps.length ? `, missing ${[...new Set(gaps)].map((k) => NAME[k]).join(", ")}` : ""}</span>
+      <button class="ghost" data-opt="1" aria-label="Next option"${optIdx === options.length - 1 ? " disabled" : ""}>›</button></div>` : ""}
     <div class="board" style="grid-template-rows: repeat(${Math.ceil(rowsOf.length / 2)}, auto)">${rowsOf.map(boardRow).join("")}</div>
     ${gaps.length || flexLeft ? `<div class="hunt"><span class="label">Still missing · ${gaps.length + flexLeft}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}${flexLeft ? `<span class="chip flex-chip" title="Any class line (each class once), a 2nd or 3rd Crit DMG, or Damage">✦ Any: class · Crit · Damage</span>${flexLeft > 1 ? `<span class="times">×${flexLeft}</span>` : ""}` : ""}</div></div>` : `<p class="act on">All 18 ✓</p>`}
     ${dropsHtml(onePieceAway(state.items.filter((it) => option.classes.includes(it.cls)), build.id), res)}
@@ -433,6 +442,12 @@ document.addEventListener("click", (e) => {
   if (t.id !== "clear") confirmClear = false;
   if (t.dataset.themePick) return setTheme(t.dataset.themePick);
   if (presetAction(t)) return;
+  if (t.dataset.opt) {
+    const id = buildOf(state.build).id;
+    state.optIdx = { ...state.optIdx, [id]: Math.max(0, (state.optIdx?.[id] ?? 0) + Number(t.dataset.opt)) };
+    render(); // not saved: a fresh visit starts on the recommended option
+    return;
+  }
   if (t.dataset.draftMine) {
     draft.cls = null; // Add then uses your class
     render();
