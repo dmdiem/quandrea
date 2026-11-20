@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=81";
+import { SLOTS, TARGETS } from "./parse.js?v=82";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); // strongest first (v.272)
@@ -115,7 +115,7 @@ export function solve(items, mode = "endgame", build = "original", classId = nul
 
 // Every different way to reach the best score (each a different set of lines, e.g. one missing ATT,
 // one missing White Hole), recommended one first, at most max of them.
-export function solveOptions(items, mode = "endgame", build = "original", classId = null, max = 12) {
+export function solveOptions(items, mode = "endgame", build = "original", classId = null, max = 20) {
   return search(items, mode, build, classId, max).options;
 }
 
@@ -135,7 +135,10 @@ function search(items, mode, build, classId, maxOptions = 0) {
         // early: every line counts most. endgame: the 18 come first, then more lines in total (an
         // extra Mage line is still +1 to that skill, up to Lv. 8).
         const sockets = it && classId ? socketValue(it, classId).good : 0;
-        const extra = info.extra + (it ? it.lines.length * (mode === "early" ? 1000 : 100) + sockets : 0);
+        // Then, between outfits with the same score, the one whose lines are worth more in total, so a
+        // line that doesn't count is a 2nd Crit DMG (still +1 to it) rather than a doubled class line.
+        const lineWorth = it ? it.lines.reduce((n, k) => n + (IDX[k] === undefined ? 0 : WORTH[IDX[k]]), 0) : 0;
+        const extra = info.extra + (it ? it.lines.length * 1000 + lineWorth * 10 + sockets : 0);
         const cur = next.get(ns);
         if (!cur || extra > cur.extra) next.set(ns, { extra, prev: st, item: it, slot: si });
       }
@@ -147,9 +150,10 @@ function search(items, mode, build, classId, maxOptions = 0) {
   // line weighted by roughly what a level of it adds, see WORTH). Flex (any 5 of several lines): the
   // most damage first, then the most of the 18. Then the four 3-each skills; then more lines; then
   // more usable sockets.
+  // (Sizes: extra < 1e5, core < 1e7, worth < 1e10, tally < 1e12; all exact in a double.)
   const value = (st, e) => (mode === "early" ? e.extra * 100 + tally(st) * 10 : (b.flexCap
-    ? flexScore(st, b.flexCap).worth * 1e8 + flexScore(st, b.flexCap).tally * 1e6
-    : tally(st) * 1e8 + worth(st) * 1e5) + core(st) * 1e4 + e.extra);
+    ? flexScore(st, b.flexCap).worth * 1e10 + flexScore(st, b.flexCap).tally * 1e8
+    : tally(st) * 1e10 + worth(st) * 1e7) + core(st) * 1e5 + e.extra);
   let bestSt = 0;
   let best = null;
   for (const [st, e] of layer) if (!best || value(st, e) > value(bestSt, best)) [bestSt, best] = [st, e];
@@ -158,9 +162,10 @@ function search(items, mode, build, classId, maxOptions = 0) {
   // The other end states with the same score, best first; one per different set of counted lines.
   const ranked = [...layer].sort((x, y) => value(y[0], y[1]) - value(x[0], x[1]));
   const options = [bestRes];
-  // One option per different set of missing lines (Flex outfits that only swap which class fills an
-  // "any" spot count as the same option).
-  const gapKey = (r) => missing(r).sort().join();
+  // One option per different choice: what it's missing, and which lines are spare (worn but not
+  // counted, e.g. a 2nd Pirate vs a 2nd Crit DMG). In Flex, outfits that only swap which class fills
+  // an "any" spot count as the same option.
+  const gapKey = (r) => `${missing(r).sort().join()}|${spare(r).sort().join()}`;
   const seenCounts = new Set([gapKey(bestRes)]);
   for (const [st] of ranked) {
     if (options.length >= maxOptions) break;
@@ -232,6 +237,13 @@ export function onePieceAway(items, build = "original") {
   out.sort((a, b) => a.need.length - b.need.length || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
   return out.filter((o, i) => !out.slice(0, i).some((p) => p.slot === o.slot && p.need.every((k) => o.need.includes(k))));
 }
+
+// Extra copies worn but not counted (a 2nd Pirate, a 4th Leap), as line keys. Lines the build
+// never counts (class lines in Bossing, Boss DMG) aren't "spare", just unused.
+export const spare = (res) => {
+  const need = buildOf(res.build).need;
+  return SLOTS.flatMap((s) => (res.picks[s]?.lines ?? []).filter((k, j) => !res.counted[s][j] && IDX[k] !== undefined && need[IDX[k]] > 0));
+};
 
 // What's still missing from the 18, as line keys (e.g. ["wh", "wh", "mage"]).
 // For core + flex, only the core lines (the flex ones can be any of several: see res.flex).

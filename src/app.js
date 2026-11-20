@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=81";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=81";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=81";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=81";
-import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=81";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=81";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=82";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=82";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=82";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=82";
+import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=82";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=82";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -266,6 +266,8 @@ function render() {
 
   // One button per build with its best score, so you can see which suits your gear.
   const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${!custom && id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}<button data-build="custom" aria-pressed="${custom}" title="Pick any piece for each slot and see its totals"><b class="only">Custom</b></button></div>${custom ? `<p class="muted small build-note">Your own outfit: click <b>Use</b> on a piece in Your pieces to put it in. It starts as your General best combo.</p>` : build.note ? `<p class="muted small build-note">${build.note}${build.flexCap ? ` <span class="legend-any"></span> = Flex.` : ""}</p>` : ""}`;
+  // "Crit DMG ×2, Pirate"
+  const tally = (keys) => [...keys.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map())].map(([k, n]) => `${NAME[k]}${n > 1 ? ` ×${n}` : ""}`).join(", ");
   const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
   // Progress, beside Add a piece so it moves as you add: the score, what you wear now, the 18-line
   // board and what's still missing.
@@ -274,7 +276,7 @@ function render() {
     ${buildPick}
     <div class="score"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with your best combo</span></div>
     ${options.length > 1 ? `<div class="opt-cycle"><button class="ghost" data-opt="-1" aria-label="Previous option">‹</button>
-      <span>Option <b>${optIdx + 1}</b> of ${options.length} · ${optIdx === 0 ? "recommended" : "same score"}${gaps.length ? `, missing ${[...new Set(gaps)].map((k) => NAME[k]).join(", ")}` : ""}</span>
+      <span>Option <b>${optIdx + 1}</b> of ${options.length} · ${optIdx === 0 ? "suggested" : "same score"}${gaps.length ? ` · missing ${tally(gaps)}` : ""}${spare(res).length ? ` · spare ${tally(spare(res))}` : ""}</span>
       <button class="ghost" data-opt="1" aria-label="Next option">›</button></div>` : ""}
     <div class="board" style="grid-template-rows: repeat(${Math.ceil(rowsOf.length / 2)}, auto)">${rowsOf.map(boardRow).join("")}</div>
     ${gaps.length || flexLeft ? `<div class="hunt"><span class="label">Still missing · ${gaps.length + flexLeft}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}${flexLeft ? `<span class="chip flex-chip" title="Any class line (each class once), a 2nd or 3rd Crit DMG, or Damage">✦ Any: class · Crit · Damage</span>${flexLeft > 1 ? `<span class="times">×${flexLeft}</span>` : ""}` : ""}</div></div>` : `<p class="act on">All 18 ✓</p>`}

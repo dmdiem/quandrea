@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { solve, solveOptions, missing, onePieceAway, verdicts, findSame, fitsBuild, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
+import { solve, solveOptions, spare, missing, onePieceAway, verdicts, findSame, fitsBuild, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
 import { TARGETS } from "../src/parse.js";
 
 let n = 0;
@@ -294,7 +294,7 @@ test("one drop finishes it, per build", () => {
   assert.deepEqual(onePieceAway(five, "flex"), []);
 });
 
-test("tied options: one per different gap, recommended first", () => {
+test("tied options: one per different gap and spare lines, suggested first", () => {
   const set = [
     item("Hat", "reg thief atk"), item("Top", "leap atk reg"), item("Top", "wh archer leap"),
     item("Bottom", "wh pirate archer"), item("Bottom", "reg wh mage"),
@@ -305,6 +305,6 @@ test("tied options: one per different gap, recommended first", () => {
   assert.ok(opts.length > 1);
   assert.deepEqual(opts[0].counts, solve(set).counts);
   assert.ok(opts.every((o) => o.score === opts[0].score));
-  const gaps = opts.map((o) => missing(o).sort().join());
+  const gaps = opts.map((o) => `${missing(o).sort().join()}|${spare(o).sort().join()}`);
   assert.equal(new Set(gaps).size, gaps.length);
 });
