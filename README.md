@@ -15,13 +15,13 @@ Your pieces are saved only in that browser (Presets and Copy backup help you kee
 
 1. In **Add a piece**, click each item's **equipment**, **jewels** and **skills**, then **Add**. Or hover the item in the game, press **PrtScn**, then **Ctrl+V** on
    the page: it fills them in for you to check before you click Add.
-2. For the pieces you're wearing, switch on **Currently Equipped** before Add (or click **Equip** later).
-3. Adding a piece you already added (same slot, class, lines and jewels) doesn't make a copy: the one you
+2. Adding a piece you already added (same slot, class, lines and jewels) doesn't make a copy: the one you
    have is highlighted instead.
 
-**Hologram lines** shows your score out of 18 for the build you pick, and a board of what you're wearing
-(a small **+1** after a row is a spare copy: still +1 to that skill, but past what counts). **Still
-missing** lists what to farm next, and **What to wear** lists the pieces to swap in.
+**Hologram lines** shows your best combo's score out of 18 for the build you pick, and a board of its
+lines (a small **+1** after a row is a spare copy: still +1 to that skill, but past what counts).
+**Still missing** lists what to farm next, and **What to wear** lists the best combo piece by piece.
+Quandrea doesn't track what you have on in game: compare What to wear with your character.
 
 **Simpling Dumpling mode** (button at the top) is a simple screen for colour-blind players: hover an
 item in the game, press PrtScn and paste the screenshot, and its socket colours show up as big words, with ✓ on the ones your class
@@ -87,16 +87,15 @@ Gem colours by class: red = Warrior, green = Bowman, grey = Pirate, purple = Thi
 
 ### Your pieces
 
-Everything you've added, by slot, each tagged with the builds whose best combo it's in (**General**,
-**Bossing**; Flex is a mix of the two, so it has no tag; the one you're looking at is highlighted), and marked **Equipped**, **In best combo**, **For jewels** (perfect
-sockets for its slot, 3 your class can use, to move your lines onto with an Orb; Orbs are rare, so nothing
-less counts) or spare. The left
-side, **What to wear**, is the best combo piece by piece, with Equip / Swap buttons.
+Everything you've added, by slot, with each slot's **BiS ✓** piece (for the build you picked) first and
+highlighted. Pieces are also tagged with the builds whose best combo they're in (**General**,
+**Bossing**; Flex is a mix of the two, so it has no tag), **For jewels** (perfect sockets for its slot,
+3 your class can use, to move your lines onto with an Orb; Orbs are rare, so nothing less counts) or
+spare.
 
 The **best combo** is the best outfit you can make from everything you've added, worn or in your
 bag: one piece per slot. **Leap, White Hole and Registry come first** (their damage is why 3 of each is
-BiS), then as many of the 18 lines as possible, then ATT & M.ATT, then more lines in total, then what
-you already wear. It's worked out over every combination, so it never wastes a
+BiS), then as many of the 18 lines as possible, then ATT & M.ATT, then more lines in total. It's worked out over every combination, so it never wastes a
 slot on a line another piece already covers. The idea comes from the community's 3L Set Solver (see Credits).
 
 ## What it reads from a screenshot

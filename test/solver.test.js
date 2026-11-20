@@ -81,12 +81,6 @@ test("same score: more lines in total wins, since extras still level the skill",
   assert.equal(solve([...set, capeB, capeC]).picks.Cape, capeC);
 });
 
-test("ties go to what you already wear", () => {
-  const a = item("Cape", "reg");
-  const b = item("Cape", "reg", { equipped: true });
-  assert.equal(solve([a, b]).picks.Cape, b);
-});
-
 test("socket colours per class, with prismatic counted as good", () => {
   const it = item("Hat", "", { sockets: ["prismatic", "blue", "grey"] });
   assert.deepEqual(socketValue(it, "Magician"), { prismatic: 1, mine: 1, dead: 1, good: 2 });

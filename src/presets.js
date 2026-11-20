@@ -1,7 +1,7 @@
 // Saved presets: up to 5 named snapshots of your pieces and class, kept in this browser.
 // Loading one goes through the same checks as a backup (see backup.js), and names are plain text.
 
-import { sanitize } from "./backup.js?v=66";
+import { sanitize } from "./backup.js?v=67";
 
 export const PRESET_COUNT = 5;
 export const NAME_MAX = 30;

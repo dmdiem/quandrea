@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=66";
+import { SLOTS, TARGETS } from "./parse.js?v=67";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); // strongest first (v.272)
@@ -83,11 +83,11 @@ export const findSame = (items, piece) => items.find((it) => it !== piece && sam
 // How many of an item's lines are on the list (the most it could ever add).
 export const useful = (item) => item.lines.filter((k) => IDX[k] !== undefined).length;
 
-// items: [{ id, slot, lines, equipped? }]. Returns the picks and how good they are.
+// items: [{ id, slot, lines }]. Returns the picks and how good they are.
 export function solve(items, mode = "endgame", build = "original") {
   const b = buildOf(build);
   const bySlot = SLOTS.map((s) => items.filter((it) => it.slot === s));
-  // Map of tally -> { score, prev, item }. score = how much we like the path so far (lines, equipped).
+  // Map of tally -> { score, prev, item }. score = how much we like the path so far (more lines).
   let layer = new Map([[0, { extra: 0 }]]);
   const layers = [];
   for (const [si, opts] of bySlot.entries()) {
@@ -96,8 +96,8 @@ export function solve(items, mode = "endgame", build = "original") {
       for (const it of opts.length ? opts : [null]) {
         const ns = it ? add(st, it.lines, b) : st;
         // early: every line counts most. endgame: the 18 come first, then more lines in total (an
-        // extra Mage line is still +1 to that skill, up to Lv. 8), then what you already wear.
-        const extra = info.extra + (it ? it.lines.length * (mode === "early" ? 100 : 10) + (it.equipped ? 1 : 0) : 0);
+        // extra Mage line is still +1 to that skill, up to Lv. 8).
+        const extra = info.extra + (it ? it.lines.length * (mode === "early" ? 100 : 10) : 0);
         const cur = next.get(ns);
         if (!cur || extra > cur.extra) next.set(ns, { extra, prev: st, item: it, slot: si });
       }
@@ -106,7 +106,7 @@ export function solve(items, mode = "endgame", build = "original") {
     layer = next;
   }
   // Leap, White Hole and Registry first (their damage is why 3 of each is BiS); then the most of the
-  // 18; then ATT & M.ATT; then more lines in total; then what you already wear.
+  // 18; then ATT & M.ATT; then more lines in total.
   const value = (st, e) => (mode === "early" ? e.extra * 100 + tally(st) * 10 : big(st) * 1e9 + tally(st) * 1e7 + core(st) * 1e5 + e.extra);
   let bestSt = 0;
   let best = null;

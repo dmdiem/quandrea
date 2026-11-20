@@ -451,7 +451,7 @@ button .sock-word { border: 0; padding: 0; margin: 0; background: none; }
 .page-status { margin: 0 0 -4px; }
 .wear-toggle[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); font-weight: 700; }
 /* An equipped piece in the All tab */
-.bag-row.worn-row { background: color-mix(in srgb, var(--holo) 8%, transparent); border-radius: 8px; padding-left: 6px; padding-right: 6px; }
+.bag-row.best-row { background: color-mix(in srgb, var(--holo) 8%, transparent); border-radius: 8px; padding-left: 6px; padding-right: 6px; }
 /* Skills wrap into two short rows of five (the big lines, then the classes), lined up in columns,
    and Add sits right under the buttons, so the mouse never has far to go. */
 .add-panel .picker.picker-grid { display: grid; grid-template-columns: repeat(5, max-content); gap: 4px; }
@@ -652,3 +652,4 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 /* An empty spot (a line you still need): a dashed outline to fill, nothing inside */
 .progress .pip:not(.on) { background: transparent; border: 1.5px dashed color-mix(in srgb, var(--muted) 70%, transparent); }
 .progress .pip:not(.on)::before { content: none; }
+.act.small-act { font-size: 11px; padding: 1px 6px; }

@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=66";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=66";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=66";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=66";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=66";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=66";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=67";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=67";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=67";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=67";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=67";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=67";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -122,7 +122,6 @@ function showSimple(img, { now = false } = {}) {
 function remember(p) {
   // Sockets aren't part of the key.
   const key = [p.slot, p.cls, p.lines.join(","), p.stats].join("|");
-  if (p.equipped) for (const it of state.items) if (it.slot === p.slot) it.equipped = false;
   // Same item read before (older saves called Boss DMG / Ignore DEF / Damage just "Other"): match
   // on slot, class, stats and the lines on the list, then refresh its lines.
   const coreOf = (lines) => lines.filter(isTarget).join(",");
@@ -133,11 +132,10 @@ function remember(p) {
     item.lines = p.lines;
   }
   if (item) {
-    item.equipped = p.equipped || item.equipped;
     if (p.sockets.length) item.sockets = p.sockets;
   }
   else {
-    item = { id: crypto.randomUUID?.() ?? String(Date.now() + Math.random()), key, slot: p.slot, cls: p.cls, lines: p.lines, sockets: p.sockets, equipped: p.equipped, cell: p.cell ?? null };
+    item = { id: crypto.randomUUID?.() ?? String(Date.now() + Math.random()), key, slot: p.slot, cls: p.cls, lines: p.lines, sockets: p.sockets, equipped: false, cell: p.cell ?? null };
     state.items.push(item);
   }
   save();
@@ -216,15 +214,8 @@ function render() {
   $("clear").classList.toggle("danger", confirmClear);
   document.documentElement.classList.toggle("cb", Boolean(state.cb));
 
-  // What you're wearing now (from the "Currently Equipped" boxes), and how it compares.
-  const worn = Object.fromEntries(SLOTS.map((s) => [s, state.items.find((it) => it.slot === s && it.equipped) ?? null]));
-  const nowRes = solve(Object.values(worn).filter(Boolean), "endgame", build.id);
-  const nowScore = nowRes.score;
-  const seenAny = Object.values(worn).some(Boolean);
-
-  // The hologram lines panel: the best combo you could make, or (switch) what you have equipped now.
-  // One view: the best combo (what you wear now shows on each piece, with Swap).
-  const showNow = false;
+  // Everything shows your best combo: what to wear, from all the pieces you've added. (What you have
+  // on in game isn't tracked: you'd have to keep it in sync by hand.)
   const shown = res;
   const head = shown.score;
   // Split the counted lines of a set into the core rows and the flex row (in slot order).
@@ -240,26 +231,18 @@ function render() {
     });
     return { coreAt, flex };
   };
-  const board = split(seenAny ? nowRes : res);
-  const from = Object.fromEntries(TARGETS.map((t) => [t.k, []])); // line -> slots that supply it
-  for (const s of SLOTS) shown.picks[s]?.lines.forEach((k, j) => shown.counted[s][j] && from[k].push(s));
+  const board = split(res);
   // Just the slot's icon (its name on hover); an empty dashed box when the line is missing.
   // A filled spot shows the icon of the equipment that gives the line; a missing one is a faint dot.
-  const cell = (k, slot, up = false, any = false) => `<span class="pip ${slot ? (up ? "up" : "on") : ""}${any ? " any" : ""}" title="${slot ? (up ? `${slot}: swap in your best combo piece for this` : any ? `${slot}: Flex` : slot) : "Missing"}" aria-label="${slot ?? "Missing"}">${slot ? slotIcon(slot) : ""}</span>`;
-  // The board shows what you wear (solid), then dots for what you still need (before anything is
-  // marked equipped, it shows the best combo instead).
-  const fromNow = Object.fromEntries(TARGETS.map((t) => [t.k, []]));
-  for (const s of SLOTS) nowRes.picks[s]?.lines.forEach((k, j) => nowRes.counted[s][j] && fromNow[k].push(s));
-  // Extra copies (beyond the 1 or 3 that count) of the set the board shows: still +1 to the skill.
+  const cell = (k, slot, any = false) => `<span class="pip ${slot ? "on" : ""}${any ? " any" : ""}" title="${slot ? (any ? `${slot}: Flex` : slot) : "Missing"}" aria-label="${slot ?? "Missing"}">${slot ? slotIcon(slot) : ""}</span>`;
+  // Extra copies (beyond the 1 or 3 that count) in the best combo: still +1 to the skill.
   const extras = Object.fromEntries(TARGETS.map((t) => [t.k, []]));
-  const boardSet = seenAny ? nowRes : res;
-  for (const s of SLOTS) boardSet.picks[s]?.lines.forEach((k, j) => !boardSet.counted[s][j] && extras[k] && extras[k].push(s));
+  for (const s of SLOTS) res.picks[s]?.lines.forEach((k, j) => !res.counted[s][j] && extras[k] && extras[k].push(s));
   // Extra copies: a small "+2" after the row (which pieces on hover), not more boxes.
   const extraNote = (slots) => (slots.length ? `<span class="extra-note" title="Extra from your ${slots.join(", ").toLowerCase()}: still +1 to the skill each, past what counts for 18/18">+${slots.length}</span>` : "");
   // In Flex, a line you have that none of the 5 spots could take: "not counted", not "+1".
   const leftNote = (slots) => slots.map((sl) => `<span class="pip on left" title="Excess (${sl.toLowerCase()}): all 5 Flex spots are full, so it doesn't count toward 18. Still +1 to the skill." aria-label="Excess, ${sl}">${slotIcon(sl)}</span>`).join("");
-  // Only what you wear (or, before anything is equipped, the best combo); swaps are in What to wear.
-  const spots = (t) => board.coreAt[t.k].map((sl) => [sl, false]);
+  const spots = (t) => board.coreAt[t.k];
   // Still missing: the lines this set doesn't have yet, with how many of each.
   const gaps = missing(shown);
   // A line this build doesn't count at all (a class line in Bossing, Damage in General) is drawn like
@@ -271,23 +254,17 @@ function render() {
   const rowsOf = TARGETS.map((t, i) => ({ t, n: Math.max(rowNeed[i], build.flexCap ? board.coreAt[t.k].length : 0) }))
     .filter((r) => r.n > 0 || (build.flexCap && extras[r.t.k].length));
   const boardRow = ({ t, n }) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
-      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j]?.[0], sp[j]?.[1], Boolean(build.flexCap) && j >= rowNeed[TARGETS.indexOf(t)])).join("") + (n ? extraNote(extras[t.k]) : leftNote(extras[t.k])); })()}</div></div>`;
+      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j], Boolean(build.flexCap) && j >= rowNeed[TARGETS.indexOf(t)])).join("") + (n ? extraNote(extras[t.k]) : leftNote(extras[t.k])); })()}</div></div>`;
 
   // One button per build with its best score, so you can see which suits your gear.
   const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}</div>${build.note ? `<p class="muted small build-note">${build.note}${build.flexCap ? ` <span class="legend-any"></span> = Flex.` : ""}</p>` : ""}`;
   const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
-  // What the collapsed piece list says, so a swap is never hidden.
-  const swaps = SLOTS.filter((s) => res.picks[s] && !res.picks[s].equipped);
-  const swapNote = !seenAny ? "" : swaps.length ? `${swaps.length} to swap: ${swaps.join(", ")}` : "all of them are equipped";
   // Progress, beside Add a piece so it moves as you add: the score, what you wear now, the 18-line
   // board and what's still missing.
   const flexLeft = build.flexCap ? FLEX_TOTAL - res.flex : 0;
   $("progress").innerHTML = `<h2>Hologram lines</h2>
     ${buildPick}
-    ${seenAny
-      ? `<div class="score"><span class="big">${nowScore}</span><span class="muted">/ ${TOTAL} equipped now</span></div>`
-      : `<div class="score"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with the best combo</span></div>`}
-    ${seenAny ? `<p class="muted small"><b>${res.score}/${TOTAL}</b> possible with your best combo${res.score > nowScore ? ": see What to wear" : ""}</p>` : ""}
+    <div class="score"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with your best combo</span></div>
     <div class="board" style="grid-template-rows: repeat(${Math.ceil(rowsOf.length / 2)}, auto)">${rowsOf.map(boardRow).join("")}</div>
     ${gaps.length || flexLeft ? `<div class="hunt"><span class="label">Still missing · ${gaps.length + flexLeft}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}${flexLeft ? `<span class="chip flex-chip" title="Any class line (each class once), a 2nd or 3rd Crit DMG, or Damage">✦ Any: class · Crit · Damage</span>${flexLeft > 1 ? `<span class="times">×${flexLeft}</span>` : ""}` : ""}</div></div>` : `<p class="act on">All 18 ✓</p>`}
     ${jewelProgress(sockets, option, res)}`;
@@ -295,31 +272,21 @@ function render() {
   $("lines").innerHTML = `
     <div class="row spread"><h2>What to wear</h2></div>
     <section class="set pieces always-open" id="pieces">
-      <div class="pieces-head"><span class="label">${showNow ? "Equipped now" : "Best combo"}</span>
-        <span class="muted small">${swapNote}</span></div>
+      <div class="pieces-head"><span class="label">Best combo · ${build.short}</span></div>
       <p class="muted small">Faded <b>extra</b> = a line you already have 3 (or 1) of.</p>
       <div class="pieces-list">${SLOTS.map((s) => {
           const it = shown.picks[s];
-          const best = res.picks[s];
-          const wearing = state.items.find((x) => x.slot === s && x.equipped);
-          const action = showNow
-            ? !it ? "" : best && best !== it ? `<button class="act swap" data-equip="${best.id}" title="A better piece for this slot is in your bag: click once you've put it on">Better in bag · Swap</button>` : `<span class="act on">Best ✓</span>`
-            : !it ? "" : it.equipped ? `<span class="act on">Equipped ✓</span>` : `<button class="act swap" data-equip="${it.id}" title="${wearing ? "Click once you've put this on instead of what you wear now" : "Click once you've put this on"}">${wearing ? "Swap" : "Equip"}</button>`;
-          if (!it) return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span><span class="none">${showNow ? "nothing equipped" : "nothing added yet"}</span></div>`;
-          // On a swap, the piece you have on now, right under the one to swap in.
-          const nowRow = !showNow && wearing && !it.equipped ? `<div class="piece-now"><span class="wearing-now">↳ Equipped:</span> ${linesOf(wearing)}</div>` : "";
+          if (!it) return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span><span class="none">nothing added yet</span></div>`;
           return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span>
             <span class="lines">${it.lines.map((k, j) => (inBuild(k) ? chip(k, !shown.counted[s][j]) : offChip(k))).join("") || `<span class="muted">no lines</span>`}</span>
-            <span class="piece-socks">${socks(it.sockets)}</span>
-            <span class="piece-act">${action}</span></div>${nowRow}`;
+            <span class="piece-socks">${socks(it.sockets)}</span></div>`;
         }).join("")}
         <div class="piece totals"><span class="piece-slot">Sockets</span><span class="muted small">${(() => { const v3 = SLOTS.map((s) => shown.picks[s] && socketValue(shown.picks[s], state.classId)).filter(Boolean); return `${v3.reduce((n, x) => n + x.good, 0)}/18 usable · ${v3.filter((x) => x.prismatic).length}/${build.prismatic} prismatic pieces`; })()}</span></div>
       </div>
     </section>
 `;
 
-  // Your pieces: everything you've added, by slot, what you wear first. Each one says whether it's
-  // equipped or in your best combo.
+  // Your pieces: everything you've added, by slot, BiS first.
   const inBest = new Set(Object.values(res.picks).filter(Boolean).map((it) => it.id));
   // Which builds' best combos each piece is in (the one you're looking at first and solid).
   const buildTags = (it) => {
@@ -332,12 +299,13 @@ function render() {
   const jewelTag = (it) => (!forJewels.has(it.id) ? ""
     : inBest.has(it.id) ? `<span class="act jewels" title="Perfect sockets and in your best combo: no Orb needed">Perfect jewels ✓</span>`
     : `<span class="act jewels" title="Perfect sockets for this slot (${socketNote(it, state.classId)}): keep it to move your lines onto with an Orb">For jewels</span>`);
-  const list = [...state.items].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || b.equipped - a.equipped || inBest.has(b.id) - inBest.has(a.id));
-  const row = (it) => `<div class="bag-row${it.equipped ? " worn-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}" draggable="true" data-drag="${it.id}">
-      <div class="bag-top">${it.equipped ? `<span class="act on">Equipped ✓</span>` : inBest.has(it.id) ? `<span class="act swap">In best combo</span>` : forJewels.has(it.id) || inBuilds[it.id] ? "" : `<span class="muted small">spare</span>`}${buildTags(it)}${jewelTag(it)}
-        <span class="bag-act">${it.equipped
-          ? `<button class="equip-btn" data-unequip="${it.id}" title="Not wearing this any more">Unequip</button>`
-          : `<button class="equip-btn" data-equip="${it.id}" title="You put this on in game">Equip</button>`}<button class="equip-btn" data-edit="${it.id}" title="Change its jewels, skills or slot">Edit</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
+  // Each slot leads with its BiS piece (the best combo for the build you picked), highlighted.
+  const list = [...state.items].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || inBest.has(b.id) - inBest.has(a.id));
+  const status = (it) => (inBest.has(it.id) ? `<span class="act on" title="Best in slot for ${build.name}">BiS ✓</span>`
+    : forJewels.has(it.id) || inBuilds[it.id] ? "" : `<span class="muted small">spare</span>`);
+  const row = (it) => `<div class="bag-row${inBest.has(it.id) ? " best-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}">
+      <div class="bag-top">${status(it)}${buildTags(it)}${jewelTag(it)}
+        <span class="bag-act"><button class="equip-btn" data-edit="${it.id}" title="Change its jewels, skills or slot">Edit</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
       <div class="lines">${linesOf(it)}${!option.classes.includes(it.cls) ? `<span class="tag">${it.cls ?? "?"}</span>` : ""}</div>
       ${socks(it.sockets)}
     </div>`;
@@ -345,44 +313,10 @@ function render() {
     <h2>Your pieces</h2>
     ${state.items.length ? `<div class="slots">${SLOTS.map((sl) => {
       const here = list.filter((it) => it.slot === sl);
-      return `<div class="slot" data-drop-slot="${sl}"><div class="slot-head"><h3>${slotIcon(sl)}${sl}</h3><span class="tag">${here.length}</span></div>
+      return `<div class="slot"><div class="slot-head"><h3>${slotIcon(sl)}${sl}</h3><span class="tag">${here.length}</span></div>
         ${here.length ? here.map(row).join("") : `<div class="none">Nothing added yet</div>`}</div>`;
     }).join("")}</div>` : `<p class="none">Nothing added yet: fill pieces in with <b>Add a piece</b>.</p>`}`;
 }
-
-// ---------- equipping in game ----------
-// After swapping in game: the new piece is equipped, and the old one goes back into the bag.
-function equipItem(id) {
-  const it = state.items.find((x) => x.id === id);
-  if (!it) return;
-  const old = state.items.find((x) => x.slot === it.slot && x.equipped);
-  if (old) old.equipped = false;
-  it.equipped = true;
-  setStatus(`Marked your ${it.slot.toLowerCase()} as equipped ✓`);
-}
-
-// Drag an inventory piece onto its slot's card to equip it.
-document.addEventListener("dragstart", (e) => {
-  const id = e.target.closest?.("[data-drag]")?.dataset.drag;
-  if (id) e.dataTransfer.setData("text/plain", id);
-});
-document.addEventListener("dragover", (e) => {
-  if (e.target.closest?.("[data-drop-slot], .side-col")) e.preventDefault();
-});
-document.addEventListener("drop", (e) => {
-  const card = e.target.closest?.("[data-drop-slot], .side-col");
-  const id = e.dataTransfer?.getData("text/plain");
-  const it = state.items.find((x) => x.id === id);
-  if (!card || !it) return;
-  e.preventDefault();
-  if (card.dataset.dropSlot && it.slot !== card.dataset.dropSlot) {
-    setStatus(`That's a ${it.slot.toLowerCase()}: drop it on the ${it.slot} card.`);
-    return;
-  }
-  equipItem(id);
-  save();
-  render();
-});
 
 // ---------- add manually ----------
 // Tap a slot, up to 3 lines and up to 3 sockets, then Add. The slot stays picked for the next one.
@@ -438,7 +372,7 @@ function addForm() {
     ? `<button class="mt-line${isTarget(draft.lines[i]) ? "" : " filler"}" data-unline="${i}" title="Click to remove">${classIcon(draft.lines[i])}[Hologram] ${KEY_SHORT[draft.lines[i]]} Lv. +1</button>`
     : `<span class="mt-line empty">skill line ${i + 1}</span>`)).join("");
   const mock = `<div class="mock-tip" aria-label="The piece so far">
-      <div class="mt-name">${draft.slot ? `${draft.slot}` : "Pick the equipment"}${draft.equipped ? ` <span class="mt-worn">Equipped</span>` : ""}</div>
+      <div class="mt-name">${draft.slot ? `${draft.slot}` : "Pick the equipment"}</div>
       <div class="mt-frame">
         <div class="mt-socks">${mockSocks}</div>
         <div class="mt-pic">${draft.slot ? slotIcon(draft.slot) : `<span class="mt-q">?</span>`}</div>
@@ -466,9 +400,8 @@ function addForm() {
     </div><div class="add-side">${mock}
     <div class="add-row add-under">
       <span class="add-msg muted small">${addMsg}</span>
-      <button id="add-worn" class="ghost wear-toggle" aria-pressed="${Boolean(draft.equipped)}" title="You're wearing this piece in game">${draft.equipped ? "✓ " : ""}Currently Equipped</button>
       ${draft.editId ? `<button id="add-cancel" class="ghost">Cancel</button>`
-        : draft.slot || draft.sockets.length || draft.lines.length || draft.equipped ? `<button id="add-cancel" class="ghost" title="Start this piece over without adding it">Clear</button>` : ""}
+        : draft.slot || draft.sockets.length || draft.lines.length ? `<button id="add-cancel" class="ghost" title="Start this piece over without adding it">Clear</button>` : ""}
       <button id="add" class="primary"${draft.slot ? "" : " disabled"}>${draft.editId ? "Save" : "Add"}</button></div>
     </div></div>
   </div>`;
@@ -500,12 +433,7 @@ document.addEventListener("click", (e) => {
     render();
     return;
   }
-  if (t.dataset.equip) equipItem(t.dataset.equip);
-  else if (t.dataset.unequip) {
-    const it = state.items.find((x) => x.id === t.dataset.unequip);
-    if (it) it.equipped = false;
-  }
-  else if (t.dataset.stat) state.classId = `Pirate (${t.dataset.stat})`;
+  if (t.dataset.stat) state.classId = `Pirate (${t.dataset.stat})`;
   else if (t.dataset.del) state.items = state.items.filter((it) => it.id !== t.dataset.del);
   else if (t.id === "clear") {
     if (confirmClear) {
@@ -520,7 +448,6 @@ document.addEventListener("click", (e) => {
   else if (t.dataset.pickLine) return pick("line", t.dataset.pickLine);
   else if (t.dataset.clear === "sock") draft.sockets = [];
   else if (t.dataset.clear === "line") draft.lines = [];
-  else if (t.id === "add-worn") draft.equipped = !draft.equipped;
   else if (t.dataset.unline) draft.lines.splice(+t.dataset.unline, 1);
   else if (t.dataset.unsock) draft.sockets.splice(+t.dataset.unsock, 1);
   else if (t.id === "add") return addPiece();
@@ -531,7 +458,7 @@ document.addEventListener("click", (e) => {
   else if (t.dataset.edit) {
     const it = state.items.find((x) => x.id === t.dataset.edit);
     if (!it) return;
-    draft = { ...freshDraft(), slot: it.slot, sockets: [...it.sockets], lines: [...it.lines], equipped: it.equipped, editId: it.id };
+    draft = { ...freshDraft(), slot: it.slot, sockets: [...it.sockets], lines: [...it.lines], editId: it.id };
     addMsg = "";
     render();
     $("add-panel").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -548,8 +475,7 @@ function addPiece() {
   // Editing a piece you added: change it in place.
   const old = draft.editId && state.items.find((it) => it.id === draft.editId);
   if (old) {
-    if (draft.equipped) for (const it of state.items) if (it.slot === draft.slot && it !== old) it.equipped = false;
-    Object.assign(old, { slot: draft.slot, lines: [...draft.lines], sockets: [...draft.sockets], equipped: Boolean(draft.equipped) });
+    Object.assign(old, { slot: draft.slot, lines: [...draft.lines], sockets: [...draft.sockets] });
     old.key = [old.slot, old.cls, old.lines.join(","), String(old.key ?? "").split("|").at(-1)].join("|");
     addMsg = `Saved your ${old.slot.toLowerCase()} ✓`;
     draft = freshDraft();
@@ -557,11 +483,10 @@ function addPiece() {
     render();
     return;
   }
-  const piece = { slot: draft.slot, cls: draft.cls ?? classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets, equipped: Boolean(draft.equipped) };
-  // Already added: don't add it twice (just mark it equipped if you said so), and point at it.
+  const piece = { slot: draft.slot, cls: draft.cls ?? classOption(state.classId).classes[0], lines: draft.lines, sockets: draft.sockets };
+  // Already added: don't add it twice, and point at it.
   const same = findSame(state.items, piece);
   if (same) {
-    if (piece.equipped) equipItem(same.id);
     recentIds = new Set([same.id]);
     addMsg = `You already added this ${draft.slot.toLowerCase()}: it's highlighted in Your pieces`;
     setStatus(addMsg);
@@ -571,7 +496,7 @@ function addPiece() {
     return;
   }
   remember({ ...piece, stats: `hand-${Date.now()}` });
-  addMsg = `Added ${draft.equipped ? "your equipped " : draft.slot === "Shoes" || draft.slot === "Gloves" ? "" : "a "}${draft.slot.toLowerCase()} ✓`;
+  addMsg = `Added ${draft.slot === "Shoes" || draft.slot === "Gloves" ? "" : "a "}${draft.slot.toLowerCase()} ✓`;
   setStatus(addMsg);
   draft = freshDraft();
   save();
@@ -778,7 +703,7 @@ async function fillFromScreenshot(img) {
       draft = { ...draft, sockets: r.socketsOnly };
       scan.text = "Read the jewels from the item picture ✓ Pick its equipment and skills, then Add.";
     } else {
-      draft = { ...freshDraft(), slot: r.slot, cls: r.cls, sockets: r.sockets, lines: r.lines, equipped: r.equipped };
+      draft = { ...freshDraft(), slot: r.slot, cls: r.cls, sockets: r.sockets, lines: r.lines };
       const unread = r.unread ? ` Couldn't read ${r.unread === 1 ? "one skill line" : `${r.unread} skill lines`}: pick ${r.unread === 1 ? "it" : "them"} below.` : "";
       scan.text = r.slot
         ? `Filled in ✓${unread} Check it below, fix anything with a click, then Add. Paste the next one any time.`
@@ -813,15 +738,14 @@ async function addFromScreenshots(files) {
         const r = await readPiece(await imageFromFile(file), { quiet: true });
         if (r?.slot) {
           // The class the tooltip names (another class's gear stays out of your best combo).
-          const piece = { slot: r.slot, cls: r.cls ?? classOption(state.classId).classes[0], lines: r.lines, sockets: r.sockets, equipped: r.equipped };
+          const piece = { slot: r.slot, cls: r.cls ?? classOption(state.classId).classes[0], lines: r.lines, sockets: r.sockets };
           const same = findSame(state.items, piece);
           if (same) {
-            if (piece.equipped) equipItem(same.id);
             recentIds.add(same.id);
             dupes++;
             continue;
           }
-          const it = remember({ slot: r.slot, cls: r.cls ?? classOption(state.classId).classes[0], lines: r.lines, sockets: r.sockets, equipped: r.equipped, stats: `shot-${Date.now()}-${i}` });
+          const it = remember({ slot: r.slot, cls: r.cls ?? classOption(state.classId).classes[0], lines: r.lines, sockets: r.sockets, stats: `shot-${Date.now()}-${i}` });
           recentIds.add(it.id);
           added.push(it);
           if (r.unread) unread++;
@@ -862,9 +786,8 @@ function jewelProgress(sockets, option, res) {
   }).join("");
   return `<div class="jewel-progress">
       <div class="jp-head"><span class="label">Jewel sockets</span></div>
-      <div class="score"><span class="big jp-big">${perfect}</span><span class="muted">/ 6 perfect pieces · <b>${Math.min(sockets.prismatic, sockets.goal)}/${sockets.goal}</b> prismatic</span></div>
+      <div class="score"><span class="big jp-big">${perfect}</span><span class="muted" title="Perfect = all 3 sockets are ones you can use (${option.colours.join(", ")} or prismatic). ✓ = already in your best combo.">/ 6 perfect pieces · <b>${Math.min(sockets.prismatic, sockets.goal)}/${sockets.goal}</b> prismatic</span></div>
       <div class="jp-board">${rows}</div>
-      <p class="muted small">Perfect = 3 sockets you can use (${option.cls}: ${option.colours.join(", ")}, or prismatic). Orbs are rare, so only these count. ✓ = in your best combo already: no Orb needed.</p>
     </div>`;
 }
 
