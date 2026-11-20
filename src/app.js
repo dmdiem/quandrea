@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=62";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=62";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=62";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=62";
-import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=62";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=62";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=63";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=63";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=63";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=63";
+import { cleanPresets, cleanName, makePreset, NAME_MAX } from "./presets.js?v=63";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=63";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -234,7 +234,8 @@ function render() {
     for (const s of SLOTS) set.picks[s]?.lines.forEach((k, j) => {
       if (!set.counted[s][j]) return;
       const i = TARGETS.findIndex((t) => t.k === k);
-      if (coreAt[k].length < rowNeed[i]) coreAt[k].push(s);
+      // In Flex, an "any 5" line goes in its own line's row too (a 2nd Crit DMG, a Thief line).
+      if (coreAt[k].length < rowNeed[i] || build.flexCap) coreAt[k].push(s);
       else flex.push({ k, slot: s });
     });
     return { coreAt, flex };
@@ -244,7 +245,7 @@ function render() {
   for (const s of SLOTS) shown.picks[s]?.lines.forEach((k, j) => shown.counted[s][j] && from[k].push(s));
   // Just the slot's icon (its name on hover); an empty dashed box when the line is missing.
   // A filled spot shows the icon of the equipment that gives the line; a missing one is a faint dot.
-  const cell = (k, slot, up = false) => `<span class="pip ${slot ? (up ? "up" : "on") : ""}" title="${slot ? (up ? `${slot}: swap in your best combo piece for this` : slot) : "Missing"}" aria-label="${slot ?? "Missing"}">${slot ? slotIcon(slot) : ""}</span>`;
+  const cell = (k, slot, up = false, any = false) => `<span class="pip ${slot ? (up ? "up" : "on") : ""}${any ? " any" : ""}" title="${slot ? (up ? `${slot}: swap in your best combo piece for this` : any ? `${slot}: one of your "any 5" lines` : slot) : "Missing"}" aria-label="${slot ?? "Missing"}">${slot ? slotIcon(slot) : ""}</span>`;
   // The board shows what you wear (solid), then dots for what you still need (before anything is
   // marked equipped, it shows the best combo instead).
   const fromNow = Object.fromEntries(TARGETS.map((t) => [t.k, []]));
@@ -263,12 +264,15 @@ function render() {
   // Boss DMG, not as an "extra".
   const inBuild = (k) => build.need[TARGETS.findIndex((t) => t.k === k)] > 0;
   const offChip = (k) => `<span class="chip k-${k} off" title="Not part of ${build.name}">${icon(k)}${NAME[k]}</span>`;
-  const rowsOf = TARGETS.map((t, i) => ({ t, n: rowNeed[i] })).filter((r) => r.n > 0);
+  // In Flex, rows for the 13 shared lines plus a row for each other line you have (class, Damage),
+  // and the Crit DMG row grows to hold its extra copies that count.
+  const rowsOf = TARGETS.map((t, i) => ({ t, n: Math.max(rowNeed[i], build.flexCap ? board.coreAt[t.k].length : 0) }))
+    .filter((r) => r.n > 0 || (build.flexCap && extras[r.t.k].length));
   const boardRow = ({ t, n }) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
-      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j]?.[0], sp[j]?.[1])).join("") + extraNote(extras[t.k]); })()}</div></div>`;
+      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j]?.[0], sp[j]?.[1], Boolean(build.flexCap) && j >= rowNeed[TARGETS.indexOf(t)])).join("") + extraNote(extras[t.k]); })()}</div></div>`;
 
   // One button per build with its best score, so you can see which suits your gear.
-  const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}</div>${build.note ? `<p class="muted small build-note">${build.note}</p>` : ""}`;
+  const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}</div>${build.note ? `<p class="muted small build-note">${build.note}${build.flexCap ? ` <span class="legend-any"></span> = one of your 5.` : ""}</p>` : ""}`;
   const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
   // What the collapsed piece list says, so a swap is never hidden.
   const swaps = SLOTS.filter((s) => res.picks[s] && !res.picks[s].equipped);

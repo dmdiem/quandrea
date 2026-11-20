@@ -642,3 +642,7 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 /* Core + flex */
 .chip.flex-chip { border: 1px dashed var(--holo); color: var(--holo-ink); background: transparent; }
 .extra-note { font-size: 11px; font-weight: 700; color: var(--muted); margin-left: 4px; align-self: center; cursor: help; }
+/* Flex: the "any 5" lines (class, extra Crit DMG, Damage) in a second colour */
+.pip.on.any { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.pip.on.any .slot-icon { color: var(--accent); }
+.legend-any { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
