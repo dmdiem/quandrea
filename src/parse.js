@@ -118,6 +118,29 @@ export function fuzzyKey(line) {
   return best >= 0.75 && best - next >= 0.1 ? k : null;
 }
 
+// When OCR loses the title, the slot badge under "Armor" on the right ("Armor" / "Top"), even
+// misread by a letter ("Tap", "Glaves").
+const BADGES = { hat: "Hat", top: "Top", bottom: "Bottom", shoes: "Shoes", gloves: "Gloves", cape: "Cape" };
+function badgeSlot(text) {
+  const lines = String(text).split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    if (!/\bar[mn]{1,2}[o0]r\b/i.test(lines[i])) continue;
+    for (const l of lines.slice(i + 1, i + 3)) {
+      const w = l.toLowerCase().replace(/[^a-z]/g, "");
+      if (w.length < 3 || w.length > 7) continue;
+      for (const [k, slot] of Object.entries(BADGES)) if (editDistance(w, k) <= (k.length <= 3 ? 1 : 2)) return slot;
+    }
+  }
+  return null;
+}
+// "Required Job  Magician"
+function requiredJob(text) {
+  const m = String(text).match(/requ[il1]red\s*j[o0]\w*\s+([a-z]+)/i);
+  if (!m) return null;
+  const w = m[1].toLowerCase();
+  return CLASSES.find((c) => editDistance(w, c.toLowerCase()) <= 2) ?? null;
+}
+
 const SKIP = ["Shoulder", "Weapon", "Secondary", "Emblem", "Badge", "Pendant", "Earring", "Ring", "Belt", "Pocket", "Medal", "Heart", "Android", "Totem"];
 
 // Everything we can read off one tooltip. slot is null when the title couldn't be read.
@@ -125,13 +148,14 @@ export function parseTooltip(text) {
   const t = String(text);
   const title = t.match(/supercharged\s+(hat|top|pants|bottom|shoes?|gloves?|cape)\b([^\n]*)/i);
   const slotWord = title?.[1].toLowerCase();
-  const slot = !slotWord ? null
+  const slot = (!slotWord ? null
     : slotWord === "pants" ? "Bottom"
     : slotWord.startsWith("shoe") ? "Shoes"
     : slotWord.startsWith("glove") ? "Gloves"
-    : slotWord[0].toUpperCase() + slotWord.slice(1);
-  // The class in brackets after it, which OCR sometimes reads as "iMagician)".
-  const cls = CLASSES.find((c) => title && title[2].toLowerCase().includes(c.toLowerCase().slice(1, 6))) ?? null;
+    : slotWord[0].toUpperCase() + slotWord.slice(1)) ?? badgeSlot(t);
+  // The class in brackets after it, which OCR sometimes reads as "iMagician)"; if the title was
+  // lost, the "Required Job" line.
+  const cls = CLASSES.find((c) => title && title[2].toLowerCase().includes(c.toLowerCase().slice(1, 6))) ?? requiredJob(t);
   // A piece can't roll the same line twice, so a repeat is a misread: keep one. ("Other" can
   // repeat: Boss DMG and Ignore DEF both count as Other.)
   const lines = noRepeats(skillLines(t).map(lineKey)).slice(0, 3);

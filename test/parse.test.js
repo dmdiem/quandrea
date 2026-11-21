@@ -104,3 +104,13 @@ test("a skill name with a few mangled letters is still read (most letters, same 
   for (const [l, k] of Object.entries(cases)) assert.equal(lineKey(l), k, l);
   for (const l of ["Scroll Enhancement None", "Required Level Lv. 160", "Jewel Stats", "Magic ATT +12"]) assert.equal(lineKey(l), "other", l);
 });
+
+test("when OCR loses the title, the slot badge and Required Job are used", () => {
+  const t = "Hero UIA ie\nCombat Power Increase\nBall I Armor\nTap\n\nRequired Joh Magician\nSet Effect\n[Hologram] Pirate Attack Skill Lv. +1\n[Hologram] Critical Damage Enhancement Skill Lv. +1\n[Hologram] Magician Attack Skill Lv. +1";
+  const r = parseTooltip(t);
+  assert.equal(r.slot, "Top");
+  assert.equal(r.cls, "Magician");
+  assert.equal(parseTooltip("Armor\nGlaves\nRequired Job Bowrnan").slot, "Gloves");
+  assert.equal(parseTooltip("Armor\nGlaves\nRequired Job Bowrnan").cls, "Bowman");
+  assert.equal(parseTooltip("Combat Power\nTop secret").slot, null); // no "Armor" badge: no guess
+});
