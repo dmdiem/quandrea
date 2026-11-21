@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=82";
+import { SLOTS, TARGETS } from "./parse.js?v=83";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); // strongest first (v.272)
@@ -138,7 +138,10 @@ function search(items, mode, build, classId, maxOptions = 0) {
         // Then, between outfits with the same score, the one whose lines are worth more in total, so a
         // line that doesn't count is a 2nd Crit DMG (still +1 to it) rather than a doubled class line.
         const lineWorth = it ? it.lines.reduce((n, k) => n + (IDX[k] === undefined ? 0 : WORTH[IDX[k]]), 0) : 0;
-        const extra = info.extra + (it ? it.lines.length * 1000 + lineWorth * 10 + sockets : 0);
+        // Another class's piece works too (an Orb moves its lines onto your gear), but Orbs are rare:
+        // on a tie, your own class's piece wins.
+        const own = it && classId && classOption(classId).classes.includes(it.cls) ? 20 : 0;
+        const extra = info.extra + (it ? it.lines.length * 1000 + lineWorth * 10 + own + sockets : 0);
         const cur = next.get(ns);
         if (!cur || extra > cur.extra) next.set(ns, { extra, prev: st, item: it, slot: si });
       }
@@ -207,10 +210,10 @@ function search(items, mode, build, classId, maxOptions = 0) {
 // "One more piece finishes it": for each slot, the lines a single new piece there would need to
 // reach 18/18, keeping the best possible pieces in the other five slots. A piece holds at most 3
 // lines and can't repeat one, so only gaps of up to 3 different lines count. Fewest lines first.
-// build: General ("original") or Bossing ("eu"). Flex's "any 5" has too many ways to finish to list.
+// In Flex, its "any 5" spots show as "any" (any class line, a 2nd or 3rd Crit DMG, or Damage).
 export function onePieceAway(items, build = "original") {
   const b = buildOf(build);
-  if (b.flexCap) return [];
+  if (b.flexCap) return flexOnePieceAway(items, b);
   const bySlot = SLOTS.map((s) => items.filter((it) => it.slot === s));
   const out = [];
   const seen = new Set();
@@ -244,6 +247,39 @@ export const spare = (res) => {
   const need = buildOf(res.build).need;
   return SLOTS.flatMap((s) => (res.picks[s]?.lines ?? []).filter((k, j) => !res.counted[s][j] && IDX[k] !== undefined && need[IDX[k]] > 0));
 };
+
+function flexOnePieceAway(items, b) {
+  const searchB = { ...b, flexCap: 0 };
+  const bySlot = SLOTS.map((s) => items.filter((it) => it.slot === s));
+  const out = [];
+  const seen = new Set();
+  for (let skip = 0; skip < SLOTS.length; skip++) {
+    let layer = new Set([0]);
+    for (const [si, opts] of bySlot.entries()) {
+      if (si === skip) continue;
+      const next = new Set();
+      for (const st of layer) for (const it of opts.length ? opts : [null]) next.add(it ? add(st, it.lines, searchB) : st);
+      layer = next;
+    }
+    for (const st of layer) {
+      const { tally: got } = flexScore(st, b.flexCap);
+      if (got < TOTAL - 3 || got === TOTAL) continue;
+      const core = TARGETS.flatMap((t, i) => Array(Math.max(0, CORE_NEED[i] - digit(st, i))).fill(t.k));
+      if (new Set(core).size !== core.length) continue; // a piece can't roll the same line twice
+      const need = [...core, ...Array(TOTAL - got - core.length).fill("any")];
+      if (!need.length || need.length > 3) continue;
+      const key = `${skip}:${need.join(",")}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push({ slot: SLOTS[skip], need });
+      }
+    }
+  }
+  out.sort((a, c) => a.need.filter((k) => k !== "any").length - c.need.filter((k) => k !== "any").length || SLOTS.indexOf(a.slot) - SLOTS.indexOf(c.slot));
+  // Keep the easiest per slot: drop an option that asks for everything another one asks for, and more.
+  const covers = (p, o) => p.need.filter((k) => k !== "any").every((k) => o.need.includes(k)) && p.need.filter((k) => k === "any").length <= o.need.filter((k) => k === "any").length + o.need.filter((k) => k !== "any" && !p.need.includes(k)).length;
+  return out.filter((o, i) => !out.slice(0, i).some((p) => p.slot === o.slot && covers(p, o)));
+}
 
 // What's still missing from the 18, as line keys (e.g. ["wh", "wh", "mage"]).
 // For core + flex, only the core lines (the flex ones can be any of several: see res.flex).
@@ -348,19 +384,19 @@ export function socketSet(items, classId, build = "original") {
 //   trash - anything else, and gear for another class
 export function verdicts(items, { classId = "Magician", mode = "endgame", build = "original" } = {}) {
   const { classes } = classOption(classId);
+  // Lines can come from any class's gear (an Orb moves them onto yours); jewels only from your own.
   const mine = items.filter((it) => classes.includes(it.cls));
-  const res = solve(mine, mode, build, classId);
+  const res = solve(items, mode, build, classId);
   const sockets = socketSet(mine, classId, build);
   // Every build's best combo, so each piece can say which ones it's in.
-  const all = Object.fromEntries(BUILD_IDS.map((id) => [id, id === res.build ? res : solve(mine, mode, id, classId)]));
+  const all = Object.fromEntries(BUILD_IDS.map((id) => [id, id === res.build ? res : solve(items, mode, id, classId)]));
   const inBuilds = {};
   for (const [id, r] of Object.entries(all)) for (const it of Object.values(r.picks)) if (it) (inBuilds[it.id] ??= []).push(id);
   const picked = new Set(Object.values(res.picks).filter(Boolean).map((it) => it.id));
   const donor = new Set(Object.values(sockets.picks).filter(Boolean).map((it) => it.id));
   const out = {};
   for (const it of items) {
-    if (!classes.includes(it.cls)) out[it.id] = { verdict: "trash", why: `${it.cls ?? "Another class"} gear` };
-    else if (picked.has(it.id)) out[it.id] = { verdict: "keep", reason: "best", why: "In your best combo" };
+    if (picked.has(it.id)) out[it.id] = { verdict: "keep", reason: "best", why: "In your best combo" };
     else if (it.lines.length === 3 && useful(it) === 3) out[it.id] = { verdict: "keep", reason: "spare", why: "Spare 3-line piece: all 3 lines are on the list" };
     else if (donor.has(it.id)) out[it.id] = { verdict: "keep", reason: "sockets", why: `For its sockets: ${socketNote(it, classId)}` };
     else out[it.id] = { verdict: "trash", why: useful(it) ? "The best combo has a better piece for this slot" : "No lines on the list" };

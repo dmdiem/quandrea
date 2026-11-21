@@ -127,7 +127,7 @@ test("five classes; the main stat decides the socket colours", () => {
   assert.deepEqual(classOption("Pirate (DEX)").colours, ["red", "green", "grey", "purple"]);
 });
 
-test("verdicts: keep (best, spare, sockets) or trash, and other classes' gear", () => {
+test("verdicts: keep (best, spare, sockets) or trash; other classes' gear counts for its lines", () => {
   const set = PERFECT.map((it) => ({ ...it }));
   const spare = item("Top", "leap wh reg"); // also perfect lines, but the set already has a top
   const prism = item("Top", "other", { sockets: ["prismatic", "blue", "blue"] });
@@ -141,7 +141,18 @@ test("verdicts: keep (best, spare, sockets) or trash, and other classes' gear", 
   assert.match(v[prism.id].why, /^For its sockets: 3 of 3 usable/);
   assert.equal(v[set[0].id].reason, "best");
   assert.equal(v[junk.id].verdict, "trash");
-  assert.deepEqual(v[warrior.id], { verdict: "trash", why: "Warrior gear" });
+  // Another class's gear still counts for its lines (an Orb moves them onto yours).
+  assert.equal(v[warrior.id].verdict, "keep");
+});
+
+test("another class's piece is used for its lines, but your own class wins a tie", () => {
+  const own = item("Hat", "leap wh reg", { id: "own" });
+  const other = item("Hat", "leap wh reg", { id: "other", cls: "Warrior" });
+  assert.equal(solve([other, own], "endgame", "original", "Magician").picks.Hat.id, "own");
+  // ...and when another class's piece gives more lines, it's picked.
+  const weak = item("Hat", "leap", { id: "weak" });
+  const better = item("Hat", "leap wh atk", { id: "better", cls: "Warrior" });
+  assert.equal(solve([weak, better], "endgame", "original", "Magician").picks.Hat.id, "better");
 });
 
 test("on a tie, the four big skills beat a spare class or Crit line", () => {
@@ -291,7 +302,10 @@ test("one drop finishes it, per build", () => {
   const five = [item("Hat", "leap wh reg"), item("Top", "leap wh reg"), item("Bottom", "wh reg atk"), item("Shoes", "atk crit warrior"), item("Gloves", "atk thief archer")];
   assert.deepEqual(onePieceAway(five).find((o) => o.slot === "Cape").need.sort(), ["leap", "mage", "pirate"]);
   assert.ok(onePieceAway(five, "eu").every((o) => !o.need.some((k) => ["mage", "pirate", "thief", "archer", "warrior"].includes(k))));
-  assert.deepEqual(onePieceAway(five, "flex"), []);
+  // Flex: its "any 5" spots show as "any".
+  const flex = onePieceAway([...five, item("Cape", "boss")], "flex");
+  assert.ok(flex.length && flex.every((o) => o.need.length <= 3));
+  assert.ok(flex.some((o) => o.need.includes("any")));
 });
 
 test("tied options: one per different gap and spare lines, suggested first", () => {

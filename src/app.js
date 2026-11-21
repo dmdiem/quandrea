@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=82";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=82";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=82";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=82";
-import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=82";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=82";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=83";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=83";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=83";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=83";
+import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=83";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=83";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -198,7 +198,7 @@ function render() {
   const { sockets, all, inBuilds } = v;
   // Ties: other outfits with the same score (each missing something different). Option 1 is the
   // recommended one; the arrows cycle through the rest.
-  const options = custom ? [v.res] : solveOptions(state.items.filter((it) => classOption(state.classId).classes.includes(it.cls)), "endgame", build.id, state.classId);
+  const options = custom ? [v.res] : solveOptions(state.items, "endgame", build.id, state.classId);
   // The arrows wrap around: › on the last option goes back to option 1, ‹ on option 1 to the last.
   const optIdx = (((state.optIdx?.[build.id] ?? 0) % options.length) + options.length) % options.length;
   const res = options[optIdx] ?? v.res;
@@ -245,11 +245,17 @@ function render() {
   // A filled spot shows the icon of the equipment that gives the line; a missing one is a faint dot.
   const cell = (k, slot, any = false) => `<span class="pip ${slot ? "on" : ""}${any ? " any" : ""}" title="${slot ? (any ? `${slot}: Flex` : slot) : "Missing"}" aria-label="${slot ?? "Missing"}">${slot ? slotIcon(slot) : ""}</span>`;
   // Extra copies (beyond the 1 or 3 that count) in the best combo: still +1 to the skill.
-  const extras = Object.fromEntries(TARGETS.map((t) => [t.k, []]));
+  // Every worn line that doesn't count: extra copies, and lines this build never uses (Damage in
+  // General, class lines in Bossing, Boss DMG, Ignore DEF). Each shows as a red box in its row.
+  const extras = Object.fromEntries([...TARGETS, ...FILLERS].map((t) => [t.k, []]));
   for (const s of SLOTS) res.picks[s]?.lines.forEach((k, j) => !res.counted[s][j] && extras[k] && extras[k].push(s));
   // A copy past what counts (a 4th Leap, a 2nd Crit DMG in General, a class line once Flex's 5 are
   // full): a red box with that piece's icon. Still +1 to the skill.
-  const leftNote = (slots) => slots.map((sl) => `<span class="pip on left" title="Excess (${sl.toLowerCase()}): past what counts toward 18${build.flexCap ? " (all 5 Flex spots are full)" : ""}. Still +1 to the skill." aria-label="Excess, ${sl}">${slotIcon(sl)}</span>`).join("");
+  const leftNote = (slots, k) => slots.map((sl) => {
+    const used = (build.need[TARGETS.findIndex((t) => t.k === k)] ?? 0) > 0;
+    const why = used ? `past what counts toward 18${build.flexCap ? " (all 5 Flex spots are full)" : ""}` : `${build.name} doesn't use this line`;
+    return `<span class="pip on left" title="Excess (${sl.toLowerCase()}): ${why}. Still +1 to the skill." aria-label="Excess, ${sl}">${slotIcon(sl)}</span>`;
+  }).join("");
   const spots = (t) => board.coreAt[t.k];
   // Still missing: the lines this set doesn't have yet, with how many of each.
   const gaps = missing(shown);
@@ -259,10 +265,11 @@ function render() {
   const offChip = (k) => `<span class="chip k-${k} off" title="Not part of ${build.name}">${icon(k)}${NAME[k]}</span>`;
   // In Flex, rows for the 13 shared lines plus a row for each other line you have (class, Damage),
   // and the Crit DMG row grows to hold its extra copies that count.
-  const rowsOf = TARGETS.map((t, i) => ({ t, n: Math.max(rowNeed[i], build.flexCap ? board.coreAt[t.k].length : 0) }))
-    .filter((r) => r.n > 0 || (build.flexCap && extras[r.t.k].length));
+  const rowsOf = [...TARGETS.map((t, i) => ({ t, n: Math.max(rowNeed[i], build.flexCap ? board.coreAt[t.k].length : 0) })),
+    ...FILLERS.map((t) => ({ t, n: 0 }))]
+    .filter((r) => r.n > 0 || extras[r.t.k].length);
   const boardRow = ({ t, n }) => `<div class="board-row"><span class="board-name">${icon(t.k)}${t.name}</span>
-      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j], Boolean(build.flexCap) && j >= rowNeed[TARGETS.indexOf(t)])).join("") + leftNote(extras[t.k]); })()}</div></div>`;
+      <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j], Boolean(build.flexCap) && j >= rowNeed[TARGETS.indexOf(t)])).join("") + leftNote(extras[t.k], t.k); })()}</div></div>`;
 
   // One button per build with its best score, so you can see which suits your gear.
   const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${!custom && id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}<button data-build="custom" aria-pressed="${custom}" title="Pick any piece for each slot and see its totals"><b class="only">Custom</b></button></div>${custom ? `<p class="muted small build-note">Your own outfit: click <b>Use</b> on a piece in Your pieces to put it in. It starts as your General best combo.</p>` : build.note ? `<p class="muted small build-note">${build.note}${build.flexCap ? ` <span class="legend-any"></span> = Flex.` : ""}</p>` : ""}`;
@@ -280,7 +287,7 @@ function render() {
       <button class="ghost" data-opt="1" aria-label="Next option">›</button></div>` : ""}
     <div class="board" style="grid-template-rows: repeat(${Math.ceil(rowsOf.length / 2)}, auto)">${rowsOf.map(boardRow).join("")}</div>
     ${gaps.length || flexLeft ? `<div class="hunt"><span class="label">Still missing · ${gaps.length + flexLeft}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}${flexLeft ? `<span class="chip flex-chip" title="Any class line (each class once), a 2nd or 3rd Crit DMG, or Damage">✦ Any: class · Crit · Damage</span>${flexLeft > 1 ? `<span class="times">×${flexLeft}</span>` : ""}` : ""}</div></div>` : `<p class="act on">All 18 ✓</p>`}
-    ${dropsHtml(onePieceAway(state.items.filter((it) => option.classes.includes(it.cls)), build.id), res)}
+    ${dropsHtml(onePieceAway(state.items, build.id), res)}
     ${jewelProgress(sockets, option, res)}`;
   if (typeof draft !== "undefined") $("add-panel").innerHTML = addForm();
   $("lines").innerHTML = `
@@ -291,8 +298,9 @@ function render() {
       <div class="pieces-list">${SLOTS.map((s) => {
           const it = shown.picks[s];
           if (!it) return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span><span class="none">nothing added yet</span></div>`;
+          const orb = option.classes.includes(it.cls) ? "" : `<span class="tag orb" title="${it.cls} gear: use an Orb to move its lines onto your ${option.cls} gear">${it.cls} · Orb</span>`;
           return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span>
-            <span class="lines">${it.lines.map((k, j) => (inBuild(k) ? chip(k, !shown.counted[s][j]) : offChip(k))).join("") || `<span class="muted">no lines</span>`}</span>
+            <span class="lines">${it.lines.map((k, j) => (inBuild(k) ? chip(k, !shown.counted[s][j]) : offChip(k))).join("") || `<span class="muted">no lines</span>`}${orb}</span>
             <span class="piece-socks">${socks(it.sockets)}</span></div>`;
         }).join("")}
         <div class="piece totals"><span class="piece-slot">Sockets</span><span class="muted small">${(() => { const v3 = SLOTS.map((s) => shown.picks[s] && socketValue(shown.picks[s], state.classId)).filter(Boolean); return `${v3.reduce((n, x) => n + x.good, 0)}/18 usable · ${v3.filter((x) => x.prismatic).length}/${build.prismatic} prismatic pieces`; })()}</span></div>
@@ -301,8 +309,7 @@ function render() {
 `;
 
   // Custom: your picks (or the General best piece where you haven't picked), and their totals.
-  const mine = new Set(option.classes);
-  const outfit = Object.fromEntries(SLOTS.map((s) => [s, state.items.find((it) => it.id === state.custom?.[s] && it.slot === s && mine.has(it.cls)) ?? res.picks[s] ?? null]));
+  const outfit = Object.fromEntries(SLOTS.map((s) => [s, state.items.find((it) => it.id === state.custom?.[s] && it.slot === s) ?? res.picks[s] ?? null]));
   if (custom) renderCustom(outfit, buildPick, option);
 
   // Your pieces: everything you've added, by slot, BiS first.
@@ -322,12 +329,12 @@ function render() {
     : `<span class="act jewels" title="Perfect sockets for this slot (${socketNote(it, state.classId)}): keep it to move your lines onto with an Orb">For jewels</span>`);
   // Each slot leads with its BiS piece (the best combo for the build you picked), highlighted.
   const list = [...state.items].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || inBest.has(b.id) - inBest.has(a.id));
-  const status = (it) => (custom ? (inBest.has(it.id) ? `<span class="act on">In use ✓</span>` : mine.has(it.cls) ? `<button class="act swap" data-use="${it.id}" title="Put this in your Custom outfit">Use</button>` : "")
+  const status = (it) => (custom ? (inBest.has(it.id) ? `<span class="act on">In use ✓</span>` : `<button class="act swap" data-use="${it.id}" title="Put this in your Custom outfit">Use</button>`)
     : inBest.has(it.id) ? `<span class="act on" title="Best in slot for ${build.name}">BiS ✓</span>`
     : forJewels.has(it.id) || BUILD_IDS.some((id) => fitsBuild(it, id)) ? "" : `<span class="muted small">spare</span>`);
   // Another class's gear never counts: say so loudly, with a one-click fix for a misread title.
   const notMine = (it) => !option.classes.includes(it.cls);
-  const classWarn = (it) => (notMine(it) ? `<div class="class-warn">⚠ ${it.cls ?? "Unknown"} gear: not counted for you <button class="linkish" data-mine="${it.id}" title="The screenshot's class was misread: make it ${option.cls} gear">It's ${option.cls} gear</button></div>` : "");
+  const classWarn = (it) => (notMine(it) ? `<div class="class-warn">⚠ ${it.cls ?? "Unknown"} gear: needs an Orb onto your ${option.cls} gear <button class="linkish" data-mine="${it.id}" title="The screenshot's class was misread: make it ${option.cls} gear">It's ${option.cls} gear</button></div>` : "");
   // Hologram gear always has 3 skill lines: fewer means one wasn't read.
   const linesWarn = (it) => (it.lines.length < 3 ? `<div class="lines-warn">⚠ Only ${it.lines.length} skill${it.lines.length === 1 ? "" : "s"}: one is probably missing <button class="linkish" data-edit="${it.id}">Edit</button></div>` : "");
   const row = (it) => `<div class="bag-row${inBest.has(it.id) ? " best-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}${notMine(it) ? " other-class" : ""}">
@@ -400,7 +407,7 @@ function addForm() {
     : `<span class="mt-line empty">skill line ${i + 1}</span>`)).join("");
   const mock = `<div class="mock-tip" aria-label="The piece so far">
       <div class="mt-name">${draft.slot ? `${draft.slot}` : "Pick the equipment"}</div>
-      ${draft.cls && !classOption(state.classId).classes.includes(draft.cls) ? `<div class="class-warn">⚠ ${draft.cls} gear: not counted for you <button class="linkish" data-draft-mine="1" title="The screenshot's class was misread">It's ${classOption(state.classId).cls} gear</button></div>` : ""}
+      ${draft.cls && !classOption(state.classId).classes.includes(draft.cls) ? `<div class="class-warn">⚠ ${draft.cls} gear: needs an Orb onto your ${classOption(state.classId).cls} gear <button class="linkish" data-draft-mine="1" title="The screenshot's class was misread">It's ${classOption(state.classId).cls} gear</button></div>` : ""}
       <div class="mt-frame">
         <div class="mt-socks">${mockSocks}</div>
         <div class="mt-pic">${draft.slot ? slotIcon(draft.slot) : `<span class="mt-q">?</span>`}</div>
@@ -831,10 +838,10 @@ let dropsOpen = false;
 function dropsHtml(opts, res) {
   if (!opts.length || res.score >= TOTAL) return "";
   const bySlot = SLOTS.map((s) => [s, opts.filter((o) => o.slot === s)]).filter(([, l]) => l.length);
-  const name = (k) => ({ atk: "ATT", crit: "Crit", dmg: "Damage", mage: "Mage" })[k] ?? NAME[k];
+  const name = (k) => ({ atk: "ATT", crit: "Crit", dmg: "Damage", mage: "Mage", any: "<i>any</i>" })[k] ?? NAME[k];
   return `<details class="drops" id="drops"${dropsOpen ? " open" : ""}>
       <summary><span class="label">One drop finishes it</span> <span class="muted small">${opts.length} option${opts.length === 1 ? "" : "s"}</span></summary>
-      <p class="muted small">A new piece in that slot with those lines gets you to 18/18.</p>
+      <p class="muted small">A new piece in that slot with those lines gets you to 18/18.${opts.some((o) => o.need.includes("any")) ? " <i>any</i> = a class line you don't have yet, another Crit DMG, or Damage." : ""}</p>
       ${bySlot.map(([s, l]) => `<div class="drop-row"><span class="drop-slot">${slotIcon(s)}${s}</span><span class="drop-opts">${l.map((o) => `<span class="drop-opt">${o.need.map(name).join(" · ")}</span>`).join("")}</span></div>`).join("")}
     </details>`;
 }

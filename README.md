@@ -35,8 +35,9 @@ page (Ctrl+V, or **Load backup**) to restore it, in another browser or after cle
 backup is checked before it's loaded: only known slots, classes, lines, sockets and cells are kept,
 and everything else in it is thrown away.
 
-Pick your class at the top (pirates also pick STR or DEX). It decides which gear is yours and
-which socket colours you can use.
+Pick your class at the top (pirates also pick STR or DEX). It decides which socket colours you can
+use. Another class's gear still counts for its lines (an Orb moves them onto your gear), so it's
+marked "needs an Orb"; on a tie your own class's piece wins, since Orbs are rare.
 
 ## What it's aiming for
 
