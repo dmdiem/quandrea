@@ -7,8 +7,8 @@
 <meta name="description" content="A web page, nothing to install and nothing touching the game: add your MapleStory Quanah gear and it builds your best set for 18/18 hologram lines and the best sockets.">
 <link rel="icon" href="logo.webp">
 <script>try { const t = localStorage.getItem("quandrea.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
-<link rel="stylesheet" href="style.css?v=83">
-<script type="module" src="src/app.js?v=83"></script>
+<link rel="stylesheet" href="style.css?v=84">
+<script type="module" src="src/app.js?v=84"></script>
 </head>
 <body>
 <div class="wrap">
@@ -44,6 +44,7 @@
           <button id="pirate-STR" data-stat="STR">STR</button>
           <button id="pirate-DEX" data-stat="DEX">DEX</button>
         </div>
+        <button id="own-only" class="own-only" aria-pressed="false" title="Only use gear your class can wear (no Orbs needed)">My class only</button>
         <details class="presets" id="presets"><summary class="ghost-btn"><span id="presets-label">Presets</span></summary><div class="preset-pop" id="preset-list"></div></details>
       </div>
       <div class="tool-group tool-data">

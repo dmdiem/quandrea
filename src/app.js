@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=83";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=83";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=83";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=83";
-import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=83";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=83";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=84";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=84";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=84";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=84";
+import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=84";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=84";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -34,6 +34,7 @@ function load() {
     };
     ui.build = BUILD_IDS.includes(raw.build) || raw.build === "custom" ? raw.build : "original";
     ui.custom = cleanCustom(raw.custom);
+    ui.ownOnly = raw.ownOnly === true;
     state = { ...state, ...ui, ...sanitize(raw), presets: cleanPresets(raw.presets), activePreset: Number.isInteger(raw.activePreset) ? raw.activePreset : null };
   } catch {}
 }
@@ -194,11 +195,14 @@ function render() {
   // Custom: you pick a piece per slot (starting from the General best combo) and see its totals.
   const custom = state.build === "custom";
   const build = buildOf(custom ? "original" : state.build);
-  const v = verdicts(state.items, { ...state, mode: "endgame", build: build.id });
+  // "My class only": leave out other classes' gear (no Orbs) when working out combos.
+  const pool = state.ownOnly ? state.items.filter((it) => classOption(state.classId).classes.includes(it.cls)) : state.items;
+  $("own-only").setAttribute("aria-pressed", String(Boolean(state.ownOnly)));
+  const v = verdicts(pool, { ...state, mode: "endgame", build: build.id });
   const { sockets, all, inBuilds } = v;
   // Ties: other outfits with the same score (each missing something different). Option 1 is the
   // recommended one; the arrows cycle through the rest.
-  const options = custom ? [v.res] : solveOptions(state.items, "endgame", build.id, state.classId);
+  const options = custom ? [v.res] : solveOptions(pool, "endgame", build.id, state.classId);
   // The arrows wrap around: › on the last option goes back to option 1, ‹ on option 1 to the last.
   const optIdx = (((state.optIdx?.[build.id] ?? 0) % options.length) + options.length) % options.length;
   const res = options[optIdx] ?? v.res;
@@ -287,7 +291,7 @@ function render() {
       <button class="ghost" data-opt="1" aria-label="Next option">›</button></div>` : ""}
     <div class="board" style="grid-template-rows: repeat(${Math.ceil(rowsOf.length / 2)}, auto)">${rowsOf.map(boardRow).join("")}</div>
     ${gaps.length || flexLeft ? `<div class="hunt"><span class="label">Still missing · ${gaps.length + flexLeft}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}${flexLeft ? `<span class="chip flex-chip" title="Any class line (each class once), a 2nd or 3rd Crit DMG, or Damage">✦ Any: class · Crit · Damage</span>${flexLeft > 1 ? `<span class="times">×${flexLeft}</span>` : ""}` : ""}</div></div>` : `<p class="act on">All 18 ✓</p>`}
-    ${dropsHtml(onePieceAway(state.items, build.id), res)}
+    ${dropsHtml(onePieceAway(pool, build.id), res)}
     ${jewelProgress(sockets, option, res)}`;
   if (typeof draft !== "undefined") $("add-panel").innerHTML = addForm();
   $("lines").innerHTML = `
@@ -334,7 +338,7 @@ function render() {
     : forJewels.has(it.id) || BUILD_IDS.some((id) => fitsBuild(it, id)) ? "" : `<span class="muted small">spare</span>`);
   // Another class's gear never counts: say so loudly, with a one-click fix for a misread title.
   const notMine = (it) => !option.classes.includes(it.cls);
-  const classWarn = (it) => (notMine(it) ? `<div class="class-warn">⚠ ${it.cls ?? "Unknown"} gear: needs an Orb onto your ${option.cls} gear <button class="linkish" data-mine="${it.id}" title="The screenshot's class was misread: make it ${option.cls} gear">It's ${option.cls} gear</button></div>` : "");
+  const classWarn = (it) => (notMine(it) ? `<div class="class-warn">⚠ ${it.cls ?? "Unknown"} gear: ${state.ownOnly ? "left out (My class only is on)" : `needs an Orb onto your ${option.cls} gear`} <button class="linkish" data-mine="${it.id}" title="The screenshot's class was misread: make it ${option.cls} gear">It's ${option.cls} gear</button></div>` : "");
   // Hologram gear always has 3 skill lines: fewer means one wasn't read.
   const linesWarn = (it) => (it.lines.length < 3 ? `<div class="lines-warn">⚠ Only ${it.lines.length} skill${it.lines.length === 1 ? "" : "s"}: one is probably missing <button class="linkish" data-edit="${it.id}">Edit</button></div>` : "");
   const row = (it) => `<div class="bag-row${inBest.has(it.id) ? " best-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}${notMine(it) ? " other-class" : ""}">
@@ -489,6 +493,12 @@ document.addEventListener("click", (e) => {
   }
   if (t.id === "simple-toggle") {
     state.simple = !state.simple;
+    save();
+    render();
+    return;
+  }
+  if (t.id === "own-only") {
+    state.ownOnly = !state.ownOnly;
     save();
     render();
     return;
