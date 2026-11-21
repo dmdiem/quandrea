@@ -660,10 +660,7 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 .custom-scores { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; margin: -2px 0 10px; }
 .board .lv { font-size: 12px; font-weight: 700; color: var(--holo-ink); margin-left: 6px; min-width: 34px; align-self: center; }
 /* Another class's gear: a clear warning on the piece */
-.class-warn { margin: 0 0 6px; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; color: var(--trash); background: color-mix(in srgb, var(--trash) 12%, transparent); border: 1px solid color-mix(in srgb, var(--trash) 45%, transparent); }
-.class-warn .linkish { margin-left: 6px; font-weight: 600; }
 .bag-row.other-class .lines, .bag-row.other-class .socks { opacity: .55; }
-.mock-tip .class-warn { margin: 4px 0 6px; text-align: left; }
 /* A piece with fewer than 3 skill lines: one probably wasn't read */
 .lines-warn { margin: 0 0 6px; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; color: var(--act); background: color-mix(in srgb, var(--act) 12%, transparent); border: 1px solid color-mix(in srgb, var(--act) 45%, transparent); }
 .lines-warn .linkish { margin-left: 6px; font-weight: 600; }
@@ -689,3 +686,7 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 /* "My class's gear only", under the build buttons */
 .own-only-row { display: flex; align-items: center; gap: 6px; margin: -2px 0 8px; font-size: 12.5px; cursor: pointer; }
 .own-only-row input { margin: 0; accent-color: var(--accent); }
+.cls-pick .keycap { font-size: 12px; padding: 4px 8px; }
+/* Another class: shown in red */
+.tag.cls-tag { color: var(--trash); border-color: color-mix(in srgb, var(--trash) 55%, transparent); background: color-mix(in srgb, var(--trash) 10%, transparent); font-weight: 700; }
+.keycap.kind-cls.other.on { border-color: var(--trash); background: color-mix(in srgb, var(--trash) 14%, var(--surface)); color: var(--trash); box-shadow: 0 0 0 2px color-mix(in srgb, var(--trash) 35%, transparent); }

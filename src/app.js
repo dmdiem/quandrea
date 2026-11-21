@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=85";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=85";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=85";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=85";
-import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=85";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=85";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=86";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=86";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=86";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=86";
+import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=86";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=86";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -338,11 +338,12 @@ function render() {
     : forJewels.has(it.id) || BUILD_IDS.some((id) => fitsBuild(it, id)) ? "" : `<span class="muted small">spare</span>`);
   // Another class's gear never counts: say so loudly, with a one-click fix for a misread title.
   const notMine = (it) => !option.classes.includes(it.cls);
-  const classWarn = (it) => (notMine(it) ? `<div class="class-warn">⚠ ${it.cls ?? "Unknown"} gear: ${state.ownOnly ? "left out (My class's gear only is on)" : `needs an Orb onto your ${option.cls} gear`} <button class="linkish" data-mine="${it.id}" title="The screenshot's class was misread: make it ${option.cls} gear">It's ${option.cls} gear</button></div>` : "");
+  // Another class's piece: its class as a red tag (it needs an Orb onto your gear).
+  const classTag = (it) => (notMine(it) ? `<span class="tag cls-tag" title="${it.cls ?? "Unknown"} gear: ${state.ownOnly ? "left out (My class's gear only is on)" : `use an Orb to move its lines onto your ${option.cls} gear`}">${it.cls ?? "?"}</span>` : "");
   // Hologram gear always has 3 skill lines: fewer means one wasn't read.
   const linesWarn = (it) => (it.lines.length < 3 ? `<div class="lines-warn">⚠ Only ${it.lines.length} skill${it.lines.length === 1 ? "" : "s"}: one is probably missing <button class="linkish" data-edit="${it.id}">Edit</button></div>` : "");
   const row = (it) => `<div class="bag-row${inBest.has(it.id) ? " best-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}${notMine(it) ? " other-class" : ""}">
-      ${classWarn(it)}${linesWarn(it)}<div class="bag-top">${status(it)}${buildTags(it)}${jewelTag(it)}
+      ${linesWarn(it)}<div class="bag-top">${classTag(it)}${status(it)}${buildTags(it)}${jewelTag(it)}
         <span class="bag-act"><button class="equip-btn" data-edit="${it.id}" title="Change its jewels, skills or slot">Edit</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
       <div class="lines">${linesOf(it)}</div>
       ${socks(it.sockets)}
@@ -411,7 +412,6 @@ function addForm() {
     : `<span class="mt-line empty">skill line ${i + 1}</span>`)).join("");
   const mock = `<div class="mock-tip" aria-label="The piece so far">
       <div class="mt-name">${draft.slot ? `${draft.slot}` : "Pick the equipment"}</div>
-      ${draft.cls && !classOption(state.classId).classes.includes(draft.cls) ? `<div class="class-warn">⚠ ${draft.cls} gear: needs an Orb onto your ${classOption(state.classId).cls} gear <button class="linkish" data-draft-mine="1" title="The screenshot's class was misread">It's ${classOption(state.classId).cls} gear</button></div>` : ""}
       <div class="mt-frame">
         <div class="mt-socks">${mockSocks}</div>
         <div class="mt-pic">${draft.slot ? slotIcon(draft.slot) : `<span class="mt-q">?</span>`}</div>
@@ -437,6 +437,7 @@ function addForm() {
       <div class="step-head">${STEP_NAME.line} <span class="muted small">${draft.lines.length}/3${draft.lines.length ? ` · <button class="linkish" data-clear="line">clear</button>` : ""}</span></div>
       <div class="picker picker-grid">${OPTIONS.line.map((v) => option("line", v)).join("")}</div>
     </section>
+    <section class="pick-step"><div class="step-head muted">Class</div><div class="picker minor cls-pick">${CLASSES.map((c) => `<button class="keycap kind-cls${(draft.cls ?? classOption(state.classId).cls) === c ? " on" : ""}${c !== classOption(state.classId).cls ? " other" : ""}" data-pick-cls="${c}" title="${c === classOption(state.classId).cls ? "Your class" : `${c} gear: needs an Orb onto your ${classOption(state.classId).cls} gear`}">${c}</button>`).join("")}</div></section>
     <section class="pick-step"><div class="step-head muted">Not BiS</div><div class="picker minor">${["boss", "ied"].map((v) => option("line", v)).join("")}</div></section>
     </div><div class="add-side">${mock}
     <div class="add-row add-under">
@@ -462,22 +463,13 @@ document.addEventListener("click", (e) => {
     render(); // not saved: a fresh visit starts on the recommended option
     return;
   }
-  if (t.dataset.draftMine) {
-    draft.cls = null; // Add then uses your class
+  if (t.dataset.pickCls) {
+    draft.cls = t.dataset.pickCls;
     render();
     return;
   }
-  if (t.dataset.mine) {
-    const it = state.items.find((x) => x.id === t.dataset.mine);
-    if (it) {
-      it.cls = classOption(state.classId).cls;
-      it.key = [it.slot, it.cls, it.lines.join(","), String(it.key ?? "").split("|").at(-1)].join("|");
-      setStatus(`Your ${it.slot.toLowerCase()} is ${it.cls} gear now ✓`);
-    }
-    save();
-    render();
-    return;
-  }
+
+
   if (t.dataset.use) {
     const it = state.items.find((x) => x.id === t.dataset.use);
     if (it) state.custom = { ...state.custom, [it.slot]: it.id };
@@ -528,7 +520,7 @@ document.addEventListener("click", (e) => {
   else if (t.dataset.edit) {
     const it = state.items.find((x) => x.id === t.dataset.edit);
     if (!it) return;
-    draft = { ...freshDraft(), slot: it.slot, sockets: [...it.sockets], lines: [...it.lines], editId: it.id };
+    draft = { ...freshDraft(), slot: it.slot, sockets: [...it.sockets], lines: [...it.lines], cls: it.cls, editId: it.id };
     addMsg = "";
     render();
     $("add-panel").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -545,7 +537,7 @@ function addPiece() {
   // Editing a piece you added: change it in place.
   const old = draft.editId && state.items.find((it) => it.id === draft.editId);
   if (old) {
-    Object.assign(old, { slot: draft.slot, lines: [...draft.lines], sockets: [...draft.sockets] });
+    Object.assign(old, { slot: draft.slot, lines: [...draft.lines], sockets: [...draft.sockets], cls: draft.cls ?? classOption(state.classId).cls });
     old.key = [old.slot, old.cls, old.lines.join(","), String(old.key ?? "").split("|").at(-1)].join("|");
     addMsg = `Saved your ${old.slot.toLowerCase()} ✓`;
     draft = freshDraft();
