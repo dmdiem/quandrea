@@ -686,7 +686,6 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 .opt-cycle button:disabled { opacity: .35; cursor: default; }
 .build-pick button b.only { font-size: 14px; margin: auto 0; }
 .tag.orb { color: var(--trash); border-color: color-mix(in srgb, var(--trash) 45%, transparent); font-weight: 700; }
-/* "My class only" toggle */
-.own-only { padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 13px; cursor: pointer; }
-.own-only[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); font-weight: 700; }
-.own-only[aria-pressed="true"]::before { content: "✓ "; }
+/* "My class's gear only", under the build buttons */
+.own-only-row { display: flex; align-items: center; gap: 6px; margin: -2px 0 8px; font-size: 12.5px; cursor: pointer; }
+.own-only-row input { margin: 0; accent-color: var(--accent); }

@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=84";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=84";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=84";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=84";
-import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=84";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=84";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=85";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=85";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=85";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=85";
+import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=85";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=85";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -197,7 +197,6 @@ function render() {
   const build = buildOf(custom ? "original" : state.build);
   // "My class only": leave out other classes' gear (no Orbs) when working out combos.
   const pool = state.ownOnly ? state.items.filter((it) => classOption(state.classId).classes.includes(it.cls)) : state.items;
-  $("own-only").setAttribute("aria-pressed", String(Boolean(state.ownOnly)));
   const v = verdicts(pool, { ...state, mode: "endgame", build: build.id });
   const { sockets, all, inBuilds } = v;
   // Ties: other outfits with the same score (each missing something different). Option 1 is the
@@ -276,7 +275,8 @@ function render() {
       <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j], Boolean(build.flexCap) && j >= rowNeed[TARGETS.indexOf(t)])).join("") + leftNote(extras[t.k], t.k); })()}</div></div>`;
 
   // One button per build with its best score, so you can see which suits your gear.
-  const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${!custom && id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}<button data-build="custom" aria-pressed="${custom}" title="Pick any piece for each slot and see its totals"><b class="only">Custom</b></button></div>${custom ? `<p class="muted small build-note">Your own outfit: click <b>Use</b> on a piece in Your pieces to put it in. It starts as your General best combo.</p>` : build.note ? `<p class="muted small build-note">${build.note}${build.flexCap ? ` <span class="legend-any"></span> = Flex.` : ""}</p>` : ""}`;
+  const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${!custom && id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}<button data-build="custom" aria-pressed="${custom}" title="Pick any piece for each slot and see its totals"><b class="only">Custom</b></button></div>
+    <label class="own-only-row" title="Only use gear your class can wear, so no Orbs are needed"><input type="checkbox" id="own-only"${state.ownOnly ? " checked" : ""}> My class's gear only <span class="muted small">(no Orbs)</span></label>${custom ? `<p class="muted small build-note">Your own outfit: click <b>Use</b> on a piece in Your pieces to put it in. It starts as your General best combo.</p>` : build.note ? `<p class="muted small build-note">${build.note}${build.flexCap ? ` <span class="legend-any"></span> = Flex.` : ""}</p>` : ""}`;
   // "Crit DMG ×2, Pirate"
   const tally = (keys) => [...keys.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map())].map(([k, n]) => `${NAME[k]}${n > 1 ? ` ×${n}` : ""}`).join(", ");
   const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
@@ -338,7 +338,7 @@ function render() {
     : forJewels.has(it.id) || BUILD_IDS.some((id) => fitsBuild(it, id)) ? "" : `<span class="muted small">spare</span>`);
   // Another class's gear never counts: say so loudly, with a one-click fix for a misread title.
   const notMine = (it) => !option.classes.includes(it.cls);
-  const classWarn = (it) => (notMine(it) ? `<div class="class-warn">⚠ ${it.cls ?? "Unknown"} gear: ${state.ownOnly ? "left out (My class only is on)" : `needs an Orb onto your ${option.cls} gear`} <button class="linkish" data-mine="${it.id}" title="The screenshot's class was misread: make it ${option.cls} gear">It's ${option.cls} gear</button></div>` : "");
+  const classWarn = (it) => (notMine(it) ? `<div class="class-warn">⚠ ${it.cls ?? "Unknown"} gear: ${state.ownOnly ? "left out (My class's gear only is on)" : `needs an Orb onto your ${option.cls} gear`} <button class="linkish" data-mine="${it.id}" title="The screenshot's class was misread: make it ${option.cls} gear">It's ${option.cls} gear</button></div>` : "");
   // Hologram gear always has 3 skill lines: fewer means one wasn't read.
   const linesWarn = (it) => (it.lines.length < 3 ? `<div class="lines-warn">⚠ Only ${it.lines.length} skill${it.lines.length === 1 ? "" : "s"}: one is probably missing <button class="linkish" data-edit="${it.id}">Edit</button></div>` : "");
   const row = (it) => `<div class="bag-row${inBest.has(it.id) ? " best-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}${notMine(it) ? " other-class" : ""}">
@@ -493,12 +493,6 @@ document.addEventListener("click", (e) => {
   }
   if (t.id === "simple-toggle") {
     state.simple = !state.simple;
-    save();
-    render();
-    return;
-  }
-  if (t.id === "own-only") {
-    state.ownOnly = !state.ownOnly;
     save();
     render();
     return;
@@ -1057,4 +1051,12 @@ document.addEventListener("click", (e) => {
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && $("presets")?.open) $("presets").open = false;
+});
+
+// "My class's gear only" (in Hologram lines): leave other classes' gear out of the combos.
+document.addEventListener("change", (e) => {
+  if (e.target.id !== "own-only") return;
+  state.ownOnly = e.target.checked;
+  save();
+  render();
 });

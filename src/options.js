@@ -1,6 +1,6 @@
 // What Add manually offers, in order: the equipment, then its jewels, then its skills.
 
-import { SLOTS, TARGETS } from "./parse.js?v=84";
+import { SLOTS, TARGETS } from "./parse.js?v=85";
 
 export const STEPS = ["slot", "sock", "line"];
 export const STEP_NAME = { slot: "Equipment", sock: "Jewels", line: "Skills" };
