@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=88";
+import { SLOTS, TARGETS } from "./parse.js?v=89";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); // strongest first (v.272)
@@ -73,7 +73,7 @@ const flexUsed = (st) => tally(st) - coreScore(st);
 // Roughly what one level of each line adds (from the skill tooltips): Leap, White Hole and Registry
 // +5% Final Damage each; ATT +5% ATT and a little Final Damage; Crit DMG +5% Crit Damage; Damage +5%
 // Damage (spread over all your other Damage %); a class line a Lv. 1 proc. In tenths.
-const WORTH = TARGETS.map((t) => ({ leap: 50, wh: 50, reg: 50, atk: 30, crit: 25, dmg: 20 })[t.k] ?? 10);
+const WORTH = TARGETS.map((t) => ({ leap: 50, wh: 50, reg: 50, atk: 30, crit: 25, dmg: 20, boss: 15 })[t.k] ?? 10);
 const worth = (st) => WORTH.reduce((n, w, i) => n + w * digit(st, i), 0);
 // Flex, scored from an uncapped tally: the 13 shared lines, plus the best 5 of the rest (by WORTH).
 // (Searching with the cap applied would fill the 5 spots in slot order, not with the best lines.)

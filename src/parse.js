@@ -20,14 +20,15 @@ export const TARGETS = [
   { k: "thief", name: "Thief", need: 1 },
   { k: "mage", name: "Mage", need: 1 },
   { k: "pirate", name: "Pirate", need: 1 },
+  // No built-in build counts these, but Custom can.
+  { k: "boss", name: "Boss DMG", need: 0 },
+  { k: "ied", name: "Ignore DEF", need: 0 },
 ];
 export const OTHER = "other"; // a line we don't recognise
-// Lines that roll but no build counts: shown by name, never counted.
-export const FILLERS = [
-  { k: "boss", name: "Boss DMG" },
-  { k: "ied", name: "Ignore DEF" },
-];
-export const isTarget = (k) => TARGETS.some((t) => t.k === k);
+// Lines no built-in build counts (they're in TARGETS so Custom can ask for them).
+export const NOT_BIS = ["boss", "ied"];
+export const FILLERS = [];
+export const isTarget = (k) => TARGETS.some((t) => t.k === k) && !NOT_BIS.includes(k);
 const FILLER_RE = [
   ["boss", /boss\s*da\w*\s*enh/i],
   ["ied", /[il1]?gn\w*\s*def\w*\s*enh/i],

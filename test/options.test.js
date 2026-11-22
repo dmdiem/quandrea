@@ -8,5 +8,5 @@ test("Add manually offers equipment, then jewels, then skills", () => {
   assert.deepEqual(OPTIONS.slot, SLOTS);
   assert.equal(OPTIONS.sock[0], "prismatic"); // always the leftmost socket, so it comes first
   assert.deepEqual([...OPTIONS.sock].sort(), ["blue", "green", "grey", "prismatic", "purple", "red"]);
-  assert.deepEqual(OPTIONS.line, TARGETS.map((t) => t.k));
+  assert.deepEqual(OPTIONS.line, TARGETS.map((t) => t.k).filter((k) => !["boss", "ied"].includes(k))); // those two are under "Not BiS"
 });

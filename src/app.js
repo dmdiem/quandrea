@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=88";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, customBuild, totalOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=88";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=88";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=88";
-import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=88";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=88";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=89";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, customBuild, totalOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=89";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=89";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=89";
+import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=89";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=89";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -168,6 +168,8 @@ const CLASS_PATHS = {
   reg: '<path d="M6 3h9l3.5 3.5V21H6z"/><path d="M15 3v3.5h3.5"/><path d="M9 11h6M9 14.5h6M9 18h3.5"/>',
   atk: '<path d="M4 4l10 10"/><path d="M11.5 16.5l5-5"/><path d="M14 14l5.5 5.5"/><path d="M20 4 6 18"/><path d="M4.5 19.5 6 18"/><path d="M19.5 2.8l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z" stroke-width="1.2"/>',
   dmg: '<path d="M12 2.5l1.9 5.3 5.4-1.6-2.8 4.9 4.9 2.6-5.6.9.5 5.6L12 16.3l-4.3 3.9.5-5.6-5.6-.9 4.9-2.6-2.8-4.9 5.4 1.6z"/>',
+  boss: '<path d="M3.5 18.5h17l1-11-5 4.5L12 5l-4.5 7L2.5 7.5z"/><path d="M4 21h16"/>',
+  ied: '<path d="M12 2.8 4.5 5.8v5.7c0 4.6 3.1 8.2 7.5 9.7 4.4-1.5 7.5-5.1 7.5-9.7V5.8z"/><path d="M12.8 6.5 10.6 11l3 1.6-2.4 4.9"/>',
   crit: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/>',
   warrior: '<path d="M19.5 4.5 18.8 9 9.6 18.2 5.8 14.4 15 5.2z"/><path d="M4.2 12.8l7 7"/><path d="M7.4 16.6 3.8 20.2"/>',
   mage: '<path d="M4 20 14 10"/><path d="M17 2.8l1.1 2.9 2.9 1.1-2.9 1.1L17 10.8l-1.1-2.9L13 6.8l2.9-1.1z"/>',
@@ -757,7 +759,7 @@ async function readPiece(img, { quiet = false } = {}) {
   const parsed = parseTooltip((await worker.recognize(c)).data.text);
   if (!parsed.slot && parsed.skip) return { skip: parsed.skip };
   // Every line in the game has a button; one the reader couldn't make out is left for you to pick.
-  const known = new Set([...OPTIONS.line, ...FILLERS.map((f) => f.k)]);
+  const known = new Set(TARGETS.map((t) => t.k)); // every line, Boss DMG and Ignore DEF too
   const read = parsed.lines ?? [];
   const lines = read.filter((k) => known.has(k)).slice(0, 3);
   return { slot: parsed.slot ?? null, cls: CLASSES.includes(parsed.cls) ? parsed.cls : null, sockets, lines, unread: Math.min(3, read.length) - lines.length, equipped: Boolean(parsed.equipped) };

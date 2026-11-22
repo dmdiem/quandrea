@@ -1,11 +1,11 @@
 // What Add manually offers, in order: the equipment, then its jewels, then its skills.
 
-import { SLOTS, TARGETS } from "./parse.js?v=88";
+import { SLOTS, TARGETS } from "./parse.js?v=89";
 
 export const STEPS = ["slot", "sock", "line"];
 export const STEP_NAME = { slot: "Equipment", sock: "Jewels", line: "Skills" };
 export const OPTIONS = {
   slot: SLOTS,
   sock: ["prismatic", "blue", "green", "purple", "red", "grey"], // prismatic is always the leftmost socket
-  line: TARGETS.map((t) => t.k),
+  line: TARGETS.map((t) => t.k).filter((k) => !["boss", "ied"].includes(k)), // Boss DMG, Ignore DEF: under "Not BiS"
 };
