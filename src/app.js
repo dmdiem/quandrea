@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=89";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, customBuild, totalOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=89";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=89";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=89";
-import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=89";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=89";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=91";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, customBuild, totalOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=91";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=91";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=91";
+import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=91";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=91";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -34,9 +34,12 @@ function load() {
     };
     ui.build = BUILD_IDS.includes(raw.build) || raw.build === "custom" ? raw.build : "original";
     ui.custom = cleanCustom(raw.custom);
-    ui.customNeed = customBuild(raw.customNeed && typeof raw.customNeed === "object" ? raw.customNeed : BUILD_DEFAULT).need
+    // (A saved Custom over 18 lines, from before the cap, starts over as General.)
+    const savedNeed = raw.customNeed && typeof raw.customNeed === "object" && totalOf(customBuild(raw.customNeed)) <= 18 ? raw.customNeed : BUILD_DEFAULT;
+    ui.customNeed = customBuild(savedNeed).need
       .reduce((o, n, i) => (n ? { ...o, [TARGETS[i].k]: n } : o), {});
     ui.ownOnly = raw.ownOnly === true;
+    ui.sortBy = typeof raw.sortBy === "string" && /^(line|sock|cls):[A-Za-z]{1,12}$/.test(raw.sortBy) ? raw.sortBy : null;
     state = { ...state, ...ui, ...sanitize(raw), presets: cleanPresets(raw.presets), activePreset: Number.isInteger(raw.activePreset) ? raw.activePreset : null };
   } catch {}
 }
@@ -334,7 +337,14 @@ function render() {
     : inBest.has(it.id) ? `<span class="act jewels" title="Perfect sockets and in your best combo: no Orb needed">Perfect jewels ✓</span>`
     : `<span class="act jewels" title="Perfect sockets for this slot (${socketNote(it, state.classId)}): keep it to move your lines onto with an Orb">For jewels</span>`);
   // Each slot leads with its BiS piece (the best combo for the build you picked), highlighted.
-  const list = [...state.items].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || inBest.has(b.id) - inBest.has(a.id));
+  // Sort by a skill, jewel or class: in each slot the pieces that have it come first (more of it
+  // first); the rest are faded.
+  const [sortKind, sortVal] = String(state.sortBy ?? "").split(":");
+  const hits = (it) => !sortKind ? 0
+    : sortKind === "line" ? it.lines.filter((k) => k === sortVal).length
+    : sortKind === "sock" ? it.sockets.filter((c) => c === sortVal).length
+    : sortKind === "cls" ? Number(it.cls === sortVal) : 0;
+  const list = [...state.items].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || hits(b) - hits(a) || inBest.has(b.id) - inBest.has(a.id));
   const status = (it) => (inBest.has(it.id) ? `<span class="act on" title="Best in slot for ${build.name}">BiS ✓</span>`
     : forJewels.has(it.id) || BUILD_IDS.some((id) => fitsBuild(it, id)) ? "" : `<span class="muted small">spare</span>`);
   // Another class's gear never counts: say so loudly, with a one-click fix for a misread title.
@@ -343,14 +353,19 @@ function render() {
   const classTag = (it) => (notMine(it) ? `<span class="tag cls-tag" title="${it.cls ?? "Unknown"} gear: ${state.ownOnly ? "left out (My class's gear only is on)" : `use an Orb to move its lines onto your ${option.cls} gear`}">${it.cls ?? "?"}</span>` : "");
   // Hologram gear always has 3 skill lines: fewer means one wasn't read.
   const linesWarn = (it) => (it.lines.length < 3 ? `<div class="lines-warn">⚠ Only ${it.lines.length} skill${it.lines.length === 1 ? "" : "s"}: one is probably missing <button class="linkish" data-edit="${it.id}">Edit</button></div>` : "");
-  const row = (it) => `<div class="bag-row${inBest.has(it.id) ? " best-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}${notMine(it) ? " other-class" : ""}">
+  const row = (it) => `<div class="bag-row${sortKind && !hits(it) ? " sort-miss" : ""}${inBest.has(it.id) ? " best-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}${notMine(it) ? " other-class" : ""}">
       ${linesWarn(it)}<div class="bag-top">${classTag(it)}${status(it)}${buildTags(it)}${jewelTag(it)}
         <span class="bag-act"><button class="equip-btn" data-edit="${it.id}" title="Change its jewels, skills or slot">Edit</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
       <div class="lines">${linesOf(it)}</div>
       ${socks(it.sockets)}
     </div>`;
   $("items").innerHTML = `
-    <h2>Your pieces</h2>
+    <div class="row spread"><h2>Your pieces</h2>${state.items.length ? `<label class="sort-by">Sort by <select id="sort-by">
+      <option value="">BiS first</option>
+      <optgroup label="Skill">${TARGETS.map((t) => `<option value="line:${t.k}"${state.sortBy === `line:${t.k}` ? " selected" : ""}>${t.name}</option>`).join("")}</optgroup>
+      <optgroup label="Jewel">${["prismatic", "blue", "red", "green", "purple", "grey"].map((c) => `<option value="sock:${c}"${state.sortBy === `sock:${c}` ? " selected" : ""}>${SOCK_WORD[c]}</option>`).join("")}</optgroup>
+      <optgroup label="Class">${CLASSES.map((c) => `<option value="cls:${c}"${state.sortBy === `cls:${c}` ? " selected" : ""}>${c}</option>`).join("")}</optgroup>
+    </select></label>` : ""}</div>
     ${state.items.length ? `<div class="slots">${SLOTS.map((sl) => {
       const here = list.filter((it) => it.slot === sl);
       return `<div class="slot"><div class="slot-head"><h3>${slotIcon(sl)}${sl}</h3><span class="tag">${here.length}</span></div>
@@ -462,6 +477,8 @@ document.addEventListener("click", (e) => {
     // Custom: one more or one fewer of a line (0 to 3).
     const k = t.dataset.need;
     const cur = state.customNeed ?? BUILD_DEFAULT;
+    // 6 pieces hold 18 lines, so the total can't go past 18.
+    if (Number(t.dataset.step) > 0 && totalOf(customBuild(cur)) >= TOTAL) return;
     const n = Math.max(0, Math.min(3, (cur[k] ?? 0) + Number(t.dataset.step)));
     state.customNeed = { ...cur, [k]: n };
     save();
@@ -864,11 +881,10 @@ const BUILD_DEFAULT = CUSTOM_FROM.original;
 function customEditor(b) {
   const total = totalOf(b);
   const cells = TARGETS.map((t, i) => `<div class="need-row${b.need[i] ? "" : " zero"}"><span class="need-name">${icon(t.k)}${t.name}</span>
-      <span class="stepper"><button class="ghost" data-need="${t.k}" data-step="-1" aria-label="One fewer ${t.name}"${b.need[i] ? "" : " disabled"}>−</button><b>${b.need[i]}</b><button class="ghost" data-need="${t.k}" data-step="1" aria-label="One more ${t.name}"${b.need[i] >= 3 ? " disabled" : ""}>+</button></span></div>`).join("");
+      <span class="stepper"><button class="ghost" data-need="${t.k}" data-step="-1" aria-label="One fewer ${t.name}"${b.need[i] ? "" : " disabled"}>−</button><b>${b.need[i]}</b><button class="ghost" data-need="${t.k}" data-step="1" aria-label="One more ${t.name}"${b.need[i] >= 3 || total >= TOTAL ? " disabled" : ""}>+</button></span></div>`).join("");
   return `<div class="custom-edit">
-      <div class="custom-head"><span class="label">Lines you want · <b class="${total > TOTAL ? "over" : ""}">${total}</b>/${TOTAL}</span>
+      <div class="custom-head"><span class="label">Lines you want · <b>${total}</b>/${TOTAL}</span>
         <span class="muted small">Start from <button class="linkish" data-custom-preset="original">General</button> · <button class="linkish" data-custom-preset="eu">Bossing</button></span></div>
-      ${total > TOTAL ? `<p class="muted small over">That's more than the 18 lines 6 pieces can hold.</p>` : ""}
       <div class="need-grid">${cells}</div>
     </div>`;
 }
@@ -1043,6 +1059,14 @@ document.addEventListener("keydown", (e) => {
 document.addEventListener("change", (e) => {
   if (e.target.id !== "own-only") return;
   state.ownOnly = e.target.checked;
+  save();
+  render();
+});
+
+// Your pieces: sort by a skill, jewel or class.
+document.addEventListener("change", (e) => {
+  if (e.target.id !== "sort-by") return;
+  state.sortBy = e.target.value || null;
   save();
   render();
 });

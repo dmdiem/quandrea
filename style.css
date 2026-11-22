@@ -703,3 +703,7 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 .stepper button { padding: 0 7px; font-size: 14px; line-height: 1.4; border: 1px solid var(--line); border-radius: 6px; }
 .stepper button:disabled { opacity: .3; cursor: default; }
 .stepper b { min-width: 12px; text-align: center; }
+/* Your pieces: sort by skill, jewel or class */
+.sort-by { font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; }
+.sort-by select { font-size: 12.5px; padding: 3px 6px; }
+.bag-row.sort-miss { opacity: .38; }
