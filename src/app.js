@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=91";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, customBuild, totalOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=91";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=91";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=91";
-import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=91";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=91";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=92";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, customBuild, sameSkills, totalOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=92";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=92";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=92";
+import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=92";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=92";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -344,8 +344,12 @@ function render() {
     : sortKind === "line" ? it.lines.filter((k) => k === sortVal).length
     : sortKind === "sock" ? it.sockets.filter((c) => c === sortVal).length
     : sortKind === "cls" ? Number(it.cls === sortVal) : 0;
-  const list = [...state.items].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || hits(b) - hits(a) || inBest.has(b.id) - inBest.has(a.id));
-  const status = (it) => (inBest.has(it.id) ? `<span class="act on" title="Best in slot for ${build.name}">BiS ✓</span>`
+  // Same slot, same skills as another piece: only the better one is worth keeping (the other sinks
+  // to the bottom of its slot).
+  const dupes = sameSkills(state.items, state.classId, inBest);
+  const list = [...state.items].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || Boolean(dupes[a.id]) - Boolean(dupes[b.id]) || hits(b) - hits(a) || inBest.has(b.id) - inBest.has(a.id));
+  const dupeTag = (it) => (dupes[it.id] ? `<span class="tag dupe-tag" title="Same skills as another ${it.slot.toLowerCase()} with ${dupes[it.id].sockets.length ? `better jewels (${dupes[it.id].sockets.map((c) => SOCK_WORD[c]).join(", ")})` : "the same jewels"}${option.classes.includes(dupes[it.id].cls) && !option.classes.includes(it.cls) ? ` that's your class's gear` : ""}: keep that one, this one can go">Same skills: keep the other</span>` : "");
+  const status = (it) => (dupes[it.id] ? "" : inBest.has(it.id) ? `<span class="act on" title="Best in slot for ${build.name}">BiS ✓</span>`
     : forJewels.has(it.id) || BUILD_IDS.some((id) => fitsBuild(it, id)) ? "" : `<span class="muted small">spare</span>`);
   // Another class's gear never counts: say so loudly, with a one-click fix for a misread title.
   const notMine = (it) => !option.classes.includes(it.cls);
@@ -353,8 +357,8 @@ function render() {
   const classTag = (it) => (notMine(it) ? `<span class="tag cls-tag" title="${it.cls ?? "Unknown"} gear: ${state.ownOnly ? "left out (My class's gear only is on)" : `use an Orb to move its lines onto your ${option.cls} gear`}">${it.cls ?? "?"}</span>` : "");
   // Hologram gear always has 3 skill lines: fewer means one wasn't read.
   const linesWarn = (it) => (it.lines.length < 3 ? `<div class="lines-warn">⚠ Only ${it.lines.length} skill${it.lines.length === 1 ? "" : "s"}: one is probably missing <button class="linkish" data-edit="${it.id}">Edit</button></div>` : "");
-  const row = (it) => `<div class="bag-row${sortKind && !hits(it) ? " sort-miss" : ""}${inBest.has(it.id) ? " best-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}${notMine(it) ? " other-class" : ""}">
-      ${linesWarn(it)}<div class="bag-top">${classTag(it)}${status(it)}${buildTags(it)}${jewelTag(it)}
+  const row = (it) => `<div class="bag-row${sortKind && !hits(it) ? " sort-miss" : ""}${dupes[it.id] ? " dupe-row" : ""}${inBest.has(it.id) ? " best-row" : ""}${recentIds.has(it.id) ? " new-row" : ""}${notMine(it) ? " other-class" : ""}">
+      ${linesWarn(it)}<div class="bag-top">${classTag(it)}${dupeTag(it)}${status(it)}${buildTags(it)}${jewelTag(it)}
         <span class="bag-act"><button class="equip-btn" data-edit="${it.id}" title="Change its jewels, skills or slot">Edit</button><button class="x" data-del="${it.id}" aria-label="Remove">×</button></span></div>
       <div class="lines">${linesOf(it)}</div>
       ${socks(it.sockets)}

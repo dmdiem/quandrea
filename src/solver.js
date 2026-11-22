@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=91";
+import { SLOTS, TARGETS } from "./parse.js?v=92";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); // strongest first (v.272)
@@ -110,6 +110,27 @@ export const findSame = (items, piece) => items.find((it) => it !== piece && sam
 // Could this piece be part of a perfect 18/18 set for a build? All 3 of its lines are ones the
 // build uses (a Thief line never fits Bossing; a Damage line never fits General).
 export const fitsBuild = (item, id) => item.lines.length === 3 && item.lines.every((k) => IDX[k] !== undefined && buildOf(id).need[IDX[k]] > 0);
+
+// Pieces in the same slot with the same skills (in any order): only one is worth keeping. Returns
+// { id of each one to drop: the piece to keep instead }. Keep: your own class's (no Orb needed),
+// then more sockets your class can use, then more prismatics, then the BiS one if it's tied.
+export function sameSkills(items, classId, prefer = new Set()) {
+  const own = (it) => classOption(classId).classes.includes(it.cls);
+  const groups = new Map();
+  for (const it of items) {
+    if (!it.lines.length) continue;
+    const key = `${it.slot}|${[...it.lines].sort().join(",")}`;
+    groups.set(key, [...(groups.get(key) ?? []), it]);
+  }
+  const out = {};
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const rank = (it) => [own(it) ? 1 : 0, socketValue(it, classId).good, socketValue(it, classId).prismatic, prefer.has(it.id) ? 1 : 0];
+    const best = [...list].sort((x, y) => { const a = rank(x), c = rank(y); for (let i = 0; i < a.length; i++) if (a[i] !== c[i]) return c[i] - a[i]; return 0; })[0];
+    for (const it of list) if (it !== best) out[it.id] = best;
+  }
+  return out;
+}
 
 // How many of an item's lines are on the list (the most it could ever add).
 export const useful = (item) => item.lines.filter((k) => IDX[k] !== undefined).length;

@@ -707,3 +707,6 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 .sort-by { font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; }
 .sort-by select { font-size: 12.5px; padding: 3px 6px; }
 .bag-row.sort-miss { opacity: .38; }
+/* Same skills as a better piece in the same slot */
+.tag.dupe-tag { color: var(--act); border-color: color-mix(in srgb, var(--act) 55%, transparent); background: color-mix(in srgb, var(--act) 10%, transparent); font-weight: 700; }
+.bag-row.dupe-row .lines, .bag-row.dupe-row .socks { opacity: .55; }

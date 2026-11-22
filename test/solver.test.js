@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { solve, solveOptions, spare, missing, customBuild, totalOf, onePieceAway, verdicts, findSame, fitsBuild, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
+import { solve, solveOptions, spare, missing, customBuild, totalOf, sameSkills, onePieceAway, verdicts, findSame, fitsBuild, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
 import { TARGETS } from "../src/parse.js";
 
 let n = 0;
@@ -331,4 +331,16 @@ test("Custom: any count of each line, scored out of its own total", () => {
   assert.equal(res.score, 9);
   assert.deepEqual(missing(res).sort(), ["crit", "reg", "reg", "reg"]);
   assert.deepEqual(solveOptions(set, "endgame", b)[0].counts, res.counts);
+});
+
+test("same slot, same skills: keep the one with better jewels (or your own class's)", () => {
+  const a = item("Shoes", "leap wh reg", { id: "a", sockets: ["red"] });
+  const b = item("Shoes", "reg leap wh", { id: "b", sockets: ["prismatic", "blue"] });
+  const c = item("Shoes", "leap wh reg", { id: "c", cls: "Warrior", sockets: ["prismatic", "blue", "blue"] });
+  const other = item("Hat", "leap wh reg", { id: "hat" });
+  const d = sameSkills([a, b, c, other], "Magician");
+  assert.equal(d.a.id, "b");
+  assert.equal(d.c.id, "b"); // own class beats better jewels on another class's piece (no Orb)
+  assert.equal(d.b, undefined);
+  assert.equal(d.hat, undefined); // different slot
 });
