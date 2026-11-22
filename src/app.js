@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=92";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, customBuild, sameSkills, totalOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=92";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=92";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=92";
-import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=92";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=92";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=95";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, customBuild, sameSkills, totalOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, anyLines, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=95";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=95";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=95";
+import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=95";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=95";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -194,6 +194,7 @@ const socks = (list) => (list?.length ? `<span class="socks">${list.map(jewel).j
   : `<span class="socks none-yet muted small" title="No jewels entered for this piece">no jewels</span>`);
 const linesOf = (it) => (it.lines.length ? it.lines.map((k) => chip(k)).join("") : `<span class="muted">no lines</span>`);
 
+const optSigs = {}; // which option list each build's ‹ › position belongs to
 function render() {
   renderPresets();
   // Always aims for the real 18 (an older "any 3 lines" setting in a save is ignored).
@@ -211,6 +212,13 @@ function render() {
   // recommended one; the arrows cycle through the rest.
   const options = solveOptions(pool, "endgame", custom ? build : build.id, state.classId);
   // The arrows wrap around: › on the last option goes back to option 1, ‹ on option 1 to the last.
+  // When the options themselves change (new gear, My class's gear only, a Custom change), start
+  // again from option 1.
+  const optSig = `${options.length}:${options.map((o) => o.counts.join("")).join("|")}`;
+  if (optSigs[build.id] !== optSig) {
+    optSigs[build.id] = optSig;
+    state.optIdx = { ...state.optIdx, [build.id]: 0 };
+  }
   const optIdx = (((state.optIdx?.[build.id] ?? 0) % options.length) + options.length) % options.length;
   const res = options[optIdx] ?? v.res;
   // The board's fixed rows: the lines this build needs (in Flex, the 13 shared ones; its other 5 go in
@@ -295,7 +303,7 @@ function render() {
     ${buildPick}
     <div class="score"><span class="big">${head}</span><span class="muted">/ ${total} with your best combo</span></div>
     ${options.length > 1 ? `<div class="opt-cycle"><button class="ghost" data-opt="-1" aria-label="Previous option">‹</button>
-      <span>Option <b>${optIdx + 1}</b> of ${options.length} · ${optIdx === 0 ? "suggested" : "same score"}${gaps.length ? ` · missing ${tally(gaps)}` : ""}${spare(res).length ? ` · spare ${tally(spare(res))}` : ""}</span>
+      <span>Option <b>${optIdx + 1}</b> of ${options.length} · ${optIdx === 0 ? "suggested" : "same score"}${gaps.length ? ` · missing ${tally(gaps)}` : ""}${spare(res).length ? ` · spare ${tally(spare(res))}` : ""}${build.flexCap ? ` · any: ${tally(anyLines(res))}` : ""}</span>
       <button class="ghost" data-opt="1" aria-label="Next option">›</button></div>` : ""}
     <div class="board" style="grid-template-rows: repeat(${Math.ceil(rowsOf.length / 2)}, auto)">${rowsOf.map(boardRow).join("")}</div>
     ${gaps.length || flexLeft ? `<div class="hunt"><span class="label">Still missing · ${gaps.length + flexLeft}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}${flexLeft ? `<span class="chip flex-chip" title="Any class line (each class once), a 2nd or 3rd Crit DMG, or Damage">✦ Any: class · Crit · Damage</span>${flexLeft > 1 ? `<span class="times">×${flexLeft}</span>` : ""}` : ""}</div></div>` : `<p class="act on">All 18 ✓</p>`}
@@ -438,6 +446,7 @@ function addForm() {
       </div>
       ${state.cb && draft.sockets.length ? `<div class="mt-sockwords">${[0, 1, 2].map((i) => `<span>${draft.sockets[i] ? SOCK_WORD[draft.sockets[i]] : "–"}</span>`).join("")}</div>` : ""}
       <div class="mt-lines">${mockLines}</div>
+      ${draftCheck()}
       ${draft.slot && draft.lines.length > 0 && draft.lines.length < 3 ? `<div class="lines-warn">⚠ Only ${draft.lines.length} skill${draft.lines.length === 1 ? "" : "s"}: hologram gear has 3. Pick the missing one.</div>` : ""}
     </div>`;
   return `<div class="add-manual" id="add-manual">
@@ -496,7 +505,7 @@ document.addEventListener("click", (e) => {
     return;
   }
   if (t.dataset.opt) {
-    const id = buildOf(state.build).id;
+    const id = state.build === "custom" ? "custom" : buildOf(state.build).id;
     state.optIdx = { ...state.optIdx, [id]: (state.optIdx?.[id] ?? 0) + Number(t.dataset.opt) };
     render(); // not saved: a fresh visit starts on the recommended option
     return;
@@ -857,6 +866,36 @@ async function addFromScreenshots(files) {
   scan.pct = 100;
   scan.busy = false;
   render();
+}
+
+// ---------- before you Add ----------
+// Once a piece has its slot and 3 lines: would it raise your best combo (for the build you're
+// looking at), or is it a copy of something you have?
+function draftCheck() {
+  if (!draft.slot || draft.lines.length < 3) return "";
+  const option = classOption(state.classId);
+  const piece = { id: "draft", slot: draft.slot, cls: draft.cls ?? option.cls, lines: [...draft.lines], sockets: [...draft.sockets] };
+  const others = state.items.filter((it) => it.id !== draft.editId);
+  const notes = [];
+  const exact = findSame(others, piece);
+  if (exact) notes.push(["dupe", "Already added: you have this exact piece"]);
+  else {
+    const same = sameSkills([...others, piece], state.classId);
+    if (same.draft) notes.push(["dupe", `Same skills as a ${piece.slot.toLowerCase()} you have with better jewels: no need to keep this one`]);
+    else if (Object.values(same).some((keep) => keep === piece)) notes.push(["up", `Same skills as a ${piece.slot.toLowerCase()} you have, but better jewels: keep this one`]);
+  }
+  const custom = state.build === "custom";
+  const build = custom ? customBuild(state.customNeed ?? BUILD_DEFAULT) : buildOf(state.build);
+  const total = totalOf(build);
+  const mine = (it) => !state.ownOnly || option.classes.includes(it.cls);
+  const pool = others.filter(mine);
+  if (!exact && mine(piece)) {
+    const before = solve(pool, "endgame", custom ? build : build.id, state.classId).score;
+    const after = solve([...pool, piece], "endgame", custom ? build : build.id, state.classId).score;
+    if (after > before) notes.unshift(["up", after >= total ? `⬆ Finishes your set: ${after}/${total} ${build.short}!` : `⬆ +${after - before} for ${build.short}: ${before} → ${after}/${total}`]);
+    else notes.push(["same", `No change to your ${build.short} best combo (${before}/${total})`]);
+  }
+  return notes.length ? `<div class="draft-check">${notes.map(([k, t]) => `<div class="dc dc-${k}">${t}</div>`).join("")}</div>` : "";
 }
 
 // ---------- one drop finishes it ----------

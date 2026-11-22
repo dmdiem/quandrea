@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { solve, solveOptions, spare, missing, customBuild, totalOf, sameSkills, onePieceAway, verdicts, findSame, fitsBuild, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
+import { solve, solveOptions, spare, missing, customBuild, totalOf, sameSkills, BUILD_IDS, onePieceAway, verdicts, findSame, fitsBuild, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
 import { TARGETS } from "../src/parse.js";
 
 let n = 0;
@@ -343,4 +343,8 @@ test("same slot, same skills: keep the one with better jewels (or your own class
   assert.equal(d.c.id, "b"); // own class beats better jewels on another class's piece (no Orb)
   assert.equal(d.b, undefined);
   assert.equal(d.hat, undefined); // different slot
+});
+
+test("every built-in build is scored out of 18", () => {
+  for (const id of BUILD_IDS) assert.equal(totalOf(id), 18, id);
 });

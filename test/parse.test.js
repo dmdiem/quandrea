@@ -114,3 +114,11 @@ test("when OCR loses the title, the slot badge and Required Job are used", () =>
   assert.equal(parseTooltip("Armor\nGlaves\nRequired Job Bowrnan").cls, "Bowman");
   assert.equal(parseTooltip("Combat Power\nTop secret").slot, null); // no "Armor" badge: no guess
 });
+
+test("a garbled title and a lost Armor label: still read from what's left", () => {
+  const t = "LIPAT 0 oUPCILIIalgeu Lape (wiagivian)\nHeroes Lintradatile\n| Interactive Lintradatle\n. Combat Power Increase\nCape\nRequired Joh Magician\nRequired Level Lv. 160\nSet Effect\n[Hologram] Magician Attack Skill Lv. +1";
+  assert.equal(parseTooltip(t).slot, "Cape");
+  assert.equal(parseTooltip("x\nsome Lape (wiagivian)\nRequired Job Magician").slot, "Cape"); // title alone
+  assert.equal(parseTooltip("x\nHeroic\nCape\nRequired Job Magician").slot, "Cape"); // badge alone
+  assert.equal(parseTooltip("Required Job Magician\nTop\nHat").slot, null); // only the top of the tooltip counts
+});

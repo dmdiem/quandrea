@@ -122,15 +122,31 @@ export function fuzzyKey(line) {
 // When OCR loses the title, the slot badge under "Armor" on the right ("Armor" / "Top"), even
 // misread by a letter ("Tap", "Glaves").
 const BADGES = { hat: "Hat", top: "Top", bottom: "Bottom", shoes: "Shoes", gloves: "Gloves", cape: "Cape" };
+const slotWord = (w) => {
+  if (w.length < 3 || w.length > 7) return null;
+  for (const [k, slot] of Object.entries({ ...BADGES, pants: "Bottom" })) if (editDistance(w, k) <= (k.length <= 4 ? 1 : 2)) return slot;
+  return null;
+};
 function badgeSlot(text) {
   const lines = String(text).split(/\r?\n/);
-  for (let i = 0; i < lines.length; i++) {
-    if (!/\bar[mn]{1,2}[o0]r\b/i.test(lines[i])) continue;
-    for (const l of lines.slice(i + 1, i + 3)) {
-      const w = l.toLowerCase().replace(/[^a-z]/g, "");
-      if (w.length < 3 || w.length > 7) continue;
-      for (const [k, slot] of Object.entries(BADGES)) if (editDistance(w, k) <= (k.length <= 3 ? 1 : 2)) return slot;
+  // The top of the tooltip, before "Required Job" (stats and skills below can say anything).
+  const end = lines.findIndex((l) => /requ[il1]red/i.test(l));
+  const head = lines.slice(0, end < 0 ? 10 : end);
+  // 1. The badge under "Armor".
+  for (let i = 0; i < head.length; i++) {
+    if (!/\bar[mn]{1,2}[o0]r\b/i.test(head[i])) continue;
+    for (const l of head.slice(i + 1, i + 3)) {
+      const slot = slotWord(l.toLowerCase().replace(/[^a-z]/g, ""));
+      if (slot) return slot;
     }
+  }
+  // 2. The garbled title: the word just before "(Class)" ("…Supercharged Lape (wiagivian)").
+  const title = head.slice(0, 3).map((l) => l.match(/([a-z]{3,7})\s*\(/i)?.[1]).find(Boolean);
+  if (title && slotWord(title.toLowerCase())) return slotWord(title.toLowerCase());
+  // 3. The badge on a line of its own, even if "Armor" was lost.
+  for (const l of head) {
+    const w = l.trim().toLowerCase();
+    if (/^[a-z]{3,6}$/.test(w) && slotWord(w)) return slotWord(w);
   }
   return null;
 }

@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=92";
+import { SLOTS, TARGETS } from "./parse.js?v=95";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); // strongest first (v.272)
@@ -41,7 +41,8 @@ export const customBuild = (counts = {}) => ({
   id: "custom", name: "Custom", short: "Custom", prismatic: 4,
   need: TARGETS.map((t) => Math.max(0, Math.min(3, Math.round(Number(counts?.[t.k]) || 0)))),
 });
-export const totalOf = (b) => buildOf(b).need.reduce((a, c) => a + c, 0);
+// How many lines a build is scored out of: Flex is always 18 (13 shared + any 5), the rest add up.
+export const totalOf = (b) => (buildOf(b).flexCap ? 18 : buildOf(b).need.reduce((a, c) => a + c, 0));
 
 // Flex: both builds share 13 lines (3 each of Leap, White Hole, Registry, ATT, and 1 Crit DMG), the
 // "core". The other 5 can be any class line (each class once), more Crit DMG (up to 3 in all) or
@@ -138,7 +139,7 @@ export const useful = (item) => item.lines.filter((k) => IDX[k] !== undefined).l
 // items: [{ id, slot, lines }]. Returns the picks and how good they are.
 // classId (optional): on a tie, the piece with more sockets your class can use wins (no Orb needed).
 export function solve(items, mode = "endgame", build = "original", classId = null) {
-  return search(items, mode, build, classId).best;
+  return search(items, mode, build, classId, 20).best; // same search as the options: one result serves both
 }
 
 // Every different way to reach the best score (each a different set of lines, e.g. one missing ATT,
@@ -147,9 +148,44 @@ export function solveOptions(items, mode = "endgame", build = "original", classI
   return search(items, mode, build, classId, max).options;
 }
 
+// Results are remembered: clicks that don't change your pieces, build or class reuse the last answer.
+const searchCache = new Map();
 function search(items, mode, build, classId, maxOptions = 0) {
   const b = buildOf(build);
-  const bySlot = SLOTS.map((s) => items.filter((it) => it.slot === s));
+  const key = [mode, classId, b.need.join(""), b.flexCap ?? 0, maxOptions,
+    ...items.map((it) => `${it.id}:${it.slot}:${it.cls}:${it.lines.join(",")}:${(it.sockets ?? []).join(",")}`)].join("|");
+  if (searchCache.has(key)) return searchCache.get(key);
+  const out = searchUncached(items, mode, b, classId, maxOptions);
+  searchCache.set(key, out);
+  if (searchCache.size > 40) searchCache.delete(searchCache.keys().next().value);
+  return out;
+}
+
+function searchUncached(items, mode, b, classId, maxOptions) {
+  // What each piece adds besides its counted lines (the tie-breaks below), worked out once.
+  const gainOf = (it) => {
+    // early: every line counts most. endgame: the 18 come first, then more lines in total (an
+    // extra Mage line is still +1 to that skill, up to Lv. 8).
+    const sockets = classId ? socketValue(it, classId).good : 0;
+    // Then, between outfits with the same score, the one whose lines are worth more in total, so a
+    // line that doesn't count is a 2nd Crit DMG (still +1 to it) rather than a doubled class line.
+    const lineWorth = it.lines.reduce((n, k) => n + (IDX[k] === undefined ? 0 : WORTH[IDX[k]]), 0);
+    // Another class's piece works too (an Orb moves its lines onto your gear), but Orbs are rare:
+    // on a tie, your own class's piece wins.
+    const own = classId && classOption(classId).classes.includes(it.cls) ? 20 : 0;
+    return it.lines.length * 1000 + lineWorth * 10 + own + sockets;
+  };
+  // Pieces in the same slot with the same lines lead to the same outfits: keep only the best of them.
+  const bySlot = SLOTS.map((s) => {
+    const best = new Map();
+    for (const it of items) {
+      if (it.slot !== s) continue;
+      const k = [...it.lines].sort().join(",");
+      const g = gainOf(it);
+      if (!best.has(k) || g > best.get(k).g) best.set(k, { it, g });
+    }
+    return [...best.values()];
+  });
   // Map of tally -> { score, prev, item }. score = how much we like the path so far (more lines).
   // Flex searches without its 5-spot cap and applies it when scoring (flexScore).
   const searchB = b.flexCap ? { ...b, flexCap: 0 } : b;
@@ -158,18 +194,10 @@ function search(items, mode, build, classId, maxOptions = 0) {
   for (const [si, opts] of bySlot.entries()) {
     const next = new Map();
     for (const [st, info] of layer) {
-      for (const it of opts.length ? opts : [null]) {
+      for (const o of opts.length ? opts : [null]) {
+        const it = o?.it ?? null;
         const ns = it ? add(st, it.lines, searchB) : st;
-        // early: every line counts most. endgame: the 18 come first, then more lines in total (an
-        // extra Mage line is still +1 to that skill, up to Lv. 8).
-        const sockets = it && classId ? socketValue(it, classId).good : 0;
-        // Then, between outfits with the same score, the one whose lines are worth more in total, so a
-        // line that doesn't count is a 2nd Crit DMG (still +1 to it) rather than a doubled class line.
-        const lineWorth = it ? it.lines.reduce((n, k) => n + (IDX[k] === undefined ? 0 : WORTH[IDX[k]]), 0) : 0;
-        // Another class's piece works too (an Orb moves its lines onto your gear), but Orbs are rare:
-        // on a tie, your own class's piece wins.
-        const own = it && classId && classOption(classId).classes.includes(it.cls) ? 20 : 0;
-        const extra = info.extra + (it ? it.lines.length * 1000 + lineWorth * 10 + own + sockets : 0);
+        const extra = info.extra + (o ? o.g : 0);
         const cur = next.get(ns);
         if (!cur || extra > cur.extra) next.set(ns, { extra, prev: st, item: it, slot: si });
       }
@@ -185,18 +213,21 @@ function search(items, mode, build, classId, maxOptions = 0) {
   const value = (st, e) => (mode === "early" ? e.extra * 100 + tally(st) * 10 : (b.flexCap
     ? flexScore(st, b.flexCap).worth * 1e10 + flexScore(st, b.flexCap).tally * 1e8
     : tally(st) * 1e10 + worth(st) * 1e7) + core(st) * 1e5 + e.extra);
-  let bestSt = 0;
-  let best = null;
-  for (const [st, e] of layer) if (!best || value(st, e) > value(bestSt, best)) [bestSt, best] = [st, e];
+  // Each end state's value, worked out once.
+  const scored = [...layer].map(([st, e]) => ({ st, v: value(st, e), score: b.flexCap ? flexScore(st, b.flexCap).tally : tally(st) }));
+  let top = scored[0];
+  for (const x of scored) if (x.v > top.v) top = x;
+  const bestSt = top.st;
   const bestRes = finish(bestSt);
   if (!maxOptions) return { best: bestRes };
   // The other end states with the same score, best first; one per different set of counted lines.
-  const ranked = [...layer].sort((x, y) => value(y[0], y[1]) - value(x[0], x[1]));
+  const ranked = scored.filter((x) => x.score === top.score).sort((x, y) => y.v - x.v).map((x) => [x.st]);
   const options = [bestRes];
   // One option per different choice: what it's missing, and which lines are spare (worn but not
   // counted, e.g. a 2nd Pirate vs a 2nd Crit DMG). In Flex, outfits that only swap which class fills
   // an "any" spot count as the same option.
-  const gapKey = (r) => `${missing(r).sort().join()}|${spare(r).sort().join()}`;
+  // In Flex, which 5 "any" lines it uses tells options apart too (so full 18/18 sets can differ).
+  const gapKey = (r) => `${missing(r).sort().join()}|${spare(r).sort().join()}|${b.flexCap ? anyLines(r).sort().join() : ""}`;
   const seenCounts = new Set([gapKey(bestRes)]);
   for (const [st] of ranked) {
     if (options.length >= maxOptions) break;
@@ -239,10 +270,25 @@ function search(items, mode, build, classId, maxOptions = 0) {
 // reach 18/18, keeping the best possible pieces in the other five slots. A piece holds at most 3
 // lines and can't repeat one, so only gaps of up to 3 different lines count. Fewest lines first.
 // In Flex, its "any 5" spots show as "any" (any class line, a 2nd or 3rd Crit DMG, or Damage).
+// One piece per different set of lines in each slot (only the lines matter for "one drop").
+const uniqueBySlot = (items) => SLOTS.map((s) => {
+  const seen = new Map();
+  for (const it of items) if (it.slot === s) seen.set([...it.lines].sort().join(","), it);
+  return [...seen.values()];
+});
+const dropCache = new Map();
 export function onePieceAway(items, build = "original") {
   const b = buildOf(build);
+  const key = [b.need.join(""), b.flexCap ?? 0, ...items.map((it) => `${it.slot}:${it.lines.join(",")}`)].join("|");
+  if (!dropCache.has(key)) {
+    dropCache.set(key, onePieceAwayUncached(items, b));
+    if (dropCache.size > 20) dropCache.delete(dropCache.keys().next().value);
+  }
+  return dropCache.get(key);
+}
+function onePieceAwayUncached(items, b) {
   if (b.flexCap) return flexOnePieceAway(items, b);
-  const bySlot = SLOTS.map((s) => items.filter((it) => it.slot === s));
+  const bySlot = uniqueBySlot(items);
   const out = [];
   const seen = new Set();
   for (let skip = 0; skip < SLOTS.length; skip++) {
@@ -269,6 +315,9 @@ export function onePieceAway(items, build = "original") {
   return out.filter((o, i) => !out.slice(0, i).some((p) => p.slot === o.slot && p.need.every((k) => o.need.includes(k))));
 }
 
+// Flex: the lines filling its 5 "any" spots (counted lines past the 13 shared ones), as line keys.
+export const anyLines = (res) => TARGETS.flatMap((t, i) => Array(Math.max(0, res.counts[i] - CORE_NEED[i])).fill(t.k));
+
 // Extra copies worn but not counted (a 2nd Pirate, a 4th Leap), as line keys. Lines the build
 // never counts (class lines in Bossing, Boss DMG) aren't "spare", just unused.
 export const spare = (res) => {
@@ -278,7 +327,7 @@ export const spare = (res) => {
 
 function flexOnePieceAway(items, b) {
   const searchB = { ...b, flexCap: 0 };
-  const bySlot = SLOTS.map((s) => items.filter((it) => it.slot === s));
+  const bySlot = uniqueBySlot(items);
   const out = [];
   const seen = new Set();
   for (let skip = 0; skip < SLOTS.length; skip++) {
