@@ -690,3 +690,16 @@ header .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-c
 /* Another class: shown in red */
 .tag.cls-tag { color: var(--trash); border-color: color-mix(in srgb, var(--trash) 55%, transparent); background: color-mix(in srgb, var(--trash) 10%, transparent); font-weight: 700; }
 .keycap.kind-cls.other.on { border-color: var(--trash); background: color-mix(in srgb, var(--trash) 14%, var(--surface)); color: var(--trash); box-shadow: 0 0 0 2px color-mix(in srgb, var(--trash) 35%, transparent); }
+/* Custom: how many of each line */
+.custom-edit { margin: 0 0 10px; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 10px; }
+.custom-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.custom-head .over, p.over { color: var(--trash); }
+.need-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; }
+.need-row { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; }
+.need-row.zero .need-name { opacity: .5; }
+.need-name { display: inline-flex; align-items: center; gap: 5px; }
+.need-name .class-icon { width: 14px; height: 14px; }
+.stepper { display: inline-flex; align-items: center; gap: 4px; }
+.stepper button { padding: 0 7px; font-size: 14px; line-height: 1.4; border: 1px solid var(--line); border-radius: 6px; }
+.stepper button:disabled { opacity: .3; cursor: default; }
+.stepper b { min-width: 12px; text-align: center; }

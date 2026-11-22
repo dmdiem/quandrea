@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { solve, solveOptions, spare, missing, onePieceAway, verdicts, findSame, fitsBuild, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
+import { solve, solveOptions, spare, missing, customBuild, totalOf, onePieceAway, verdicts, findSame, fitsBuild, socketSet, socketValue, socketNote, classOption, TOTAL } from "../src/solver.js";
 import { TARGETS } from "../src/parse.js";
 
 let n = 0;
@@ -321,4 +321,14 @@ test("tied options: one per different gap and spare lines, suggested first", () 
   assert.ok(opts.every((o) => o.score === opts[0].score));
   const gaps = opts.map((o) => `${missing(o).sort().join()}|${spare(o).sort().join()}`);
   assert.equal(new Set(gaps).size, gaps.length);
+});
+
+test("Custom: any count of each line, scored out of its own total", () => {
+  const b = customBuild({ leap: 3, wh: 3, mage: 2, crit: 2, nonsense: 9, reg: 7 });
+  assert.equal(totalOf(b), 3 + 3 + 2 + 2 + 3); // reg capped at 3, unknown keys ignored
+  const set = [item("Hat", "leap wh mage"), item("Top", "leap wh mage"), item("Bottom", "leap crit wh")];
+  const res = solve(set, "endgame", b);
+  assert.equal(res.score, 9);
+  assert.deepEqual(missing(res).sort(), ["crit", "reg", "reg", "reg"]);
+  assert.deepEqual(solveOptions(set, "endgame", b)[0].counts, res.counts);
 });

@@ -6,7 +6,7 @@
 //   endgame: the most of the 18 target lines (3 Leap, 3 White Hole, 3 Registry, 3 ATT & M.ATT, 1 of each other)
 //   early:   the most skill lines of any kind (18 = a 3-line item in every slot), target lines as tiebreak
 
-import { SLOTS, TARGETS } from "./parse.js?v=87";
+import { SLOTS, TARGETS } from "./parse.js?v=88";
 
 const IDX = Object.fromEntries(TARGETS.map((t, i) => [t.k, i]));
 const CLASS_KEYS = new Set(["archer", "warrior", "thief", "mage", "pirate"]); // strongest first (v.272)
@@ -34,7 +34,14 @@ export const BUILDS = {
     note: "Optional min-max: only worth it past the 22 badge if you boss a lot (about +7% Final Damage). General is fine for everything else." },
 };
 export const BUILD_IDS = Object.keys(BUILDS);
-export const buildOf = (id) => BUILDS[id] ?? BUILDS.original;
+export const buildOf = (id) => (id && typeof id === "object" ? id : BUILDS[id] ?? BUILDS.original);
+// Custom: any count (0 to 3) of every line, from { leap: 3, wh: 3, mage: 2, ... }. Scored out of
+// however many lines that adds up to.
+export const customBuild = (counts = {}) => ({
+  id: "custom", name: "Custom", short: "Custom", prismatic: 4,
+  need: TARGETS.map((t) => Math.max(0, Math.min(3, Math.round(Number(counts?.[t.k]) || 0)))),
+});
+export const totalOf = (b) => buildOf(b).need.reduce((a, c) => a + c, 0);
 
 // Flex: both builds share 13 lines (3 each of Leap, White Hole, Registry, ATT, and 1 Crit DMG), the
 // "core". The other 5 can be any class line (each class once), more Crit DMG (up to 3 in all) or
@@ -43,7 +50,7 @@ export const CORE_NEED = needs({ ...NO_CLASSES });
 export const CORE_TOTAL = CORE_NEED.reduce((a, b) => a + b, 0); // 13
 export const FLEX_TOTAL = 5;
 // Tallies are packed into one number, one digit per line, sized for the biggest need of any build.
-const MAXNEED = TARGETS.map((_, i) => Math.max(...Object.values(BUILDS).map((b) => b.need[i])));
+const MAXNEED = TARGETS.map(() => 3); // room for any Custom count
 const BASE = MAXNEED.map((n) => n + 1);
 const MUL = [];
 BASE.reduce((m, b, i) => ((MUL[i] = m), m * b), 1);
@@ -203,7 +210,7 @@ function search(items, mode, build, classId, maxOptions = 0) {
         counted[s][j] = true;
       });
   const lines = SLOTS.reduce((n, s) => n + (picks[s]?.lines.length ?? 0), 0);
-  return { picks, counted, counts: counts(run), score: tally(run), core: coreScore(run), flex: tally(run) - coreScore(run), lines, build: b.id };
+  return { picks, counted, counts: counts(run), score: tally(run), core: coreScore(run), flex: tally(run) - coreScore(run), lines, build: b.id, b };
   }
 }
 
@@ -226,7 +233,7 @@ export function onePieceAway(items, build = "original") {
       layer = next;
     }
     for (const st of layer) {
-      if (tally(st) < TOTAL - 3) continue;
+      if (tally(st) < totalOf(b) - 3) continue;
       const need = TARGETS.flatMap((t, i) => Array(Math.max(0, b.need[i] - digit(st, i))).fill(t.k));
       if (!need.length || new Set(need).size !== need.length) continue;
       const key = `${skip}:${need.join(",")}`;
@@ -244,7 +251,7 @@ export function onePieceAway(items, build = "original") {
 // Extra copies worn but not counted (a 2nd Pirate, a 4th Leap), as line keys. Lines the build
 // never counts (class lines in Bossing, Boss DMG) aren't "spare", just unused.
 export const spare = (res) => {
-  const need = buildOf(res.build).need;
+  const need = buildOf(res.b ?? res.build).need;
   return SLOTS.flatMap((s) => (res.picks[s]?.lines ?? []).filter((k, j) => !res.counted[s][j] && IDX[k] !== undefined && need[IDX[k]] > 0));
 };
 
@@ -284,7 +291,7 @@ function flexOnePieceAway(items, b) {
 // What's still missing from the 18, as line keys (e.g. ["wh", "wh", "mage"]).
 // For core + flex, only the core lines (the flex ones can be any of several: see res.flex).
 export function missing(res) {
-  const b = buildOf(res.build);
+  const b = buildOf(res.b ?? res.build);
   const need = b.flexCap ? CORE_NEED : b.need;
   return TARGETS.flatMap((t, i) => Array(Math.max(0, need[i] - res.counts[i])).fill(t.k));
 }

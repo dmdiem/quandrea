@@ -1,11 +1,11 @@
 // The page: the inventory map (from a pasted screenshot), typing in pieces, and drawing everything.
 
-import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=87";
-import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=87";
-import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=87";
-import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=87";
-import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=87";
-import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=87";
+import { SLOTS, TARGETS, FILLERS, isTarget, parseTooltip } from "./parse.js?v=88";
+import { verdicts, solve, missing, TOTAL, CLASSES, classOption, socketValue, socketNote, BUILDS, BUILD_IDS, buildOf, customBuild, totalOf, findSame, fitsBuild, socketSet, onePieceAway, solveOptions, spare, CORE_NEED, FLEX_TOTAL } from "./solver.js?v=88";
+import { STEPS, STEP_NAME, OPTIONS } from "./options.js?v=88";
+import { exportCode, importCode, looksLikeBackup, sanitize } from "./backup.js?v=88";
+import { cleanPresets, cleanName, makePreset, cleanCustom, NAME_MAX } from "./presets.js?v=88";
+import { findTooltips, findIcon, findSockets, prepareForOcr, resizeImage } from "./vision.js?v=88";
 
 const KEY = "quandrea.v1";
 // Two builds (General, Bossing): the optimizer solves all of them, the progress panel shows
@@ -34,6 +34,8 @@ function load() {
     };
     ui.build = BUILD_IDS.includes(raw.build) || raw.build === "custom" ? raw.build : "original";
     ui.custom = cleanCustom(raw.custom);
+    ui.customNeed = customBuild(raw.customNeed && typeof raw.customNeed === "object" ? raw.customNeed : BUILD_DEFAULT).need
+      .reduce((o, n, i) => (n ? { ...o, [TARGETS[i].k]: n } : o), {});
     ui.ownOnly = raw.ownOnly === true;
     state = { ...state, ...ui, ...sanitize(raw), presets: cleanPresets(raw.presets), activePreset: Number.isInteger(raw.activePreset) ? raw.activePreset : null };
   } catch {}
@@ -192,16 +194,17 @@ function render() {
   // Always aims for the real 18 (an older "any 3 lines" setting in a save is ignored).
   // Core + flex: the 13 lines both builds share, plus 5 flex lines (class, Crit DMG or Damage). The
   // General / Bossing choice only says which flex lines to favour.
-  // Custom: you pick a piece per slot (starting from the General best combo) and see its totals.
+  // Custom: you set how many of each line you want; the optimizer finds the best combo for that.
   const custom = state.build === "custom";
-  const build = buildOf(custom ? "original" : state.build);
+  const build = custom ? customBuild(state.customNeed ?? BUILD_DEFAULT) : buildOf(state.build);
+  const total = totalOf(build);
   // "My class only": leave out other classes' gear (no Orbs) when working out combos.
   const pool = state.ownOnly ? state.items.filter((it) => classOption(state.classId).classes.includes(it.cls)) : state.items;
-  const v = verdicts(pool, { ...state, mode: "endgame", build: build.id });
+  const v = verdicts(pool, { ...state, mode: "endgame", build: custom ? build : build.id });
   const { sockets, all, inBuilds } = v;
   // Ties: other outfits with the same score (each missing something different). Option 1 is the
   // recommended one; the arrows cycle through the rest.
-  const options = custom ? [v.res] : solveOptions(pool, "endgame", build.id, state.classId);
+  const options = solveOptions(pool, "endgame", custom ? build : build.id, state.classId);
   // The arrows wrap around: › on the last option goes back to option 1, ‹ on option 1 to the last.
   const optIdx = (((state.optIdx?.[build.id] ?? 0) % options.length) + options.length) % options.length;
   const res = options[optIdx] ?? v.res;
@@ -275,8 +278,8 @@ function render() {
       <div class="cells">${(() => { const sp = spots(t); return Array.from({ length: n }, (_, j) => cell(t.k, sp[j], Boolean(build.flexCap) && j >= rowNeed[TARGETS.indexOf(t)])).join("") + leftNote(extras[t.k], t.k); })()}</div></div>`;
 
   // One button per build with its best score, so you can see which suits your gear.
-  const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${!custom && id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}<button data-build="custom" aria-pressed="${custom}" title="Pick any piece for each slot and see its totals"><b class="only">Custom</b></button></div>
-    <label class="own-only-row" title="Only use gear your class can wear, so no Orbs are needed"><input type="checkbox" id="own-only"${state.ownOnly ? " checked" : ""}> My class's gear only <span class="muted small">(no Orbs)</span></label>${custom ? `<p class="muted small build-note">Your own outfit: click <b>Use</b> on a piece in Your pieces to put it in. It starts as your General best combo.</p>` : build.note ? `<p class="muted small build-note">${build.note}${build.flexCap ? ` <span class="legend-any"></span> = Flex.` : ""}</p>` : ""}`;
+  const buildPick = `<div class="build-pick" role="group" aria-label="Which BiS">${BUILD_IDS.map((id) => `<button data-build="${id}" aria-pressed="${!custom && id === build.id}" title="${BUILDS[id].about}"><span>${BUILDS[id].short}</span><b>${all[id].score}/${TOTAL}</b></button>`).join("")}<button data-build="custom" aria-pressed="${custom}" title="Pick how many of each line you want"><b class="only">Custom</b></button></div>
+    <label class="own-only-row" title="Only use gear your class can wear, so no Orbs are needed"><input type="checkbox" id="own-only"${state.ownOnly ? " checked" : ""}> My class's gear only <span class="muted small">(no Orbs)</span></label>${custom ? customEditor(build) : build.note ? `<p class="muted small build-note">${build.note}${build.flexCap ? ` <span class="legend-any"></span> = Flex.` : ""}</p>` : ""}`;
   // "Crit DMG ×2, Pirate"
   const tally = (keys) => [...keys.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map())].map(([k, n]) => `${NAME[k]}${n > 1 ? ` ×${n}` : ""}`).join(", ");
   const gapCount = gaps.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map());
@@ -285,13 +288,13 @@ function render() {
   const flexLeft = build.flexCap ? FLEX_TOTAL - res.flex : 0;
   $("progress").innerHTML = `<h2>Hologram lines</h2>
     ${buildPick}
-    <div class="score"><span class="big">${head}</span><span class="muted">/ ${TOTAL} with your best combo</span></div>
+    <div class="score"><span class="big">${head}</span><span class="muted">/ ${total} with your best combo</span></div>
     ${options.length > 1 ? `<div class="opt-cycle"><button class="ghost" data-opt="-1" aria-label="Previous option">‹</button>
       <span>Option <b>${optIdx + 1}</b> of ${options.length} · ${optIdx === 0 ? "suggested" : "same score"}${gaps.length ? ` · missing ${tally(gaps)}` : ""}${spare(res).length ? ` · spare ${tally(spare(res))}` : ""}</span>
       <button class="ghost" data-opt="1" aria-label="Next option">›</button></div>` : ""}
     <div class="board" style="grid-template-rows: repeat(${Math.ceil(rowsOf.length / 2)}, auto)">${rowsOf.map(boardRow).join("")}</div>
     ${gaps.length || flexLeft ? `<div class="hunt"><span class="label">Still missing · ${gaps.length + flexLeft}</span><div class="lines">${[...gapCount].map(([k, n]) => `${chip(k)}${n > 1 ? `<span class="times">×${n}</span>` : ""}`).join("")}${flexLeft ? `<span class="chip flex-chip" title="Any class line (each class once), a 2nd or 3rd Crit DMG, or Damage">✦ Any: class · Crit · Damage</span>${flexLeft > 1 ? `<span class="times">×${flexLeft}</span>` : ""}` : ""}</div></div>` : `<p class="act on">All 18 ✓</p>`}
-    ${dropsHtml(onePieceAway(pool, build.id), res)}
+    ${dropsHtml(onePieceAway(pool, custom ? build : build.id), res, total)}
     ${jewelProgress(sockets, option, res)}`;
   if (typeof draft !== "undefined") $("add-panel").innerHTML = addForm();
   $("lines").innerHTML = `
@@ -312,12 +315,9 @@ function render() {
     </section>
 `;
 
-  // Custom: your picks (or the General best piece where you haven't picked), and their totals.
-  const outfit = Object.fromEntries(SLOTS.map((s) => [s, state.items.find((it) => it.id === state.custom?.[s] && it.slot === s) ?? res.picks[s] ?? null]));
-  if (custom) renderCustom(outfit, buildPick, option);
 
   // Your pieces: everything you've added, by slot, BiS first.
-  const inBest = new Set(Object.values(custom ? outfit : res.picks).filter(Boolean).map((it) => it.id));
+  const inBest = new Set(Object.values(res.picks).filter(Boolean).map((it) => it.id));
   // Which builds' best combos each piece is in (the one you're looking at first and solid).
   const buildTags = (it) => {
     // Which builds' perfect 18/18 set this piece could be part of (all 3 lines used). Flex takes
@@ -333,8 +333,7 @@ function render() {
     : `<span class="act jewels" title="Perfect sockets for this slot (${socketNote(it, state.classId)}): keep it to move your lines onto with an Orb">For jewels</span>`);
   // Each slot leads with its BiS piece (the best combo for the build you picked), highlighted.
   const list = [...state.items].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || inBest.has(b.id) - inBest.has(a.id));
-  const status = (it) => (custom ? (inBest.has(it.id) ? `<span class="act on">In use ✓</span>` : `<button class="act swap" data-use="${it.id}" title="Put this in your Custom outfit">Use</button>`)
-    : inBest.has(it.id) ? `<span class="act on" title="Best in slot for ${build.name}">BiS ✓</span>`
+  const status = (it) => (inBest.has(it.id) ? `<span class="act on" title="Best in slot for ${build.name}">BiS ✓</span>`
     : forJewels.has(it.id) || BUILD_IDS.some((id) => fitsBuild(it, id)) ? "" : `<span class="muted small">spare</span>`);
   // Another class's gear never counts: say so loudly, with a one-click fix for a misread title.
   const notMine = (it) => !option.classes.includes(it.cls);
@@ -457,6 +456,22 @@ document.addEventListener("click", (e) => {
   if (t.id !== "clear") confirmClear = false;
   if (t.dataset.themePick) return setTheme(t.dataset.themePick);
   if (presetAction(t)) return;
+  if (t.dataset.need) {
+    // Custom: one more or one fewer of a line (0 to 3).
+    const k = t.dataset.need;
+    const cur = state.customNeed ?? BUILD_DEFAULT;
+    const n = Math.max(0, Math.min(3, (cur[k] ?? 0) + Number(t.dataset.step)));
+    state.customNeed = { ...cur, [k]: n };
+    save();
+    render();
+    return;
+  }
+  if (t.dataset.customPreset) {
+    state.customNeed = { ...(t.dataset.customPreset === "eu" ? CUSTOM_FROM.eu : CUSTOM_FROM.original) };
+    save();
+    render();
+    return;
+  }
   if (t.dataset.opt) {
     const id = buildOf(state.build).id;
     state.optIdx = { ...state.optIdx, [id]: (state.optIdx?.[id] ?? 0) + Number(t.dataset.opt) };
@@ -470,13 +485,7 @@ document.addEventListener("click", (e) => {
   }
 
 
-  if (t.dataset.use) {
-    const it = state.items.find((x) => x.id === t.dataset.use);
-    if (it) state.custom = { ...state.custom, [it.slot]: it.id };
-    save();
-    render();
-    return;
-  }
+
   if (t.dataset.build && (BUILD_IDS.includes(t.dataset.build) || t.dataset.build === "custom")) {
     state.build = t.dataset.build;
     save();
@@ -831,13 +840,13 @@ async function addFromScreenshots(files) {
 // Every single new piece that would take the set to 18/18: its slot and the lines it needs. Collapsed
 // by default; open, one compact row per slot. Only when you're 1 to 3 lines short.
 let dropsOpen = false;
-function dropsHtml(opts, res) {
-  if (!opts.length || res.score >= TOTAL) return "";
+function dropsHtml(opts, res, total = TOTAL) {
+  if (!opts.length || res.score >= total) return "";
   const bySlot = SLOTS.map((s) => [s, opts.filter((o) => o.slot === s)]).filter(([, l]) => l.length);
   const name = (k) => ({ atk: "ATT", crit: "Crit", dmg: "Damage", mage: "Mage", any: "<i>any</i>" })[k] ?? NAME[k];
   return `<details class="drops" id="drops"${dropsOpen ? " open" : ""}>
       <summary><span class="label">One drop finishes it</span> <span class="muted small">${opts.length} option${opts.length === 1 ? "" : "s"}</span></summary>
-      <p class="muted small">A new piece in that slot with those lines gets you to 18/18.${opts.some((o) => o.need.includes("any")) ? " <i>any</i> = a class line you don't have yet, another Crit DMG, or Damage." : ""}</p>
+      <p class="muted small">A new piece in that slot with those lines gets you to ${total}/${total}.${opts.some((o) => o.need.includes("any")) ? " <i>any</i> = a class line you don't have yet, another Crit DMG, or Damage." : ""}</p>
       ${bySlot.map(([s, l]) => `<div class="drop-row"><span class="drop-slot">${slotIcon(s)}${s}</span><span class="drop-opts">${l.map((o) => `<span class="drop-opt">${o.need.map(name).join(" · ")}</span>`).join("")}</span></div>`).join("")}
     </details>`;
 }
@@ -845,38 +854,21 @@ document.addEventListener("toggle", (e) => {
   if (e.target.id === "drops") dropsOpen = e.target.open;
 }, true);
 
-// ---------- custom outfit ----------
-// Every line on the outfit with its level (how many pieces carry it), no caps; how it would score in
-// each build; its jewels; and the pieces in What to wear.
-function renderCustom(outfit, buildPick, option) {
-  const pieces = SLOTS.map((s) => outfit[s]).filter(Boolean);
-  const at = new Map(); // line -> slots that carry it
-  for (const s of SLOTS) for (const k of outfit[s]?.lines ?? []) at.set(k, [...(at.get(k) ?? []), s]);
-  const order = [...TARGETS.map((t) => t.k), ...FILLERS.map((f) => f.k)].filter((k) => at.has(k));
-  const rows = order.map((k) => `<div class="board-row"><span class="board-name">${icon(k)}${NAME[k]}</span>
-      <div class="cells">${at.get(k).map((sl) => `<span class="pip on" title="${sl}">${slotIcon(sl)}</span>`).join("")}<span class="lv">Lv. ${at.get(k).length}</span></div></div>`).join("");
-  const scores = BUILD_IDS.map((id) => `<span class="cs"><span class="muted">${BUILDS[id].short}</span> <b>${solve(pieces, "endgame", id).score}/${TOTAL}</b></span>`).join("");
-  const lines = pieces.reduce((n, it) => n + it.lines.length, 0);
-  $("progress").innerHTML = `<h2>Hologram lines</h2>
-    ${buildPick}
-    <div class="score"><span class="big">${lines}</span><span class="muted">/ ${TOTAL} lines on your outfit</span></div>
-    <div class="custom-scores">${scores}</div>
-    <div class="board" style="grid-template-rows: repeat(${Math.ceil(order.length / 2)}, auto)">${rows}</div>
-    ${jewelProgress(socketSet(pieces, state.classId, "original"), option, { picks: outfit })}`;
-  $("lines").innerHTML = `
-    <div class="row spread"><h2>What to wear</h2></div>
-    <section class="set pieces always-open" id="pieces">
-      <div class="pieces-head"><span class="label">Your outfit · Custom</span></div>
-      <div class="pieces-list">${SLOTS.map((s) => {
-          const it = outfit[s];
-          if (!it) return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span><span class="none">nothing added yet</span></div>`;
-          return `<div class="piece"><span class="piece-slot">${slotIcon(s)}${s}</span>
-            <span class="lines">${linesOf(it)}</span>
-            <span class="piece-socks">${socks(it.sockets)}</span></div>`;
-        }).join("")}
-      </div>
-    </section>
-`;
+// ---------- custom build ----------
+// Custom: how many of each line you want (0 to 3 each). Starts as General.
+const countsOf = (b) => b.need.reduce((o, n, i) => (n ? { ...o, [TARGETS[i].k]: n } : o), {});
+const CUSTOM_FROM = { original: countsOf(BUILDS.original), eu: countsOf(BUILDS.eu) };
+const BUILD_DEFAULT = CUSTOM_FROM.original;
+function customEditor(b) {
+  const total = totalOf(b);
+  const cells = TARGETS.map((t, i) => `<div class="need-row${b.need[i] ? "" : " zero"}"><span class="need-name">${icon(t.k)}${t.name}</span>
+      <span class="stepper"><button class="ghost" data-need="${t.k}" data-step="-1" aria-label="One fewer ${t.name}"${b.need[i] ? "" : " disabled"}>−</button><b>${b.need[i]}</b><button class="ghost" data-need="${t.k}" data-step="1" aria-label="One more ${t.name}"${b.need[i] >= 3 ? " disabled" : ""}>+</button></span></div>`).join("");
+  return `<div class="custom-edit">
+      <div class="custom-head"><span class="label">Lines you want · <b class="${total > TOTAL ? "over" : ""}">${total}</b>/${TOTAL}</span>
+        <span class="muted small">Start from <button class="linkish" data-custom-preset="original">General</button> · <button class="linkish" data-custom-preset="eu">Bossing</button></span></div>
+      ${total > TOTAL ? `<p class="muted small over">That's more than the 18 lines 6 pieces can hold.</p>` : ""}
+      <div class="need-grid">${cells}</div>
+    </div>`;
 }
 
 // ---------- jewel progress ----------

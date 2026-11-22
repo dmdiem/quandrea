@@ -55,6 +55,9 @@ click one to see its board):
 - **Bossing**: an optional min-max for when you're going past the 22 badge and doing lots of bossing. It's
   about +7% Final Damage, give or take, so not necessary. It's the EU build, courtesy of Shapaz.
 
+**Custom** is your own: set how many of each line you want (0 to 3 each, class lines too, e.g. 2 Crit
+DMG and 2 Mage), and it finds the best combo for exactly that. Start from General or Bossing and adjust.
+
 | Line | General | Flex | Bossing |
 |---|---|---|---|
 | Dimensional Leap, White Hole, Registry, Attack Power & Magic ATT | 3 each | 3 each | 3 each |
